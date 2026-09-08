@@ -1,0 +1,104 @@
+---
+name: init
+description: Set up a product repo for prompt-driven flow design. Installs the pinned impeccable build, declares the canonical component library, writes PRODUCT.md and DESIGN.md anchored to the real tokens and components, and publishes a Components sheet canvas. Run once per repo; --refresh after implementation changes tokens or components; --check only verifies the install.
+argument-hint: "[--refresh] [--check] [--force]"
+disable-model-invocation: true
+allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/install-impeccable.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *), Bash(git diff *), Bash(git rev-parse *)
+---
+
+# init: design DNA from the repo
+
+You are talking to a designer, not a developer. Narrate in plain words ("checking the project", "reading the design system", "saving your components sheet"). Never mention script names, payloads, seeds, helpers or contracts. Ask at most three question rounds in total, each with prefilled options and a recommended default. "I don't know" picks the default and is recorded under Open Questions.
+
+Plugin root: `${CLAUDE_PLUGIN_ROOT}`. Run the plugin scripts as given; do not open or read them (they live outside the project and reading them only costs turns).
+
+Never wrap the script path in extra quotes beyond what is shown. Product repo: the current working directory (must be the frontend repo root, where `package.json` lives).
+
+## Step 0: preflight
+
+Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.mjs" --json` and read the JSON.
+
+- `NODE` blocker: stop and tell the designer to install Node 24 (`nvm install 24 && nvm use 24`), then rerun.
+- If `--check` was passed: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/install-impeccable.mjs" --project . --check`, report OK / MISSING / VERSION_MISMATCH / DRIFT in one sentence, offer `--force` reinstall on anything but OK, and stop.
+- If `--force` was passed: run `node ${CLAUDE_PLUGIN_ROOT}/scripts/install-impeccable.mjs --project . --force`, report the result, and continue with the normal steps (or stop here if `--check` was also passed).
+- If PRODUCT.md, DESIGN.md and design.json all exist and `--refresh` was NOT passed: say the project is already set up, run Step 6 (validation) only, and stop with the next command.
+
+## Step 1: install the pinned impeccable
+
+Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/install-impeccable.mjs" --project . --json`. It copies impeccable 3.5.0 into `.claude/skills/impeccable/` and `.claude/agents/`, adds `.gitignore` and `.prettierignore` entries, and merges `.claude/settings.json` (update-check off, marketplace impeccable disabled, permission allowlist). Show `git status --short .claude .gitignore .prettierignore` so the designer sees what was written. Nothing here touches product source.
+
+## Step 2: scan the codebase (no questions yet)
+
+Read, in this order, whatever exists: `components.json`, `tailwind.config.*`, the global stylesheet it points at AND `src/app/globals.css` (they may differ), `src/app/fonts.ts`, `src/app/layout.tsx`, every file under `src/components/ui`, `src/components/forms`, `src/components/shared`, the route tree under `src/app` (directory names only), `README.md`, `CLAUDE.md`, `ARCHITECTURE.md`. Count files importing `@mui/material` versus the shadcn alias (`@/components/ui`). Note: icon sets in use, `cn` helpers, theme provider (dark mode), toast library, motion library, and any mismatch between `components.json` and the real file paths.
+
+Write down (for yourself) the **register hypothesis** (product vs brand: app shells, forms, tables, `/admin`, `/account` mean product), the canonical/legacy split, and any token defects (variables referenced but never defined, `hsl()` around hex values, duplicate definitions, flat keys colliding with nested ones, fonts mapped to unset variables). Defects are recorded, never silently fixed.
+
+## Step 3: token truth (optional, recommended)
+
+If a Playwright MCP tool is available and `pnpm dev` (or the project's dev command) can run: start the dev server, open a public route (login or home), and sample computed styles for `body` (font-family, color, background), the muted-foreground text class, headings `h1`..`h5`, `strong`, a primary button, an input, and one active tab. Write `.impeccable/token-truth.json` = `{ "sampledAt", "route", "samples": { "<selector>": { "<property>": "<value>" } }, "defects": [ { "token", "source", "problem" } ] }`. Stop the dev server afterwards. If no browser tool is available, skip this step and say so in one sentence; the defects list still goes into DESIGN.md from the static scan.
+
+## Step 4: question round 1 (canonical library)
+
+Use AskUserQuestion, one question: "Which components should new designs be built from?" Options, first one recommended: the shadcn/Tailwind primitives plus the app's form wrappers and shared shells (name the real paths); the MUI set; both. Then write `design/library.json`:
+
+```json
+{
+  "canonical": ["src/components/ui", "src/components/forms", "src/components/shared/client"],
+  "legacy": ["@mui/material"],
+  "legacyAllowedWhere": ["CircularProgress inside Button loading", "Pagination in admin tables"],
+  "tokens": ["src/app/globals.css", "tailwind.config.ts"],
+  "icons": { "canonical": "lucide-react", "legacy": "@fortawesome/*" },
+  "font": "Poppins (next/font, applied on body)",
+  "theme": { "dark": true, "designedThemes": ["light"] },
+  "componentsCanvas": null,
+  "impeccable": "3.5.0",
+  "createdAt": "<iso date>"
+}
+```
+
+## Step 5: question round 2 (product identity) and PRODUCT.md
+
+One grouped AskUserQuestion (up to 4 questions): register (prefilled from the hypothesis), brand personality in three words (offer three options derived from the existing UI), anti-references (offer "none" plus two guesses), accessibility target (default WCAG 2.1 AA; mention any brand color that fails contrast for body text).
+
+Write `PRODUCT.md` yourself from `${CLAUDE_PLUGIN_ROOT}/reference/product-md.template.md`, keeping impeccable's section set exactly (`## Register` holds the bare word `product` or `brand`) and filling `## Codebase Conventions` with the canonical/legacy split, token files, icons, fonts, legacy widgets, and the flow spec paths. Never run impeccable's own `init` interview.
+
+## Step 6: DESIGN.md and design.json through impeccable
+
+Run `IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/context.mjs` once (it must now print PRODUCT.md, not `NO_PRODUCT_MD`).
+
+Invoke the Skill tool with skill `impeccable` (the project-local one) and args:
+
+`document — scan exactly these files: <explicit list: global stylesheet, tailwind config, fonts, layout, every canonical component file, .impeccable/token-truth.json if present>. Register is product. Do not run init. Colors in the frontmatter must be hex. Record the known token defects listed here as Don'ts: <defects>.`
+
+Tell the designer beforehand: "you'll get one round of naming questions; the defaults are fine". With `--refresh`, answer impeccable's refresh/overwrite/merge prompt with "refresh".
+
+Afterwards post-process:
+- `DESIGN.md`: the six sections exist in order (Overview, Colors, Typography, Elevation, Components, Do's and Don'ts); frontmatter colors are hex; add under Components a `### Legacy widgets (do not extend)` list and under Do's and Don'ts three Don'ts at minimum: no new `@mui/material` imports; no raw Tailwind palette colors where a brand token exists (name them); no left-border accent stripes. Add each token defect as a Don't with the file and line.
+- `.impeccable/design.json`: has `components` covering the primary button variants, the text input (default and error), tabs, card, checkbox, modal and form header where the app has them. Re-run `document` for missing ones rather than hand-writing snippets.
+- Write `.impeccable/live/config.json` only if absent: `{"files":["src/app/layout.tsx"],"insertBefore":"</body>","commentSyntax":"jsx","cspChecked":true}` (adjust the layout path to the real one).
+- Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/flow-check.mjs" --design-only` and fix every error.
+
+## Step 7: Components sheet canvas
+
+Read `${CLAUDE_PLUGIN_ROOT}/reference/artboard-rules.md` and `canvas-layout.md`. Author `design/components/*.dc.html` from the real component source and the design.json snippets, one artboard per group, each element tagged with `data-component` and `data-token`:
+
+`CmpButtons` (all variants x sizes, hover, focus ring, disabled, loading), `CmpInputs` (default, label, focus, error, disabled, password, leading icon; select; textarea; checkbox), `CmpSelection` (checkbox, switch, tabs, badge, progress), `CmpCards`, `CmpOverlays` (modal, dialog, popover, toasts), `CmpTypography` (the ramp actually used, form header), `CmpNavbar`, `CmpFooter` and any other shell piece (`CmpCategories`), `CmpColors` (every token swatch with hex and variable name plus a "known defects" note), `CmpLegacy` (static look-alikes of legacy widgets labelled "legacy, do not extend"). Skip layout-only helpers. Chrome artboards (`CmpNavbar`, `CmpFooter`, ...) must be self-contained so flows can `dc-import` them.
+
+Write `design/components/canvas.json` (single page, no `pages` key, rows of 960-wide frames, 120 px gaps, `launch: {"view":"canvas"}`) and `design/README.md` (what lives where, how to run the four verbs).
+
+Then invoke the Skill tool with skill `design` and no arguments, purely to learn its base directory for this session (note the "Base directory for this skill" line; do not ask what to design, do not start a brief). Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/seed-flow.mjs" --skill-dir "<base dir>" --flow design/components --title "<Product name> Components" --out design/components/<product-slug>-components.html`, then publish that file with the Artifact tool exactly as the design skill's step 4 prescribes (its contract pin, capabilities from the roster, a favicon, a one-line description). Record the URL in `design/library.json.componentsCanvas`. If publishing is declined or unavailable, keep the local file, set `componentsCanvas` to `null`, say the sheet is local-only, and continue.
+
+## Step 8: repo hygiene and handover
+
+- If the repo has no `CLAUDE.md`, offer to create one with a `## Design context` section (PRODUCT.md, DESIGN.md, `design/`, `specs/<story>/design-flow.md`, canonical/legacy rules). If it has one, offer to append that section. Do not write without a yes.
+- Show `git status --short` and list what should be committed: `PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`, `.impeccable/token-truth.json`, `.impeccable/live/config.json`, `.claude/settings.json`, `.gitignore`, `.prettierignore`, `design/**` (sources only; seeded `.html` files are ignored). Suggest a branch name like `chore/design-dna` and a commit message; do not commit unless asked.
+- If `components.json` points at wrong paths or a wrong base color, say so and offer the one-line fix separately.
+- End with: "Next: `/designli-design:flow "<what you want to design>"`".
+
+## Failure modes
+
+- Node too old or missing: stop with the install command.
+- DESIGN.md exists without `--refresh`: validate only.
+- impeccable `document` asks something the designer cannot answer: pick the default that matches the existing UI and note it in DESIGN.md's Overview as an assumption.
+- Publish denied: continue local-only; never retry the publish on your own.
+- Anything you cannot verify from the codebase stays a bracketed placeholder in PRODUCT.md, never an invention.

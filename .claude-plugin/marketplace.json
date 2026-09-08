@@ -1,0 +1,15 @@
+{
+  "name": "designli-tools",
+  "owner": { "name": "Designli" },
+  "metadata": { "description": "Designli internal Claude Code plugins." },
+  "plugins": [
+    {
+      "name": "designli-design",
+      "description": "Prompt-driven UX flow design on a canvas, anchored to the codebase design system, with review and handoff.",
+      "version": "0.1.0",
+      "source": "./",
+      "category": "design",
+      "tags": ["design", "flows", "handoff"]
+    }
+  ]
+}

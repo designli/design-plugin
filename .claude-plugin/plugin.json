@@ -1,0 +1,9 @@
+{
+  "name": "designli-design",
+  "description": "Design product UX flows by prompting: flow canvases anchored to the real design system, a review loop over canvas comments and critiques, and handoff into the designli-skills spec pipeline. Wraps a pinned impeccable 3.5.0. (Plugin name is a placeholder.)",
+  "version": "0.1.0",
+  "author": { "name": "Designli" },
+  "keywords": ["design", "ux-flows", "canvas", "handoff", "impeccable"],
+  "skills": "./skills/",
+  "agents": ["./agents/artboard-author.md"]
+}

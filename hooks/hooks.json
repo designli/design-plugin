@@ -1,0 +1,17 @@
+{
+  "description": "designli-design: keeps impeccable pinned at the version this plugin was built against.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/impeccable-guard.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

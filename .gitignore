@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*.log
+# pilot scratch output (seeded canvases, extracts)
+pilot/**/*.html
+pilot/**/extract-*/
