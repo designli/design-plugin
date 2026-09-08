@@ -35,6 +35,8 @@ If the title was not passed, ask once (AskUserQuestion) with the flow title as t
 
 ## Step 4: tell the developer what to do
 
+**Greenfield**: also print that no code exists yet; the implementing agent must scaffold the app (intended stack in `PRODUCT.md` Codebase Conventions) from `design/tokens.css` and `DESIGN.md` before building the flow, and the team should run `/designli-design:init --refresh` once the first real components exist so references migrate from the Components sheet to code paths.
+
 Print, verbatim for pasting into the user story if it predates the flow:
 
 ```

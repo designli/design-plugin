@@ -50,3 +50,18 @@ Adoption verdict from the designer; DESIGN.md corrections; decide whether to ope
 - Every step needs its states (loading, error, empty, ...). You can skip one only with a reason; the handoff refuses otherwise. That is on purpose: developers build what is drawn.
 - When you are happy: `/designli-design:handoff subscribe-checkout "Subscribe checkout"`. Developers take it from there.
 - Brand and marketing work stays in Figma. This tool is for product flows.
+
+---
+
+# Pilot variant: greenfield MVP (no code yet)
+
+Project: `/Users/gabriel/Develop/Designli/design-pilot-mvp` (empty git repo). The plugin's preflight detects no UI source and `init` takes the greenfield path: it creates the design system from a direction instead of reading code.
+
+1. `cd /Users/gabriel/Develop/Designli/design-pilot-mvp && claude`, accept the trust dialog, run `/designli-design:init`.
+   - Expect three question rounds: product identity, direction (color strategy, type direction, motion, references), and the pick between three direction artboards on a "Directions" canvas.
+   - Expect: `PRODUCT.md`, `DESIGN.md` with a full hex-token frontmatter and a SEED comment at the top, `.impeccable/design.json` with 5-10 `ds-` primitives, `design/tokens.css`, `design/directions/` (three artboards + canvas), `design/components/` (Components sheet + canvas link), `design/library.json` with `greenfield: true`, `.claude/skills/impeccable/` at 3.5.0.
+2. `/designli-design:flow "<the MVP's first flow>"` (for example "sign up and create the first project"). Entry points are asked, not read from code. Component references point at the Components sheet.
+3. Comment on the canvas, `/designli-design:review <slug>`, then `/designli-design:handoff <slug> "<story title>"`. The handoff tells developers to scaffold from `design/tokens.css` and DESIGN.md first.
+4. Later, once a codebase exists: `/designli-design:init --refresh` re-documents from code and flows migrate their component references.
+
+Done for the greenfield pilot: all four verbs complete within the question budgets; `flow-check --strict` clean; a developer (or agent) can scaffold the app from `design/tokens.css` and build the flow from `specs/<story>/` without asking the designer anything that is already in the spec.

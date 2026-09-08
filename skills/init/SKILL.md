@@ -3,7 +3,7 @@ name: init
 description: Set up a product repo for prompt-driven flow design. Installs the pinned impeccable build, declares the canonical component library, writes PRODUCT.md and DESIGN.md anchored to the real tokens and components, and publishes a Components sheet canvas. Run once per repo; --refresh after implementation changes tokens or components; --check only verifies the install.
 argument-hint: "[--refresh] [--check] [--force]"
 disable-model-invocation: true
-allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/install-impeccable.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *), Bash(git diff *), Bash(git rev-parse *)
+allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/install-impeccable.mjs*), Bash(node *scripts/tokens-css.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *), Bash(git diff *), Bash(git rev-parse *)
 ---
 
 # init: design DNA from the repo
@@ -22,6 +22,10 @@ Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.mjs" --json` and read the JSO
 - If `--check` was passed: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/install-impeccable.mjs" --project . --check`, report OK / MISSING / VERSION_MISMATCH / DRIFT in one sentence, offer `--force` reinstall on anything but OK, and stop.
 - If `--force` was passed: run `node ${CLAUDE_PLUGIN_ROOT}/scripts/install-impeccable.mjs --project . --force`, report the result, and continue with the normal steps (or stop here if `--check` was also passed).
 - If PRODUCT.md, DESIGN.md and design.json all exist and `--refresh` was NOT passed: say the project is already set up, run Step 6 (validation) only, and stop with the next command.
+
+## Which path
+
+Preflight reports `info.greenfield`. If it is `true` (no UI source files in the repo), follow **Path B: greenfield** below and skip Steps 2-8. Otherwise follow **Path A** (Steps 1-8). Both paths start with Step 1.
 
 ## Step 1: install the pinned impeccable
 
@@ -102,3 +106,21 @@ Then invoke the Skill tool with skill `design` and no arguments, purely to learn
 - impeccable `document` asks something the designer cannot answer: pick the default that matches the existing UI and note it in DESIGN.md's Overview as an assumption.
 - Publish denied: continue local-only; never retry the publish on your own.
 - Anything you cannot verify from the codebase stays a bracketed placeholder in PRODUCT.md, never an invention.
+
+## Path B: greenfield (no code yet)
+
+Read `${CLAUDE_PLUGIN_ROOT}/reference/greenfield.md`, `artboard-rules.md` and `canvas-layout.md` first. Three question rounds, then you create the design system yourself; impeccable's `document` is NOT run (its seed mode writes no tokens), it is used later by `review` and by `init --refresh` once code exists.
+
+B1. **Product identity round** (one grouped AskUserQuestion, up to 4 questions): what the product is and who it is for (offer "I'll describe it" as the free-text route), register (default `product`), platform (desktop-first web app / mobile-first / both), brand personality in three words (offer three contrasting options). Write `PRODUCT.md` from the template with `## Codebase Conventions` saying greenfield, the intended stack (default "Next.js + Tailwind + shadcn, to be confirmed"), `design/tokens.css` as the token source and `design/components/` as the component source.
+
+B2. **Direction round** (one grouped AskUserQuestion): color strategy plus hue anchor, typography direction, motion energy, three named references and one anti-reference (impeccable's five seed questions, options as listed in `greenfield.md`). Then run `IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/palette.mjs --from "<product name>"` for a seed hue (the designer's anchor wins).
+
+B3. **Directions canvas.** Author three low-fi direction artboards `DirectionA.dc.html`, `DirectionB.dc.html`, `DirectionC.dc.html` in `design/directions/` (each a named axis, same first screen, different systems) plus `canvas.json` (one row, 1440-wide frames, a sticky note per direction naming its axis and tradeoff). Seed with `node "${CLAUDE_PLUGIN_ROOT}/scripts/seed-flow.mjs" --skill-dir "<base dir>" --flow design/directions --title "<Product> Directions" --out design/directions/<product-slug>-directions.html` (learn the base dir by loading the `design` skill with no arguments as in Step 7) and publish it as the design skill's step 4 prescribes. **Third round**: which direction (A, B, C, or mix + one sentence). Record the choice and the canvas url in `design/library.json` (`direction`, `directionsCanvas`).
+
+B4. **Author the system** from the chosen direction, in this order: `DESIGN.md` (frontmatter on line 1 with hex tokens, then the SEED comment line, then the six sections with Named Rules), `.impeccable/design.json` (schemaVersion 2 with 5-10 `ds-` primitives, colorMeta with OKLCH canonical values and 8-step ramps, narrative copied from DESIGN.md), then `node "${CLAUDE_PLUGIN_ROOT}/scripts/tokens-css.mjs"` to produce `design/tokens.css`. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/flow-check.mjs" --design-only` and fix every error. Write `design/library.json` with `greenfield: true` as in `greenfield.md`.
+
+B5. **Components sheet**: Step 7 as written, except that every component definition element carries `data-component-def="<Export>[/<variant>]"` and the artboards are built from the design.json snippets and `design/tokens.css` values (literal values in inline styles). Publish and record `componentsCanvas`.
+
+B6. **Handover**: `design/README.md`, a `CLAUDE.md` for the future codebase (offer, do not force) that tells developers to scaffold from `design/tokens.css` and DESIGN.md and to run `/designli-design:init --refresh` after the first components exist, then `git status --short` and the next command: `/designli-design:flow "<the product's first flow>"`.
+
+Greenfield failure modes: the designer cannot pick a direction (default to A and record an Open Question in library.json `notes`); the directions canvas cannot be published (describe the three directions in one line each and ask); the designer wants dark mode (design light first, record `theme.designedThemes` and note dark as a follow-up).

@@ -21,6 +21,8 @@ Never wrap the script path in extra quotes beyond what is shown. Read once per s
 
 ## Step 1: ground the brief in the code
 
+**Greenfield** (`design/library.json.greenfield` is true): there are no routes or schemas to read. Ground the flow in `PRODUCT.md`, the chosen direction, `DESIGN.md` and the brief instead: invent realistic field names, validation messages and sample data consistent with the product, and ask the designer for the entry points in round 1. Component references point at the Components sheet (`data-component="design/components/CmpButtons.dc.html#Button/primary"`) because no code paths exist yet.
+
 Find the closest existing surface: routes under `src/app`, the components they render, validation schemas (yup/zod), API hooks and services, toast strings, existing loading and error handling, prices or plans, feature flags. Write the **flow facts** for yourself: real field names and validation messages, real copy, real data keys, what happens today on failure, entry points into this surface. If nothing matches, treat it as a new surface and say so; the designer must then name the entry route.
 
 ## Step 2: question round 1 (path and framing)

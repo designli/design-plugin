@@ -3,7 +3,7 @@
 //   node preflight.mjs [--project <dir>] [--require impeccable,dna,library] [--json]
 // Prints { ok, blockers:[{code,message,fix}], warnings:[...], info:{...} }.
 // Blockers depend on --require; everything else is reported as info/warnings.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { checkInstall, IMPECCABLE_PIN } from "./install-impeccable.mjs";
@@ -53,6 +53,22 @@ try {
   info.gitDirty = execSync("git status --porcelain", { cwd: project, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean).length;
 } catch { info.gitBranch = null; }
 if (existsSync(join(project, ".specs"))) warn("SPECS_DIR", "a legacy .specs/ folder exists next to ./specs/", "keep using ./specs/; the designli-skills pipeline is being aligned on ./specs/");
+
+// Greenfield detection: no UI source files outside tooling dirs
+function hasUiSource(dir, depth = 0) {
+  if (depth > 4) return false;
+  let entries = [];
+  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return false; }
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      if (["node_modules", ".git", "design", "specs", ".claude", ".impeccable", ".next", "dist", "build"].includes(e.name)) continue;
+      if (hasUiSource(join(dir, e.name), depth + 1)) return true;
+    } else if (/\.(tsx|jsx|vue|svelte|astro|html|css)$/.test(e.name) && !/\.dc\.html$/.test(e.name)) return true;
+  }
+  return false;
+}
+info.greenfield = !hasUiSource(project);
+if (info.greenfield) warn("GREENFIELD", "no UI source files found: this is a greenfield project, init will create the design system from a direction instead of reading code", "run /designli-design:init (greenfield path)");
 
 // Frontend framework hint
 const pkg = join(project, "package.json");

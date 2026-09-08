@@ -94,6 +94,7 @@ function mergeSettings(project) {
     "Bash(node *scripts/flow-check.mjs*)",
     "Bash(node *scripts/seed-flow.mjs*)",
     "Bash(node *scripts/dc-to-html.mjs*)",
+    "Bash(node *scripts/tokens-css.mjs*)",
     "Bash(node *seed-canvas.mjs*)",
     "Bash(pnpm dev)",
     "Bash(pnpm lint)",

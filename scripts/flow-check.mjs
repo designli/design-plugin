@@ -150,7 +150,11 @@ function checkArtboard(file, tokens, { screen }) {
       const [p, rest] = dc[1].split("#"); const exp = (rest || "").split("/")[0];
       if (/^@mui\//.test(p)) { if (!/data-legacy="true"/.test(tag)) err("MUI_COMPONENT", `data-component="${dc[1]}" targets MUI without data-legacy="true"`, name); }
       else if (!existsSync(join(project, p))) gap("COMPONENT_PATH", `data-component path does not exist: ${p}`, name);
-      else if (exp) { const code = readFileSync(join(project, p), "utf8"); if (!new RegExp(`\\b${exp}\\b`).test(code)) gap("COMPONENT_EXPORT", `export ${exp} not found in ${p}`, name); }
+      else if (exp) {
+        const code = readFileSync(join(project, p), "utf8");
+        if (/\.dc\.html$/.test(p)) { if (!new RegExp(`data-component-def="${exp}(/|")`).test(code)) gap("COMPONENT_DEF", `no data-component-def="${exp}" in ${p}`, name); }
+        else if (!new RegExp(`\\b${exp}\\b`).test(code)) gap("COMPONENT_EXPORT", `export ${exp} not found in ${p}`, name);
+      }
     }
   }
   if (tokens.colors.size > allowColors.size) for (const [c, n] of unknownColors) gap("TOKEN_DRIFT", `color ${c} (${n}x) is not a token in DESIGN.md / design.json`, name);
