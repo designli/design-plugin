@@ -81,7 +81,8 @@ ${body}
 }
 
 mkdirSync(outDir, { recursive: true });
-const inputs = single ? [single] : readdirSync(flowDir).filter(f => f.endsWith(".dc.html") && !/^Cmp/.test(f)).map(f => join(flowDir, f));
+const includeComponents = args.includes("--include-components");
+const inputs = single ? [single] : readdirSync(flowDir).filter(f => f.endsWith(".dc.html") && (includeComponents || !/^Cmp/.test(f))).map(f => join(flowDir, f));
 const written = [], problems = [];
 for (const f of inputs) {
   const { stem, html, missing } = flatten(f);
