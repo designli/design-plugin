@@ -8,25 +8,38 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 
 import { join, resolve, basename, relative } from "node:path";
 
 const args = process.argv.slice(2);
-const opt = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
+const opt = (n, d) => {
+  const i = args.indexOf(n);
+  return i >= 0 ? args[i + 1] : d;
+};
 const flowDir = opt("--flow") ? resolve(opt("--flow")) : null;
 const single = opt("--in") ? resolve(opt("--in")) : null;
 const outDir = resolve(opt("--out", "."));
-const compDir = opt("--components") ? resolve(opt("--components")) : (flowDir ? flowDir : null);
+const compDir = opt("--components") ? resolve(opt("--components")) : flowDir ? flowDir : null;
 const force = args.includes("--force");
-if (!flowDir && !single) { console.error("need --flow <dir> or --in <file>, plus --out <dir>"); process.exit(2); }
+if (!flowDir && !single) {
+  console.error("need --flow <dir> or --in <file>, plus --out <dir>");
+  process.exit(2);
+}
 
 const parts = (src) => ({
   helmet: (src.match(/<helmet>([\s\S]*?)<\/helmet>/) || [, ""])[1],
-  body: (src.match(/<x-dc>([\s\S]*?)<\/x-dc>/) || [, ""])[1].replace(/<helmet>[\s\S]*?<\/helmet>/, ""),
+  body: (src.match(/<x-dc>([\s\S]*?)<\/x-dc>/) || [, ""])[1].replace(
+    /<helmet>[\s\S]*?<\/helmet>/,
+    "",
+  ),
 });
 const compCache = new Map();
 function component(name) {
   if (compCache.has(name)) return compCache.get(name);
-  const candidates = [compDir && join(compDir, `${name}.dc.html`), flowDir && join(flowDir, `${name}.dc.html`)].filter(Boolean);
+  const candidates = [
+    compDir && join(compDir, `${name}.dc.html`),
+    flowDir && join(flowDir, `${name}.dc.html`),
+  ].filter(Boolean);
   const file = candidates.find(existsSync);
   const val = file ? parts(readFileSync(file, "utf8")) : null;
-  compCache.set(name, val); return val;
+  compCache.set(name, val);
+  return val;
 }
 function flatten(file) {
   const src = readFileSync(file, "utf8");
@@ -37,29 +50,59 @@ function flatten(file) {
   let body = p.body.replace(/<dc-import\b([^>]*)>\s*<\/dc-import>/g, (m, attrs) => {
     const name = (attrs.match(/name="([^"]+)"/) || [])[1];
     const c = name && component(name);
-    if (!c) { missing.push(name); return `<!-- dc-import ${name} not found -->`; }
+    if (!c) {
+      missing.push(name);
+      return `<!-- dc-import ${name} not found -->`;
+    }
     if (c.helmet && !heads.includes(c.helmet)) heads.push(c.helmet);
     return `<!-- begin ${name} --><div data-imported-component="${name}">${c.body}</div><!-- end ${name} -->`;
   });
   // interactive artboards: render the static (Default) variant from data-flat
-  const scriptTag = (body.match(/<script[^>]*data-dc-script[^>]*>/) || src.match(/<script[^>]*data-dc-script[^>]*>/) || [""])[0];
-  const flatRaw = (scriptTag.match(/data-flat='([^']*)'/) || scriptTag.match(/data-flat="([^"]*)"/) || [])[1];
+  const scriptTag = (body.match(/<script[^>]*data-dc-script[^>]*>/) ||
+    src.match(/<script[^>]*data-dc-script[^>]*>/) || [""])[0];
+  const flatRaw = (scriptTag.match(/data-flat='([^']*)'/) ||
+    scriptTag.match(/data-flat="([^"]*)"/) ||
+    [])[1];
   let flat = {};
-  if (flatRaw) { try { flat = JSON.parse(flatRaw.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&#39;/g, "'")); } catch { missing.push("data-flat (invalid JSON)"); } }
-  const lookup = (path) => path.split(".").reduce((o, k) => (o && typeof o === "object" && k in o) ? o[k] : undefined, flat);
+  if (flatRaw) {
+    try {
+      flat = JSON.parse(
+        flatRaw
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, "&")
+          .replace(/&#39;/g, "'"),
+      );
+    } catch {
+      missing.push("data-flat (invalid JSON)");
+    }
+  }
+  const lookup = (path) =>
+    path
+      .split(".")
+      .reduce((o, k) => (o && typeof o === "object" && k in o ? o[k] : undefined), flat);
   body = body.replace(/<script[^>]*data-dc-script[\s\S]*?<\/script>/g, "");
   body = body.replace(/\s+on[A-Z][A-Za-z]*="\{\{[^}]*\}\}"/g, "");
   // <sc-if value="{{x}}">...</sc-if>: keep or drop by the flat value (innermost first, a few passes)
   for (let i = 0; i < 6; i++) {
     const before = body;
-    body = body.replace(/<sc-if\b([^>]*)>((?:(?!<sc-if\b)[\s\S])*?)<\/sc-if>/g, (m, attrs, inner) => {
-      const v = (attrs.match(/value="\{\{\s*([^}\s]+)\s*\}\}"/) || [])[1];
-      const val = v === "true" ? true : v === "false" ? false : v ? lookup(v) : true;
-      return val ? inner : "";
-    });
+    body = body.replace(
+      /<sc-if\b([^>]*)>((?:(?!<sc-if\b)[\s\S])*?)<\/sc-if>/g,
+      (m, attrs, inner) => {
+        const v = (attrs.match(/value="\{\{\s*([^}\s]+)\s*\}\}"/) || [])[1];
+        const val = v === "true" ? true : v === "false" ? false : v ? lookup(v) : true;
+        return val ? inner : "";
+      },
+    );
     if (body === before) break;
   }
-  body = body.replace(/\{\{\s*([^}\s]+)\s*\}\}/g, (m, p) => { const v = lookup(p); if (v === undefined) { missing.push("hole " + p); return ""; } return String(v); });
+  body = body.replace(/\{\{\s*([^}\s]+)\s*\}\}/g, (m, p) => {
+    const v = lookup(p);
+    if (v === undefined) {
+      missing.push("hole " + p);
+      return "";
+    }
+    return String(v);
+  });
   body = body.replace(/\s+hint-[a-z-]+="[^"]*"/g, "");
   const stem = basename(file).replace(/\.dc\.html$/, "");
   const rel = flowDir ? relative(process.cwd(), file) : basename(file);
@@ -82,14 +125,25 @@ ${body}
 
 mkdirSync(outDir, { recursive: true });
 const includeComponents = args.includes("--include-components");
-const inputs = single ? [single] : readdirSync(flowDir).filter(f => f.endsWith(".dc.html") && (includeComponents || !/^Cmp/.test(f))).map(f => join(flowDir, f));
-const written = [], problems = [];
+const inputs = single
+  ? [single]
+  : readdirSync(flowDir)
+      .filter((f) => f.endsWith(".dc.html") && (includeComponents || !/^Cmp/.test(f)))
+      .map((f) => join(flowDir, f));
+const written = [],
+  problems = [];
 for (const f of inputs) {
   const { stem, html, missing } = flatten(f);
   const out = join(outDir, `${stem}.html`);
-  if (existsSync(out) && !force) { problems.push(`${basename(out)} exists (use --force)`); continue; }
-  writeFileSync(out, html); written.push(basename(out));
+  if (existsSync(out) && !force) {
+    problems.push(`${basename(out)} exists (use --force)`);
+    continue;
+  }
+  writeFileSync(out, html);
+  written.push(basename(out));
   for (const m of missing) problems.push(`${stem}: component ${m} not found, left a comment`);
 }
-console.log(`dc-to-html: wrote ${written.length} file(s) to ${relative(process.cwd(), outDir) || "."}${problems.length ? `; ${problems.length} problem(s):\n  ` + problems.join("\n  ") : ""}`);
-process.exit(problems.some(p => /not found/.test(p)) ? 1 : 0);
+console.log(
+  `dc-to-html: wrote ${written.length} file(s) to ${relative(process.cwd(), outDir) || "."}${problems.length ? `; ${problems.length} problem(s):\n  ` + problems.join("\n  ") : ""}`,
+);
+process.exit(problems.some((p) => /not found/.test(p)) ? 1 : 0);

@@ -8,20 +8,36 @@ import { join, resolve, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
-const opt = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
+const opt = (n, d) => {
+  const i = args.indexOf(n);
+  return i >= 0 ? args[i + 1] : d;
+};
 const project = resolve(opt("--project", process.cwd()));
 const flowDir = opt("--flow", null) ? resolve(opt("--flow")) : null;
 const strict = args.includes("--strict");
 const json = args.includes("--json");
 const designOnly = args.includes("--design-only");
 
-const errors = [], warnings = [];
+const errors = [],
+  warnings = [];
 const err = (code, message, where) => errors.push({ code, message, where });
 const warn = (code, message, where) => warnings.push({ code, message, where });
 const gap = strict ? err : warn; // coverage/drift gaps escalate in strict mode
 
 // ---------- states vocabulary ----------
-export const STATE_VOCAB = ["Default", "Loading", "Empty", "Validation", "Submitting", "Error", "Success", "Disabled", "Selected", "Partial", "Stale"];
+export const STATE_VOCAB = [
+  "Default",
+  "Loading",
+  "Empty",
+  "Validation",
+  "Submitting",
+  "Error",
+  "Success",
+  "Disabled",
+  "Selected",
+  "Partial",
+  "Stale",
+];
 export const REQUIRED_BY_KIND = {
   form: ["Default", "Validation", "Submitting", "Error"],
   data: ["Default", "Loading", "Empty", "Error"],
@@ -35,42 +51,94 @@ const isWaiver = (v) => typeof v === "string" && /^n\/a:\s*\S/.test(v);
 const isEmptyWaiver = (v) => typeof v === "string" && /^n\/a:?\s*$/.test(v);
 
 // ---------- design DNA / tokens ----------
-const allowColors = new Set(["#ffffff", "#000000", "transparent", "currentcolor", "inherit", "initial", "unset", "none"]);
+const allowColors = new Set([
+  "#ffffff",
+  "#000000",
+  "transparent",
+  "currentcolor",
+  "inherit",
+  "initial",
+  "unset",
+  "none",
+]);
 function normHex(h) {
   h = h.toLowerCase();
-  if (/^#[0-9a-f]{3}$/.test(h)) return "#" + [...h.slice(1)].map(c => c + c).join("");
-  if (/^#[0-9a-f]{4}$/.test(h)) return "#" + [...h.slice(1, 4)].map(c => c + c).join("");
+  if (/^#[0-9a-f]{3}$/.test(h)) return "#" + [...h.slice(1)].map((c) => c + c).join("");
+  if (/^#[0-9a-f]{4}$/.test(h)) return "#" + [...h.slice(1, 4)].map((c) => c + c).join("");
   if (/^#[0-9a-f]{8}$/.test(h)) return h.slice(0, 7);
   return h;
 }
-function rgbToHex(r, g, b) { return "#" + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join(""); }
+function rgbToHex(r, g, b) {
+  return (
+    "#" +
+    [r, g, b]
+      .map((v) =>
+        Math.max(0, Math.min(255, Math.round(v)))
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("")
+  );
+}
 function hslToHex(h, s, l) {
-  s /= 100; l /= 100; const k = n => (n + h / 30) % 12; const a = s * Math.min(l, 1 - l);
-  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  s /= 100;
+  l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
   return rgbToHex(255 * f(0), 255 * f(8), 255 * f(4));
 }
 function toHex(literal) {
   const v = literal.trim().toLowerCase();
   if (v.startsWith("#")) return normHex(v);
-  let m = v.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/); if (m) return rgbToHex(+m[1], +m[2], +m[3]);
-  m = v.match(/^hsla?\(\s*([\d.]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%/); if (m) return hslToHex(+m[1], +m[2], +m[3]);
+  let m = v.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+  if (m) return rgbToHex(+m[1], +m[2], +m[3]);
+  m = v.match(/^hsla?\(\s*([\d.]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%/);
+  if (m) return hslToHex(+m[1], +m[2], +m[3]);
   return null; // oklch etc.: compared as raw strings
 }
 function collectStrings(obj, out = []) {
   if (typeof obj === "string") out.push(obj);
-  else if (Array.isArray(obj)) obj.forEach(v => collectStrings(v, out));
-  else if (obj && typeof obj === "object") Object.values(obj).forEach(v => collectStrings(v, out));
+  else if (Array.isArray(obj)) obj.forEach((v) => collectStrings(v, out));
+  else if (obj && typeof obj === "object")
+    Object.values(obj).forEach((v) => collectStrings(v, out));
   return out;
 }
 async function loadTokens() {
-  const tokens = { colors: new Set(allowColors), fonts: new Set(["system-ui", "sans-serif", "serif", "monospace", "ui-sans-serif", "ui-monospace", "inherit"]), raw: new Set(), sections: [], model: null };
+  const tokens = {
+    colors: new Set(allowColors),
+    fonts: new Set([
+      "system-ui",
+      "sans-serif",
+      "serif",
+      "monospace",
+      "ui-sans-serif",
+      "ui-monospace",
+      "inherit",
+    ]),
+    raw: new Set(),
+    sections: [],
+    model: null,
+  };
   const designMd = join(project, "DESIGN.md");
   if (!existsSync(designMd)) return tokens;
   const md = readFileSync(designMd, "utf8");
   let model = null;
-  const parserPath = join(project, ".claude", "skills", "impeccable", "scripts", "design-parser.mjs");
+  const parserPath = join(
+    project,
+    ".claude",
+    "skills",
+    "impeccable",
+    "scripts",
+    "design-parser.mjs",
+  );
   if (existsSync(parserPath)) {
-    try { const mod = await import(pathToFileURL(parserPath).href); model = mod.parseDesignMd(md); } catch (e) { warn("PARSER", `design-parser.mjs failed: ${e.message}`); }
+    try {
+      const mod = await import(pathToFileURL(parserPath).href);
+      model = mod.parseDesignMd(md);
+    } catch (e) {
+      warn("PARSER", `design-parser.mjs failed: ${e.message}`);
+    }
   }
   tokens.model = model;
   // colors: every hex/rgb/hsl string anywhere in frontmatter + prose, plus design.json ramps
@@ -79,74 +147,165 @@ async function loadTokens() {
   if (existsSync(dj)) sources.push(readFileSync(dj, "utf8"));
   if (model?.frontmatter) sources.push(collectStrings(model.frontmatter).join("\n"));
   for (const s of sources) {
-    for (const m of s.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g)) {
-      const hex = toHex(m[0]); if (hex) tokens.colors.add(hex); else tokens.raw.add(m[0].replace(/\s+/g, "").toLowerCase());
+    for (const m of s.matchAll(
+      /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g,
+    )) {
+      const hex = toHex(m[0]);
+      if (hex) tokens.colors.add(hex);
+      else tokens.raw.add(m[0].replace(/\s+/g, "").toLowerCase());
     }
   }
   // fonts: any quoted family or "font-family" line in DESIGN.md / frontmatter
-  for (const m of md.matchAll(/(?:font(?:-family)?|fontFamily|family)\s*[:=]\s*["']?([A-Za-z][A-Za-z0-9 \-]*)/g)) tokens.fonts.add(m[1].trim().toLowerCase());
-  if (model?.frontmatter) for (const s of collectStrings(model.frontmatter)) if (/^[A-Z][A-Za-z ]{2,30}$/.test(s)) tokens.fonts.add(s.toLowerCase());
-  tokens.sections = (md.match(/^##\s+.*$/gm) || []).map(l => l.replace(/^##\s+/, "").replace(/^\d+\.\s*/, "").trim());
+  for (const m of md.matchAll(
+    /(?:font(?:-family)?|fontFamily|family)\s*[:=]\s*["']?([A-Za-z][A-Za-z0-9 \-]*)/g,
+  ))
+    tokens.fonts.add(m[1].trim().toLowerCase());
+  if (model?.frontmatter)
+    for (const s of collectStrings(model.frontmatter))
+      if (/^[A-Z][A-Za-z ]{2,30}$/.test(s)) tokens.fonts.add(s.toLowerCase());
+  tokens.sections = (md.match(/^##\s+.*$/gm) || []).map((l) =>
+    l
+      .replace(/^##\s+/, "")
+      .replace(/^\d+\.\s*/, "")
+      .trim(),
+  );
   return tokens;
 }
 
 // ---------- design-only checks ----------
 function checkDesign(tokens) {
-  if (!existsSync(join(project, "DESIGN.md"))) return err("DESIGN_MISSING", "DESIGN.md not found", "DESIGN.md");
+  if (!existsSync(join(project, "DESIGN.md")))
+    return err("DESIGN_MISSING", "DESIGN.md not found", "DESIGN.md");
   const want = ["Overview", "Colors", "Typography", "Elevation", "Components", "Do's and Don'ts"];
   const have = tokens.sections;
-  const order = want.map(w => have.findIndex(h => h.toLowerCase().startsWith(w.toLowerCase())));
-  if (order.some(i => i < 0)) err("DESIGN_SECTIONS", `DESIGN.md is missing sections: ${want.filter((_, i) => order[i] < 0).join(", ")}`, "DESIGN.md");
-  else if (order.some((v, i) => i > 0 && v < order[i - 1])) warn("DESIGN_ORDER", "DESIGN.md sections are out of the canonical order", "DESIGN.md");
-  if (tokens.model && !tokens.model.frontmatter) err("DESIGN_FRONTMATTER", "DESIGN.md has no parsable YAML frontmatter", "DESIGN.md");
-  if (tokens.colors.size <= allowColors.size) err("DESIGN_COLORS", "no color tokens found in DESIGN.md / design.json", "DESIGN.md");
+  const order = want.map((w) => have.findIndex((h) => h.toLowerCase().startsWith(w.toLowerCase())));
+  if (order.some((i) => i < 0))
+    err(
+      "DESIGN_SECTIONS",
+      `DESIGN.md is missing sections: ${want.filter((_, i) => order[i] < 0).join(", ")}`,
+      "DESIGN.md",
+    );
+  else if (order.some((v, i) => i > 0 && v < order[i - 1]))
+    warn("DESIGN_ORDER", "DESIGN.md sections are out of the canonical order", "DESIGN.md");
+  if (tokens.model && !tokens.model.frontmatter)
+    err("DESIGN_FRONTMATTER", "DESIGN.md has no parsable YAML frontmatter", "DESIGN.md");
+  if (tokens.colors.size <= allowColors.size)
+    err("DESIGN_COLORS", "no color tokens found in DESIGN.md / design.json", "DESIGN.md");
   const dj = join(project, ".impeccable", "design.json");
-  if (!existsSync(dj)) err("DESIGNJSON_MISSING", ".impeccable/design.json not found", ".impeccable/design.json");
+  if (!existsSync(dj))
+    err("DESIGNJSON_MISSING", ".impeccable/design.json not found", ".impeccable/design.json");
   else {
-    try { const d = JSON.parse(readFileSync(dj, "utf8")); const n = Array.isArray(d.components) ? d.components.length : Object.keys(d.components || {}).length; if (!n) warn("DESIGNJSON_COMPONENTS", "design.json has no components", dj); }
-    catch (e) { err("DESIGNJSON_PARSE", e.message, dj); }
+    try {
+      const d = JSON.parse(readFileSync(dj, "utf8"));
+      const n = Array.isArray(d.components)
+        ? d.components.length
+        : Object.keys(d.components || {}).length;
+      if (!n) warn("DESIGNJSON_COMPONENTS", "design.json has no components", dj);
+    } catch (e) {
+      err("DESIGNJSON_PARSE", e.message, dj);
+    }
   }
   const lib = join(project, "design", "library.json");
   if (!existsSync(lib)) warn("LIBRARY_MISSING", "design/library.json not found", lib);
 }
 
 // ---------- artboard content checks ----------
-const SECRET_RE = /(dpat_[A-Za-z0-9_]{16,}|sk_(live|test)_[A-Za-z0-9]{8,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|password\s*=\s*\S+|[A-Za-z0-9._%+-]+@(?!example\.(com|org|net)|test\.com|vitalknowledge\.test)[A-Za-z0-9.-]+\.[A-Za-z]{2,})/;
+const SECRET_RE =
+  /(dpat_[A-Za-z0-9_]{16,}|sk_(live|test)_[A-Za-z0-9]{8,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|password\s*=\s*\S+|[A-Za-z0-9._%+-]+@(?!example\.(com|org|net)|test\.com|vitalknowledge\.test)[A-Za-z0-9.-]+\.[A-Za-z]{2,})/;
 function checkArtboard(file, tokens, opts) {
   const { screen, prototype = false } = opts;
-  const name = basename(file), src = readFileSync(file, "utf8");
-  if (!src.includes('<script src="./support.js"></script>')) err("ARTBOARD_SUPPORT", 'missing the exact <script src="./support.js"></script> head line', name);
+  const name = basename(file),
+    src = readFileSync(file, "utf8");
+  if (!src.includes('<script src="./support.js"></script>'))
+    err(
+      "ARTBOARD_SUPPORT",
+      'missing the exact <script src="./support.js"></script> head line',
+      name,
+    );
   if (!/<x-dc>[\s\S]*<\/x-dc>/.test(src)) err("ARTBOARD_XDC", "missing <x-dc> root", name);
   const hasScript = /<script[^>]*data-dc-script/.test(src);
   if (screen && !(prototype && hasScript)) {
-    if (/\{\{/.test(src)) err("ARTBOARD_BINDING", "screen-state artboards must be literal markup (no {{bindings}})" + (prototype ? " unless the artboard carries a data-dc-script (interactive)" : ""), name);
-    if (/<sc-(for|if)\b/.test(src)) err("ARTBOARD_LOGIC", "screen-state artboards must not use <sc-for>/<sc-if>", name);
-    if (hasScript) err("ARTBOARD_SCRIPT", "screen-state artboards must be static (no data-dc-script); set flow.json.prototype to allow interactive Default screens", name);
+    if (/\{\{/.test(src))
+      err(
+        "ARTBOARD_BINDING",
+        "screen-state artboards must be literal markup (no {{bindings}})" +
+          (prototype ? " unless the artboard carries a data-dc-script (interactive)" : ""),
+        name,
+      );
+    if (/<sc-(for|if)\b/.test(src))
+      err("ARTBOARD_LOGIC", "screen-state artboards must not use <sc-for>/<sc-if>", name);
+    if (hasScript)
+      err(
+        "ARTBOARD_SCRIPT",
+        "screen-state artboards must be static (no data-dc-script); set flow.json.prototype to allow interactive Default screens",
+        name,
+      );
   }
   if (screen && prototype && hasScript) {
     // interactive artboard: holes and <sc-if> allowed, <sc-for> not; every hole must have a static value in data-flat for the handoff render
-    if (/<sc-for\b/.test(src)) err("PROTO_FOR", "interactive artboards must not use <sc-for>; write items literally and reveal extras with <sc-if>", name);
+    if (/<sc-for\b/.test(src))
+      err(
+        "PROTO_FOR",
+        "interactive artboards must not use <sc-for>; write items literally and reveal extras with <sc-if>",
+        name,
+      );
     const tag = (src.match(/<script[^>]*data-dc-script[^>]*>/) || [""])[0];
     const flatRaw = (tag.match(/data-flat='([^']*)'/) || tag.match(/data-flat="([^"]*)"/) || [])[1];
     let flat = null;
-    if (flatRaw) { try { flat = JSON.parse(flatRaw.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&#39;/g, "'")); } catch (e) { err("PROTO_FLAT_PARSE", "data-flat is not valid JSON: " + e.message, name); } }
-    const holes = new Set([...src.matchAll(/\{\{\s*([A-Za-z_$][\w$]*)/g)].map(m => m[1]).filter(h => !["true", "false", "null"].includes(h)));
-    if (holes.size && !flat) err("PROTO_FLAT_MISSING", "interactive artboard uses holes but has no data-flat attribute with their static values", name);
-    if (flat) for (const h of holes) if (!(h in flat)) err("PROTO_FLAT_HOLE", `hole {{${h}}} has no static value in data-flat`, name);
-    if (!/is_interactive/.test(src) && opts.canvasInteractive === false) warn("PROTO_CANVAS", "interactive artboard is not marked is_interactive in canvas.json", name);
+    if (flatRaw) {
+      try {
+        flat = JSON.parse(
+          flatRaw
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, "&")
+            .replace(/&#39;/g, "'"),
+        );
+      } catch (e) {
+        err("PROTO_FLAT_PARSE", "data-flat is not valid JSON: " + e.message, name);
+      }
+    }
+    const holes = new Set(
+      [...src.matchAll(/\{\{\s*([A-Za-z_$][\w$]*)/g)]
+        .map((m) => m[1])
+        .filter((h) => !["true", "false", "null"].includes(h)),
+    );
+    if (holes.size && !flat)
+      err(
+        "PROTO_FLAT_MISSING",
+        "interactive artboard uses holes but has no data-flat attribute with their static values",
+        name,
+      );
+    if (flat)
+      for (const h of holes)
+        if (!(h in flat))
+          err("PROTO_FLAT_HOLE", `hole {{${h}}} has no static value in data-flat`, name);
+    if (!/is_interactive/.test(src) && opts.canvasInteractive === false)
+      warn(
+        "PROTO_CANVAS",
+        "interactive artboard is not marked is_interactive in canvas.json",
+        name,
+      );
   }
   for (const m of src.matchAll(/<dc-import\b([^>]*)>/g)) {
     const nm = (m[1].match(/name="([^"]+)"/) || [])[1] || "";
-    if (!/^Cmp[A-Za-z0-9]+$/.test(nm)) err("IMPORT_NAME", `<dc-import name="${nm}"> must be a Cmp* component artboard`, name);
-    if (!/hint-size=/.test(m[1])) warn("IMPORT_HINT", `<dc-import name="${nm}"> has no hint-size`, name);
+    if (!/^Cmp[A-Za-z0-9]+$/.test(nm))
+      err("IMPORT_NAME", `<dc-import name="${nm}"> must be a Cmp* component artboard`, name);
+    if (!/hint-size=/.test(m[1]))
+      warn("IMPORT_HINT", `<dc-import name="${nm}"> has no hint-size`, name);
   }
-  if (/<dc-import\b[^>]*\/>/.test(src)) err("IMPORT_SELFCLOSE", "<dc-import> must not be self-closed", name);
-  const secret = src.match(SECRET_RE); if (secret) err("SECRET", `possible secret or real email: ${secret[0].slice(0, 40)}`, name);
+  if (/<dc-import\b[^>]*\/>/.test(src))
+    err("IMPORT_SELFCLOSE", "<dc-import> must not be self-closed", name);
+  const secret = src.match(SECRET_RE);
+  if (secret) err("SECRET", `possible secret or real email: ${secret[0].slice(0, 40)}`, name);
   // colors + fonts per tag (skip data-external tags), plus <style> blocks
-  const unknownColors = new Map(), unknownFonts = new Set();
+  const unknownColors = new Map(),
+    unknownFonts = new Set();
   const scanCss = (css, where) => {
-    for (const m of css.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g)) {
-      const hex = toHex(m[0]); const key = hex || m[0].replace(/\s+/g, "").toLowerCase();
+    for (const m of css.matchAll(
+      /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g,
+    )) {
+      const hex = toHex(m[0]);
+      const key = hex || m[0].replace(/\s+/g, "").toLowerCase();
       const known = hex ? tokens.colors.has(hex) : tokens.raw.has(key);
       if (!known) unknownColors.set(key, (unknownColors.get(key) || 0) + 1);
     }
@@ -157,51 +316,101 @@ function checkArtboard(file, tokens, opts) {
   };
   for (const m of src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) scanCss(m[1], "style");
   for (const m of src.matchAll(/<[a-zA-Z][^>]*>/g)) {
-    const tag = m[0]; if (/data-external=/.test(tag)) continue;
-    const st = tag.match(/\sstyle="([^"]*)"/); if (st) scanCss(st[1], "inline");
+    const tag = m[0];
+    if (/data-external=/.test(tag)) continue;
+    const st = tag.match(/\sstyle="([^"]*)"/);
+    if (st) scanCss(st[1], "inline");
     const dc = tag.match(/data-component="([^"]+)"/);
     if (dc) {
-      const [p, rest] = dc[1].split("#"); const exp = (rest || "").split("/")[0];
-      if (/^@mui\//.test(p)) { if (!/data-legacy="true"/.test(tag)) err("MUI_COMPONENT", `data-component="${dc[1]}" targets MUI without data-legacy="true"`, name); }
-      else if (!existsSync(join(project, p))) gap("COMPONENT_PATH", `data-component path does not exist: ${p}`, name);
+      const [p, rest] = dc[1].split("#");
+      const exp = (rest || "").split("/")[0];
+      if (/^@mui\//.test(p)) {
+        if (!/data-legacy="true"/.test(tag))
+          err(
+            "MUI_COMPONENT",
+            `data-component="${dc[1]}" targets MUI without data-legacy="true"`,
+            name,
+          );
+      } else if (!existsSync(join(project, p)))
+        gap("COMPONENT_PATH", `data-component path does not exist: ${p}`, name);
       else if (exp) {
         const code = readFileSync(join(project, p), "utf8");
-        if (/\.dc\.html$/.test(p)) { if (!new RegExp(`data-component-def="${exp}(/|")`).test(code)) gap("COMPONENT_DEF", `no data-component-def="${exp}" in ${p}`, name); }
-        else if (!new RegExp(`\\b${exp}\\b`).test(code)) gap("COMPONENT_EXPORT", `export ${exp} not found in ${p}`, name);
+        if (/\.dc\.html$/.test(p)) {
+          if (!new RegExp(`data-component-def="${exp}(/|")`).test(code))
+            gap("COMPONENT_DEF", `no data-component-def="${exp}" in ${p}`, name);
+        } else if (!new RegExp(`\\b${exp}\\b`).test(code))
+          gap("COMPONENT_EXPORT", `export ${exp} not found in ${p}`, name);
       }
     }
   }
-  if (tokens.colors.size > allowColors.size) for (const [c, n] of unknownColors) gap("TOKEN_DRIFT", `color ${c} (${n}x) is not a token in DESIGN.md / design.json`, name);
-  if (tokens.fonts.size > 7) for (const f of unknownFonts) gap("FONT_DRIFT", `font-family "${f}" is not in DESIGN.md`, name);
+  if (tokens.colors.size > allowColors.size)
+    for (const [c, n] of unknownColors)
+      gap("TOKEN_DRIFT", `color ${c} (${n}x) is not a token in DESIGN.md / design.json`, name);
+  if (tokens.fonts.size > 7)
+    for (const f of unknownFonts) gap("FONT_DRIFT", `font-family "${f}" is not in DESIGN.md`, name);
 }
 
 // ---------- flow checks ----------
 function checkFlow(tokens) {
   const fj = join(flowDir, "flow.json");
   if (!existsSync(fj)) return err("FLOW_MISSING", "flow.json not found", fj);
-  let flow; try { flow = JSON.parse(readFileSync(fj, "utf8")); } catch (e) { return err("FLOW_PARSE", e.message, fj); }
-  for (const k of ["slug", "title", "steps"]) if (!flow[k]) err("FLOW_FIELD", `flow.json missing "${k}"`, "flow.json");
-  const files = readdirSync(flowDir).filter(f => f.endsWith(".dc.html"));
+  let flow;
+  try {
+    flow = JSON.parse(readFileSync(fj, "utf8"));
+  } catch (e) {
+    return err("FLOW_PARSE", e.message, fj);
+  }
+  for (const k of ["slug", "title", "steps"])
+    if (!flow[k]) err("FLOW_FIELD", `flow.json missing "${k}"`, "flow.json");
+  const files = readdirSync(flowDir).filter((f) => f.endsWith(".dc.html"));
   const referenced = new Set(["Main.dc.html"]);
-  if (!files.includes("Main.dc.html")) err("MAIN_MISSING", "Main.dc.html (flow map) not found", flowDir);
+  if (!files.includes("Main.dc.html"))
+    err("MAIN_MISSING", "Main.dc.html (flow map) not found", flowDir);
   const coverage = {}; // "NN" -> { StepId, kind, states: {State: 'file'|'n/a'} }
   for (const step of flow.steps || []) {
-    const n = String(step.n || "").padStart(2, "0"), id = step.id || "", kind = step.kind || "";
+    const n = String(step.n || "").padStart(2, "0"),
+      id = step.id || "",
+      kind = step.kind || "";
     const where = `step ${n} ${id}`;
     if (!/^\d{2}$/.test(n)) err("STEP_N", "step.n must be a two-digit number", where);
-    if (!/^[A-Z][A-Za-z0-9]*$/.test(id)) err("STEP_ID", "step.id must be PascalCase without spaces or hyphens", where);
-    if (!REQUIRED_BY_KIND[kind]) err("STEP_KIND", `step.kind "${kind}" is not one of ${Object.keys(REQUIRED_BY_KIND).join(", ")}`, where);
+    if (!/^[A-Z][A-Za-z0-9]*$/.test(id))
+      err("STEP_ID", "step.id must be PascalCase without spaces or hyphens", where);
+    if (!REQUIRED_BY_KIND[kind])
+      err(
+        "STEP_KIND",
+        `step.kind "${kind}" is not one of ${Object.keys(REQUIRED_BY_KIND).join(", ")}`,
+        where,
+      );
     coverage[n] = { id, kind, states: {} };
     for (const [state, val] of Object.entries(step.states || {})) {
-      if (!isState(state)) err("STATE_NAME", `state "${state}" is not in the vocabulary (${STATE_VOCAB.join(", ")}, Custom-*)`, where);
-      if (isWaiver(val)) { coverage[n].states[state] = "n/a"; continue; }
-      if (isEmptyWaiver(val)) { err("WAIVER_REASON", `state ${state} is waived without a reason`, where); continue; }
+      if (!isState(state))
+        err(
+          "STATE_NAME",
+          `state "${state}" is not in the vocabulary (${STATE_VOCAB.join(", ")}, Custom-*)`,
+          where,
+        );
+      if (isWaiver(val)) {
+        coverage[n].states[state] = "n/a";
+        continue;
+      }
+      if (isEmptyWaiver(val)) {
+        err("WAIVER_REASON", `state ${state} is waived without a reason`, where);
+        continue;
+      }
       const expected = `${n}-${id}-${state}.dc.html`;
-      if (val !== expected) err("STATE_FILE", `state ${state} must point at ${expected} (got ${val})`, where);
+      if (val !== expected)
+        err("STATE_FILE", `state ${state} must point at ${expected} (got ${val})`, where);
       if (!files.includes(expected)) err("STATE_FILE_MISSING", `${expected} does not exist`, where);
-      referenced.add(expected); coverage[n].states[state] = "file";
+      referenced.add(expected);
+      coverage[n].states[state] = "file";
     }
-    for (const req of REQUIRED_BY_KIND[kind] || []) if (!coverage[n].states[req]) gap("COVERAGE", `required state ${req} for kind ${kind} is neither designed nor waived`, where);
+    for (const req of REQUIRED_BY_KIND[kind] || [])
+      if (!coverage[n].states[req])
+        gap(
+          "COVERAGE",
+          `required state ${req} for kind ${kind} is neither designed nor waived`,
+          where,
+        );
   }
   const devices = Array.isArray(flow.devices) && flow.devices.length ? flow.devices : ["desktop"];
   const wantsMobile = devices.includes("mobile");
@@ -210,82 +419,223 @@ function checkFlow(tokens) {
     const mobile = f.match(/^(\d{2}-[A-Z][A-Za-z0-9]*-[A-Za-z0-9]+)-Mobile\.dc\.html$/);
     if (mobile) {
       const desktop = mobile[1] + ".dc.html";
-      if (!referenced.has(desktop)) warn("ORPHAN", `${f} is a mobile variant of an unreferenced state (${desktop})`, f);
-      else if (!wantsMobile) warn("MOBILE_UNEXPECTED", `${f} exists but flow.json.devices does not include "mobile"`, f);
+      if (!referenced.has(desktop))
+        warn("ORPHAN", `${f} is a mobile variant of an unreferenced state (${desktop})`, f);
+      else if (!wantsMobile)
+        warn("MOBILE_UNEXPECTED", `${f} exists but flow.json.devices does not include "mobile"`, f);
       continue;
     }
-    if (/^\d{2}-[A-Z][A-Za-z0-9]*-[A-Za-z0-9-]+\.dc\.html$/.test(f)) warn("ORPHAN", `${f} is not referenced by flow.json`, f);
+    if (/^\d{2}-[A-Z][A-Za-z0-9]*-[A-Za-z0-9-]+\.dc\.html$/.test(f))
+      warn("ORPHAN", `${f} is not referenced by flow.json`, f);
     else err("ARTBOARD_NAME", `${f} does not follow NN-StepId-State.dc.html`, f);
   }
-  if (wantsMobile) for (const f of referenced) { if (f === "Main.dc.html") continue; const m = f.replace(/\.dc\.html$/, "-Mobile.dc.html"); if (!files.includes(m)) gap("MOBILE_MISSING", `${m} is missing (flow.json.devices includes mobile)`, f); }
+  if (wantsMobile)
+    for (const f of referenced) {
+      if (f === "Main.dc.html") continue;
+      const m = f.replace(/\.dc\.html$/, "-Mobile.dc.html");
+      if (!files.includes(m))
+        gap("MOBILE_MISSING", `${m} is missing (flow.json.devices includes mobile)`, f);
+    }
   let canvasInteractiveByFile = {};
-  try { const c = JSON.parse(readFileSync(join(flowDir, "canvas.json"), "utf8")); for (const a of c.artboards || []) canvasInteractiveByFile[a.file] = a.is_interactive === true; } catch {}
-  for (const f of files) checkArtboard(join(flowDir, f), tokens, { screen: /^\d{2}-/.test(f), prototype: flow.prototype === true, canvasInteractive: f in canvasInteractiveByFile ? canvasInteractiveByFile[f] : null });
+  try {
+    const c = JSON.parse(readFileSync(join(flowDir, "canvas.json"), "utf8"));
+    for (const a of c.artboards || []) canvasInteractiveByFile[a.file] = a.is_interactive === true;
+  } catch {}
+  for (const f of files)
+    checkArtboard(join(flowDir, f), tokens, {
+      screen: /^\d{2}-/.test(f),
+      prototype: flow.prototype === true,
+      canvasInteractive: f in canvasInteractiveByFile ? canvasInteractiveByFile[f] : null,
+    });
   // canvas.json
   const cj = join(flowDir, "canvas.json");
   if (!existsSync(cj)) err("CANVAS_MISSING", "canvas.json not found", flowDir);
   else {
     try {
       const c = JSON.parse(readFileSync(cj, "utf8"));
-      const listed = new Set((c.artboards || []).map(a => a.file));
-      for (const f of files) if (!listed.has(f)) gap("CANVAS_UNLISTED", `${f} is not laid out in canvas.json`, "canvas.json");
-      for (const a of c.artboards || []) if (!files.includes(a.file) && !/^Cmp/.test(a.file)) err("CANVAS_GHOST", `canvas.json lists ${a.file} which does not exist here`, "canvas.json");
-      const pageIds = new Set((c.pages || []).map(p => p.id));
-      if (c.pages && !(pageIds.has("flow"))) warn("CANVAS_PAGES", 'pages should include { id: "flow" }', "canvas.json");
+      const listed = new Set((c.artboards || []).map((a) => a.file));
+      for (const f of files)
+        if (!listed.has(f))
+          gap("CANVAS_UNLISTED", `${f} is not laid out in canvas.json`, "canvas.json");
+      for (const a of c.artboards || [])
+        if (!files.includes(a.file) && !/^Cmp/.test(a.file))
+          err(
+            "CANVAS_GHOST",
+            `canvas.json lists ${a.file} which does not exist here`,
+            "canvas.json",
+          );
+      const pageIds = new Set((c.pages || []).map((p) => p.id));
+      if (c.pages && !pageIds.has("flow"))
+        warn("CANVAS_PAGES", 'pages should include { id: "flow" }', "canvas.json");
       const ids = new Set();
       for (const note of c.annotations || []) {
-        if (!/^[A-Za-z0-9_-]{1,40}$/.test(note.id || "")) err("NOTE_ID", `annotation id "${note.id}" is invalid`, "canvas.json");
-        if (ids.has(note.id)) err("NOTE_DUP", `annotation id "${note.id}" repeats`, "canvas.json"); ids.add(note.id);
-        if (c.pages && note.page && !pageIds.has(note.page)) err("NOTE_PAGE", `annotation ${note.id} names unknown page ${note.page}`, "canvas.json");
+        if (!/^[A-Za-z0-9_-]{1,40}$/.test(note.id || ""))
+          err("NOTE_ID", `annotation id "${note.id}" is invalid`, "canvas.json");
+        if (ids.has(note.id)) err("NOTE_DUP", `annotation id "${note.id}" repeats`, "canvas.json");
+        ids.add(note.id);
+        if (c.pages && note.page && !pageIds.has(note.page))
+          err("NOTE_PAGE", `annotation ${note.id} names unknown page ${note.page}`, "canvas.json");
       }
-      if (c.launch && c.launch.view !== "canvas" && c.launch.view !== "focused") err("LAUNCH", "launch.view must be canvas or focused", "canvas.json");
-    } catch (e) { err("CANVAS_PARSE", e.message, cj); }
+      if (c.launch && c.launch.view !== "canvas" && c.launch.view !== "focused")
+        err("LAUNCH", "launch.view must be canvas or focused", "canvas.json");
+    } catch (e) {
+      err("CANVAS_PARSE", e.message, cj);
+    }
   }
   // design-flow.md
   const df = join(flowDir, "design-flow.md");
-  if (!existsSync(df)) { gap("SPEC_MISSING", "design-flow.md not found", flowDir); return; }
+  if (!existsSync(df)) {
+    gap("SPEC_MISSING", "design-flow.md not found", flowDir);
+    return;
+  }
   const md = readFileSync(df, "utf8");
-  const H1 = ["Flow", "Entry Points", "Steps", "Screen States", "Transitions and Decisions", "Copy", "Data", "Edge Cases", "Accessibility", "Components Used", "Design References", "States Coverage", "Open Questions", "Review log"];
-  const have = new Set((md.match(/^#\s+(.+)$/gm) || []).map(l => l.replace(/^#\s+/, "").trim().toLowerCase()));
-  for (const h of H1) if (!have.has(h.toLowerCase())) gap("SPEC_SECTION", `design-flow.md is missing "# ${h}"`, "design-flow.md");
+  const H1 = [
+    "Flow",
+    "Entry Points",
+    "Steps",
+    "Screen States",
+    "Transitions and Decisions",
+    "Copy",
+    "Data",
+    "Edge Cases",
+    "Accessibility",
+    "Components Used",
+    "Design References",
+    "States Coverage",
+    "Open Questions",
+    "Review log",
+  ];
+  const have = new Set(
+    (md.match(/^#\s+(.+)$/gm) || []).map((l) => l.replace(/^#\s+/, "").trim().toLowerCase()),
+  );
+  for (const h of H1)
+    if (!have.has(h.toLowerCase()))
+      gap("SPEC_SECTION", `design-flow.md is missing "# ${h}"`, "design-flow.md");
   const cov = md.split(/^#\s+States Coverage\s*$/m)[1]?.split(/^#\s+/m)[0] || "";
-  const rows = cov.split("\n").filter(l => /^\|/.test(l));
-  if (rows.length < 3) gap("COVERAGE_TABLE", "States Coverage table is missing or empty", "design-flow.md");
+  const rows = cov.split("\n").filter((l) => /^\|/.test(l));
+  if (rows.length < 3)
+    gap("COVERAGE_TABLE", "States Coverage table is missing or empty", "design-flow.md");
   else {
-    const header = rows[0].split("|").slice(1, -1).map(s => s.trim());
+    const header = rows[0]
+      .split("|")
+      .slice(1, -1)
+      .map((s) => s.trim());
     for (const row of rows.slice(2)) {
-      const cells = row.split("|").slice(1, -1).map(s => s.trim());
-      const stepLabel = cells[0] || "?"; const n = (stepLabel.match(/^(\d{2})/) || [])[1];
+      const cells = row
+        .split("|")
+        .slice(1, -1)
+        .map((s) => s.trim());
+      const stepLabel = cells[0] || "?";
+      const n = (stepLabel.match(/^(\d{2})/) || [])[1];
       cells.slice(1).forEach((cell, i) => {
         const state = header[i + 1];
-        if (cell === "[ ]" || cell === "") gap("COVERAGE_GAP", `${stepLabel} / ${state} is not covered`, "design-flow.md");
-        else if (/^n\/a:?\s*$/.test(cell)) err("COVERAGE_REASON", `${stepLabel} / ${state} is waived without a reason`, "design-flow.md");
-        else if (cell === "[x]" && n && coverage[n] && coverage[n].states[state] !== "file") gap("COVERAGE_MISMATCH", `${stepLabel} / ${state} is [x] but no artboard exists in flow.json`, "design-flow.md");
+        if (cell === "[ ]" || cell === "")
+          gap("COVERAGE_GAP", `${stepLabel} / ${state} is not covered`, "design-flow.md");
+        else if (/^n\/a:?\s*$/.test(cell))
+          err(
+            "COVERAGE_REASON",
+            `${stepLabel} / ${state} is waived without a reason`,
+            "design-flow.md",
+          );
+        else if (cell === "[x]" && n && coverage[n] && coverage[n].states[state] !== "file")
+          gap(
+            "COVERAGE_MISMATCH",
+            `${stepLabel} / ${state} is [x] but no artboard exists in flow.json`,
+            "design-flow.md",
+          );
       });
     }
   }
   // publish evidence per target
-  let libPublish = {}; try { libPublish = JSON.parse(readFileSync(join(project, "design", "library.json"), "utf8")).publish || {}; } catch {}
+  let libPublish = {};
+  try {
+    libPublish =
+      JSON.parse(readFileSync(join(project, "design", "library.json"), "utf8")).publish || {};
+  } catch {}
   const target = (flow.publish && flow.publish.target) || libPublish.target || "local";
   const bundleManifest = join(flowDir, "bundle", "manifest.json");
-  if (!existsSync(bundleManifest)) gap("BUNDLE_MISSING", "bundle/manifest.json not found (run bundle.mjs)", flowDir);
-  else { try { const m = JSON.parse(readFileSync(bundleManifest, "utf8")); const built = new Date(m.generatedAt).getTime(); const newer = files.filter(fn => statSync(join(flowDir, fn)).mtimeMs > built); if (newer.length) gap("BUNDLE_STALE", `${newer.length} artboard(s) changed after the bundle was built; rebuild`, "bundle/manifest.json"); } catch (e) { err("BUNDLE_PARSE", e.message, bundleManifest); } }
+  if (!existsSync(bundleManifest))
+    gap("BUNDLE_MISSING", "bundle/manifest.json not found (run bundle.mjs)", flowDir);
+  else {
+    try {
+      const m = JSON.parse(readFileSync(bundleManifest, "utf8"));
+      const built = new Date(m.generatedAt).getTime();
+      const newer = files.filter((fn) => statSync(join(flowDir, fn)).mtimeMs > built);
+      if (newer.length)
+        gap(
+          "BUNDLE_STALE",
+          `${newer.length} artboard(s) changed after the bundle was built; rebuild`,
+          "bundle/manifest.json",
+        );
+    } catch (e) {
+      err("BUNDLE_PARSE", e.message, bundleManifest);
+    }
+  }
   if (strict && !args.includes("--allow-local")) {
-    if (target === "portal" && !(flow.portal && flow.portal.version)) err("PUBLISH", "publish target is portal but flow.json.portal.version is missing (run portal.mjs push)", "flow.json");
-    if (target === "claude-canvas" && !(flow.artifact && flow.artifact.url)) err("PUBLISH", "publish target is claude-canvas but flow.json.artifact.url is missing", "flow.json");
+    if (target === "portal" && !(flow.portal && flow.portal.version))
+      err(
+        "PUBLISH",
+        "publish target is portal but flow.json.portal.version is missing (run portal.mjs push)",
+        "flow.json",
+      );
+    if (target === "claude-canvas" && !(flow.artifact && flow.artifact.url))
+      err(
+        "PUBLISH",
+        "publish target is claude-canvas but flow.json.artifact.url is missing",
+        "flow.json",
+      );
   }
   // comments file sanity
   const cf = join(flowDir, "comments.json");
-  if (existsSync(cf)) { try { const c = JSON.parse(readFileSync(cf, "utf8")); if (c.schema !== 1) warn("COMMENTS_SCHEMA", "comments.json schema is not 1", cf); const stems = new Set(files.map(x => x.replace(/(-Mobile)?\.dc\.html$/, ""))); for (const t of c.threads || []) { if (t.screen && !stems.has(t.screen.id)) warn("COMMENTS_SCREEN", `thread ${t.id} points at unknown screen ${t.screen.id}`, cf); if (!["open", "resolved"].includes(t.status)) warn("COMMENTS_STATUS", `thread ${t.id} has status ${t.status}`, cf); } } catch (e) { err("COMMENTS_PARSE", e.message, cf); } }
+  if (existsSync(cf)) {
+    try {
+      const c = JSON.parse(readFileSync(cf, "utf8"));
+      if (c.schema !== 1) warn("COMMENTS_SCHEMA", "comments.json schema is not 1", cf);
+      const stems = new Set(files.map((x) => x.replace(/(-Mobile)?\.dc\.html$/, "")));
+      for (const t of c.threads || []) {
+        if (t.screen && !stems.has(t.screen.id))
+          warn("COMMENTS_SCREEN", `thread ${t.id} points at unknown screen ${t.screen.id}`, cf);
+        if (!["open", "resolved"].includes(t.status))
+          warn("COMMENTS_STATUS", `thread ${t.id} has status ${t.status}`, cf);
+      }
+    } catch (e) {
+      err("COMMENTS_PARSE", e.message, cf);
+    }
+  }
 }
 
 const tokens = await loadTokens();
 if (designOnly || !flowDir) checkDesign(tokens);
-if (flowDir) { if (!existsSync(flowDir)) err("FLOW_DIR", "flow directory not found", flowDir); else checkFlow(tokens); }
-const out = { ok: errors.length === 0, strict, errors, warnings, tokens: { colors: tokens.colors.size - allowColors.size, fonts: [...tokens.fonts].filter(f => !["system-ui","sans-serif","serif","monospace","ui-sans-serif","ui-monospace","inherit"].includes(f)) } };
+if (flowDir) {
+  if (!existsSync(flowDir)) err("FLOW_DIR", "flow directory not found", flowDir);
+  else checkFlow(tokens);
+}
+const out = {
+  ok: errors.length === 0,
+  strict,
+  errors,
+  warnings,
+  tokens: {
+    colors: tokens.colors.size - allowColors.size,
+    fonts: [...tokens.fonts].filter(
+      (f) =>
+        ![
+          "system-ui",
+          "sans-serif",
+          "serif",
+          "monospace",
+          "ui-sans-serif",
+          "ui-monospace",
+          "inherit",
+        ].includes(f),
+    ),
+  },
+};
 if (json) console.log(JSON.stringify(out, null, 2));
 else {
-  console.log(`flow-check ${out.ok ? "OK" : "FAILED"}${strict ? " (strict)" : ""}: ${errors.length} errors, ${warnings.length} warnings; ${out.tokens.colors} color tokens known`);
+  console.log(
+    `flow-check ${out.ok ? "OK" : "FAILED"}${strict ? " (strict)" : ""}: ${errors.length} errors, ${warnings.length} warnings; ${out.tokens.colors} color tokens known`,
+  );
   for (const e of errors) console.log(`  ERROR ${e.code} [${e.where}]: ${e.message}`);
   for (const w of warnings) console.log(`  warn  ${w.code} [${w.where}]: ${w.message}`);
 }

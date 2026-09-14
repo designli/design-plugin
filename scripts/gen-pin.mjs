@@ -6,7 +6,10 @@ import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 const args = process.argv.slice(2);
-const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
+const opt = (name, def) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : def;
+};
 const version = opt("--version", "3.5.0");
 const upstreamCommit = opt("--upstream-commit", null);
 const root = resolve(import.meta.dirname, "..", "vendor", "impeccable", version);

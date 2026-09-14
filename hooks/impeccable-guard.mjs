@@ -9,19 +9,27 @@ let raw = "";
 process.stdin.on("data", (d) => (raw += d));
 process.stdin.on("end", () => {
   let cmd = "";
-  try { cmd = String(JSON.parse(raw).tool_input?.command ?? ""); } catch { process.exit(0); }
+  try {
+    cmd = String(JSON.parse(raw).tool_input?.command ?? "");
+  } catch {
+    process.exit(0);
+  }
   if (/install-impeccable\.mjs/.test(cmd)) process.exit(0);
-  const touchesInstall = /\bimpeccable(@[\w.\-^~>=<]+)?\s+(skills\s+(install|update|uninstall|link)|install|update|uninstall)\b/.test(cmd)
-    || /\bskills\s+add\s+\S*impeccable/.test(cmd);
+  const touchesInstall =
+    /\bimpeccable(@[\w.\-^~>=<]+)?\s+(skills\s+(install|update|uninstall|link)|install|update|uninstall)\b/.test(
+      cmd,
+    ) || /\bskills\s+add\s+\S*impeccable/.test(cmd);
   if (!touchesInstall) process.exit(0);
-  console.log(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason:
-        "impeccable is pinned to 3.5.0 by the designli-design plugin. Do not update or reinstall it with npx; " +
-        "run /designli-design:init --check (or node <plugin>/scripts/install-impeccable.mjs --project . --force) instead.",
-    },
-  }));
+  console.log(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason:
+          "impeccable is pinned to 3.5.0 by the designli-design plugin. Do not update or reinstall it with npx; " +
+          "run /designli-design:init --check (or node <plugin>/scripts/install-impeccable.mjs --project . --force) instead.",
+      },
+    }),
+  );
   process.exit(0);
 });
