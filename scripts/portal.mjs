@@ -52,6 +52,19 @@ function ensureBundle(dir, kind, compDir) {
   return { manifest, files, bundleDir };
 }
 
+const escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const rxEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\function writeCommentsFile(dir, url, project, flow, threads) {");
+// Builds a regex matching the escaped text between a ">" and a "<" with flexible whitespace.
+function textPattern(text) { const parts = escHtml(text).trim().split(/\s+/).map(rxEscape); return new RegExp("(>\\s*)" + parts.join("\\s+") + "(\\s*<)", "g"); }
+function applyEditToFile(file, edit) {
+  if (!existsSync(file)) return { file, result: "missing-file" };
+  const src = readFileSync(file, "utf8"); const rx = textPattern(edit.originalText); const matches = [...src.matchAll(rx)];
+  if (matches.length === 0) return { file, result: "not-found" }; if (matches.length > 1) return { file, result: "ambiguous", count: matches.length };
+  const next = src.replace(rx, (m, a, b) => a + escHtml(edit.newText) + b); writeFileSync(file, next); return { file, result: "applied" };
+}
+function readEditsFile(dir) { const f = join(dir, "text-edits.json"); try { return JSON.parse(readFileSync(f, "utf8")); } catch { return { schema: 1, edits: [], appliedLocally: [] }; } }
+function writeEditsFile(dir, data) { writeFileSync(join(dir, "text-edits.json"), JSON.stringify(data, null, 2) + "\n"); }
+
 function writeCommentsFile(dir, url, project, flow, threads) {
   const p = join(dir, "comments.json"); let cur = { schema: 1, flow, source: "portal", threads: [] };
   try { cur = JSON.parse(readFileSync(p, "utf8")); } catch {}
@@ -97,7 +110,9 @@ function writeCommentsFile(dir, url, project, flow, threads) {
     flow.portal = { url, projectId: project, flowId: slug, version: r.json.version, contentHash: r.json.contentHash, shareUrl: r.json.url, pushedAt: new Date().toISOString(), lastPullAt: flow.portal?.lastPullAt ?? new Date().toISOString() };
     saveFlowJson(dir, flow);
     manifest.publish = { target: "portal", ...flow.portal }; writeFileSync(join(bundleDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
-    out({ ok: true, project, flow: slug, version: r.json.version, reused: r.json.reused, url: r.json.url, contentHash: r.json.contentHash });
+    let marked = 0; const ed = readEditsFile(dir); const ids = (ed.appliedLocally || []).map(a => a.id);
+    if (ids.length && !r.json.reused) { const m = await call(url, token, "POST", `/projects/${project}/flows/${slug}/text-edits/mark-applied`, { ids, version: r.json.version }, agentHeaders); if (m.status === 200) { marked = m.json.updated; ed.appliedLocally = []; ed.edits = (ed.edits || []).map(e => ids.includes(e.id) ? { ...e, status: "applied", appliedInVersion: r.json.version } : e); writeEditsFile(dir, ed); } }
+    out({ ok: true, project, flow: slug, version: r.json.version, reused: r.json.reused, url: r.json.url, contentHash: r.json.contentHash, editsMarkedApplied: marked });
   }
 
   if (cmd === "pull") {
@@ -107,13 +122,26 @@ function writeCommentsFile(dir, url, project, flow, threads) {
     const e = await call(url, token, "GET", `/projects/${project}/flows/${slug}/text-edits?status=all`);
     const threads = r.json.threads || []; const edits = e.status === 200 ? (e.json.edits || []) : [];
     const file = writeCommentsFile(dir, url, project, slug, threads);
-    writeFileSync(join(dir, "text-edits.json"), JSON.stringify({ schema: 1, flow: slug, pulledAt: new Date().toISOString(), edits }, null, 2) + "\n");
+    const prevEdits = readEditsFile(dir); writeEditsFile(dir, { schema: 1, flow: slug, pulledAt: new Date().toISOString(), edits, appliedLocally: prevEdits.appliedLocally || [] });
     const head = await call(url, token, "GET", `/projects/${project}/flows/${slug}/head`);
     flow.portal = { ...(flow.portal || { url, projectId: project, flowId: slug }), lastPullAt: r.json.serverTime || new Date().toISOString(), remoteVersion: head.json?.version ?? null }; saveFlowJson(dir, flow);
     out({ ok: true, project, flow: slug, pulled: threads.length, open: threads.filter(t => t.status === "open").length, unmapped: threads.filter(t => !t.screen).map(t => t.id), textEdits: edits.length, pendingEdits: edits.filter(x => x.status === "pending").length, remoteVersion: head.json?.version ?? null, localVersion: flow.portal?.version ?? 0 });
   }
   if (cmd === "reply") { const r = await call(url, token, "POST", `/projects/${project}/flows/${slug}/comments/${opt("--thread")}/replies`, { text: opt("--text") }, agentHeaders); if (r.status !== 201) fail(r.json?.error?.message || "reply failed", { status: r.status }); out({ ok: true, thread: opt("--thread"), reply: r.json }); }
   if (cmd === "resolve" || cmd === "reopen") { const r = await call(url, token, "POST", `/projects/${project}/flows/${slug}/comments/${opt("--thread")}/${cmd}`, {}, agentHeaders); if (r.status !== 200) fail(r.json?.error?.message || `${cmd} failed`, { status: r.status }); out({ ok: true, thread: r.json }); }
+  if (cmd === "edits" && sub === "apply") {
+    const data = readEditsFile(dir); const pending = (data.edits || []).filter(e => e.status === "pending" && !(data.appliedLocally || []).some(a => a.id === e.id));
+    const results = []; const siblings = !has("--no-siblings");
+    for (const e of pending) {
+      const stem = e.screen.id + (e.screen.device === "mobile" ? "-Mobile" : ""); const main = applyEditToFile(join(dir, stem + ".dc.html"), e);
+      const r = { id: e.id, screen: e.screen, originalText: e.originalText, newText: e.newText, files: [main] };
+      if (siblings && main.result === "applied") { const sib = join(dir, e.screen.id + (e.screen.device === "mobile" ? "" : "-Mobile") + ".dc.html"); if (existsSync(sib)) r.files.push(applyEditToFile(sib, e)); }
+      if (main.result === "applied") data.appliedLocally = [...(data.appliedLocally || []), { id: e.id, files: r.files.filter(f => f.result === "applied").map(f => relative(process.cwd(), f.file)), at: new Date().toISOString() }];
+      results.push(r);
+    }
+    writeEditsFile(dir, data);
+    out({ ok: true, applied: results.filter(r => r.files[0].result === "applied").length, needsManual: results.filter(r => r.files[0].result !== "applied"), results, note: "run flow-check, then push; the push marks these edits applied on the portal" });
+  }
   if (cmd === "edits") { const r = await call(url, token, "GET", `/projects/${project}/flows/${slug}/text-edits?status=${opt("--status", "pending")}`); if (r.status !== 200) fail(r.json?.error?.message || "edits failed", { status: r.status }); out({ ok: true, edits: r.json.edits }); }
   if (cmd === "mark-applied") { const ids = (opt("--ids") || "").split(",").filter(Boolean); const r = await call(url, token, "POST", `/projects/${project}/flows/${slug}/text-edits/mark-applied`, { ids, version: Number(opt("--version")) }, agentHeaders); if (r.status !== 200) fail(r.json?.error?.message || "mark-applied failed", { status: r.status }); out({ ok: true, ...r.json }); }
   fail(`unknown command ${cmd}`);
