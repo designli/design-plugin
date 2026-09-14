@@ -79,7 +79,7 @@ Always build the bundle first: `node "${CLAUDE_PLUGIN_ROOT}/scripts/bundle.mjs" 
 
 ## Step 8: handover
 
-Show the link (portal URL, canvas URL, or the bundle path). Two sentences: what you assumed, what is placeholder. Then: "Review it on the portal: click through the prototype, comment on any screen, or switch to Edit copy and change a text in place. Share it with the customer from the Share button. When there is feedback, run `/designli-design:review <slug>`. When it is ready for developers: `/designli-design:handoff <slug> "<story title>"`." Run a background second look over the working files (never the bundle or seeded output): an agent that only reads the artboards against the rules and the brief and reports problems.
+Show the link (portal URL, canvas URL, or the bundle path). Two sentences: what you assumed, what is placeholder. Then: "Review it on the portal: click through the prototype, comment on any screen, or switch to Edit copy and change a text in place. Ask a Designli admin to invite the customer to the project (Admin → Projects → Invite a client); they set a password from the invite link and see only that project. When there is feedback, run `/designli-design:review <slug>`. When it is ready for developers: `/designli-design:handoff <slug> "<story title>"`." Run a background second look over the working files (never the bundle or seeded output): an agent that only reads the artboards against the rules and the brief and reports problems.
 
 ## Failure modes
 

@@ -261,7 +261,6 @@ function writeCommentsFile(dir, url, project, flow, threads) {
       const r = await call(url, token, "POST", "/projects", {
         id: opt("--create"),
         name: opt("--name") || opt("--create"),
-        accessCode: opt("--access-code"),
       });
       if (r.status !== 201) fail(r.json?.error?.message || "create failed", { status: r.status });
       out({ ok: true, created: r.json });
@@ -355,7 +354,7 @@ function writeCommentsFile(dir, url, project, flow, threads) {
       flowId: slug,
       version: r.json.version,
       contentHash: r.json.contentHash,
-      shareUrl: r.json.url,
+      url: r.json.url,
       pushedAt: new Date().toISOString(),
       lastPullAt: flow.portal?.lastPullAt ?? new Date().toISOString(),
     };

@@ -9,13 +9,13 @@ It runs entirely inside Claude Code (desktop app or CLI) on the designer's own s
 
 ## Verbs
 
-| Command | What it does | Questions |
-|---|---|---|
-| `/designli-design:init [--refresh] [--check]` | Installs the pinned impeccable into the repo, declares the canonical component library, writes `PRODUCT.md` and `DESIGN.md` from the real tokens and components, publishes a Components sheet canvas | 3 rounds |
-| `/designli-design:flow "<brief>" [--extend <slug>] [--device ...] [--prototype]` | Turns a brief into an ordered path with all states, authors one artboard per screen state, publishes the canvas, drafts `design-flow.md` | 2 rounds |
-| `/designli-design:review <slug> [--comments-only] [--critique-only] [--apply-all]` | Reads canvas comments, folds in canvas edits, runs a critique and hardening checklist, applies approved changes, republishes, replies and resolves | 1 round |
-| `/designli-design:handoff <slug> "<user story title>"` | Gates on states coverage and drift, writes `specs/<story>/design-flow.md` and flattened HTML references for the dev pipeline | 0-1 |
-| `/designli-design:iterate <slug>` | Phase 2: impeccable live on the running app, then resync | not in the pilot |
+| Command                                                                            | What it does                                                                                                                                                                                         | Questions        |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `/designli-design:init [--refresh] [--check]`                                      | Installs the pinned impeccable into the repo, declares the canonical component library, writes `PRODUCT.md` and `DESIGN.md` from the real tokens and components, publishes a Components sheet canvas | 3 rounds         |
+| `/designli-design:flow "<brief>" [--extend <slug>] [--device ...] [--prototype]`   | Turns a brief into an ordered path with all states, authors one artboard per screen state, publishes the canvas, drafts `design-flow.md`                                                             | 2 rounds         |
+| `/designli-design:review <slug> [--comments-only] [--critique-only] [--apply-all]` | Reads canvas comments, folds in canvas edits, runs a critique and hardening checklist, applies approved changes, republishes, replies and resolves                                                   | 1 round          |
+| `/designli-design:handoff <slug> "<user story title>"`                             | Gates on states coverage and drift, writes `specs/<story>/design-flow.md` and flattened HTML references for the dev pipeline                                                                         | 0-1              |
+| `/designli-design:iterate <slug>`                                                  | Phase 2: impeccable live on the running app, then resync                                                                                                                                             | not in the pilot |
 
 ## Install
 
@@ -37,14 +37,14 @@ Requires Node >= 22.12 (24 recommended, `nvm install 24`).
 
 ## What lands in the product repo
 
-| Path | Commit |
-|---|---|
-| `PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`, `.impeccable/token-truth.json`, `.impeccable/live/config.json` | yes |
-| `design/library.json`, `design/components/*.dc.html`, `design/flows/<slug>/{flow.json,canvas.json,*.dc.html,design-flow.md,review/}` | yes |
-| `specs/<story>/design-flow.md`, `specs/<story>/design/*.html` | yes |
-| `.claude/settings.json`, `.gitignore`, `.prettierignore` entries | yes |
-| `.claude/skills/impeccable/`, `.claude/agents/impeccable-*.md` (installed per machine) | no |
-| `design/**/*.html` seeded canvases, `extract-*/`, `.seed/`, `.review/`, `.impeccable/critique/*` | no |
+| Path                                                                                                                                 | Commit |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| `PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`, `.impeccable/token-truth.json`, `.impeccable/live/config.json`                 | yes    |
+| `design/library.json`, `design/components/*.dc.html`, `design/flows/<slug>/{flow.json,canvas.json,*.dc.html,design-flow.md,review/}` | yes    |
+| `specs/<story>/design-flow.md`, `specs/<story>/design/*.html`                                                                        | yes    |
+| `.claude/settings.json`, `.gitignore`, `.prettierignore` entries                                                                     | yes    |
+| `.claude/skills/impeccable/`, `.claude/agents/impeccable-*.md` (installed per machine)                                               | no     |
+| `design/**/*.html` seeded canvases, `extract-*/`, `.seed/`, `.review/`, `.impeccable/critique/*`                                     | no     |
 
 ## Layout
 
@@ -78,7 +78,7 @@ When preflight finds no UI source files, `init` takes a greenfield path: product
 ```
 node scripts/bundle.mjs --flow design/flows/<slug> --components design/components [--json]
 node scripts/bundle.mjs --components design/components --kind components
-node scripts/portal.mjs login-check | login --url U --token T | projects [--create ID --name N --access-code C]
+node scripts/portal.mjs login-check | login --url U --token T | projects [--create ID --name N] (creating needs an admin token)
 node scripts/portal.mjs components push --components design/components [--project P]
 node scripts/portal.mjs head|push|pull --flow design/flows/<slug> [--project P] [--note "..."] [--force]
 node scripts/portal.mjs edits apply --flow design/flows/<slug>      node scripts/portal.mjs reply|resolve|reopen --flow DIR --thread ID [--text "..."]

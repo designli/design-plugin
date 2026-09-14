@@ -78,11 +78,11 @@ docker compose logs api | grep DESIGNLI_PORTAL_TOKEN                   # the des
 export DESIGNLI_PORTAL_TOKEN=dpat_...                                  # or: node <plugin>/scripts/portal.mjs login --url http://localhost:8787 --token dpat_...
 ```
 
-In the pilot project (`~/Develop/Designli/design-pilot-mvp`), `design/library.json.publish` is `{ target: "portal", portal: { url: "http://localhost:8787", projectId: "kite" } }`. The seed creates project `kite` (access code `kite-2026`).
+In the pilot project (`~/Develop/Designli/design-pilot-mvp`), `design/library.json.publish` is `{ target: "portal", portal: { url: "http://localhost:8787", projectId: "kite" } }`. The seed creates project `kite` and an admin user (`admin@designli.co`); with `AUTH_DEV_LOGIN=1` (the Compose default) any `@designli.co` address can sign in from `/signin` without Google.
 
 Loop per flow:
 1. `/designli-design:flow "<brief>"` builds the bundle and pushes it; the reply shows the portal URL.
-2. Open the flow: Prototype (click through, device toggle, Comment, Edit copy), Canvas (all artboards at the plugin layout), Versions, Comments, Edits. Share → Create link gives customers a `/s/<token>` URL; they enter a name and the access code.
+2. Open the flow: Prototype (click through, device toggle, Comment, Edit copy), Canvas (all artboards at the plugin layout), Versions, Comments, Edits. Customers get access when an admin invites them from Admin → Projects → Invite a client; they set a password from the emailed link and see only their project.
 3. `/designli-design:review <slug>` pulls comments and copy edits, applies the edits to the sources, republishes, replies and resolves.
 4. `/designli-design:handoff <slug> "<story>"` records the portal version and copies the bundle into `specs/<story>/design/`.
 

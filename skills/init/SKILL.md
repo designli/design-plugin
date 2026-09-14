@@ -68,7 +68,7 @@ Add one question to round 1: "Where should flows be published for review?" Optio
 "publish": { "target": "portal", "portal": { "url": "https://design.designli.com", "projectId": "kite" } }
 ```
 
-For `portal`: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" login-check --url <url>`. If it reports no token, print exactly this and continue with the target still set to portal: "Set your portal token once: `export DESIGNLI_PORTAL_TOKEN=<token>` (or `node <plugin>/scripts/portal.mjs login --url <url> --token <token>`)". If the project does not exist on the portal, `portal.mjs projects --create <id> --name "<name>" --access-code <code>` (ask the designer for the customer access code; never invent one silently). After the Components sheet is authored (Step 7 or B5), push it: `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" components push --components design/components`.
+For `portal`: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" login-check --url <url>`. If it reports no token, print exactly this and continue with the target still set to portal: "Set your portal token once: `export DESIGNLI_PORTAL_TOKEN=<token>` (or `node <plugin>/scripts/portal.mjs login --url <url> --token <token>`)". If the project does not exist on the portal, ask an admin to create it in the portal (Admin → Projects), or run `portal.mjs projects --create <id> --name "<name>"` with an admin token; designers get their token from the portal Account page. After the Components sheet is authored (Step 7 or B5), push it: `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" components push --components design/components`.
 
 ## Step 5: question round 2 (product identity) and PRODUCT.md
 
