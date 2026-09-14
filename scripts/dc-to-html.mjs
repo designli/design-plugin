@@ -41,7 +41,26 @@ function flatten(file) {
     if (c.helmet && !heads.includes(c.helmet)) heads.push(c.helmet);
     return `<!-- begin ${name} --><div data-imported-component="${name}">${c.body}</div><!-- end ${name} -->`;
   });
+  // interactive artboards: render the static (Default) variant from data-flat
+  const scriptTag = (body.match(/<script[^>]*data-dc-script[^>]*>/) || src.match(/<script[^>]*data-dc-script[^>]*>/) || [""])[0];
+  const flatRaw = (scriptTag.match(/data-flat='([^']*)'/) || scriptTag.match(/data-flat="([^"]*)"/) || [])[1];
+  let flat = {};
+  if (flatRaw) { try { flat = JSON.parse(flatRaw.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&#39;/g, "'")); } catch { missing.push("data-flat (invalid JSON)"); } }
+  const lookup = (path) => path.split(".").reduce((o, k) => (o && typeof o === "object" && k in o) ? o[k] : undefined, flat);
   body = body.replace(/<script[^>]*data-dc-script[\s\S]*?<\/script>/g, "");
+  body = body.replace(/\s+on[A-Z][A-Za-z]*="\{\{[^}]*\}\}"/g, "");
+  // <sc-if value="{{x}}">...</sc-if>: keep or drop by the flat value (innermost first, a few passes)
+  for (let i = 0; i < 6; i++) {
+    const before = body;
+    body = body.replace(/<sc-if\b([^>]*)>((?:(?!<sc-if\b)[\s\S])*?)<\/sc-if>/g, (m, attrs, inner) => {
+      const v = (attrs.match(/value="\{\{\s*([^}\s]+)\s*\}\}"/) || [])[1];
+      const val = v === "true" ? true : v === "false" ? false : v ? lookup(v) : true;
+      return val ? inner : "";
+    });
+    if (body === before) break;
+  }
+  body = body.replace(/\{\{\s*([^}\s]+)\s*\}\}/g, (m, p) => { const v = lookup(p); if (v === undefined) { missing.push("hole " + p); return ""; } return String(v); });
+  body = body.replace(/\s+hint-[a-z-]+="[^"]*"/g, "");
   const stem = basename(file).replace(/\.dc\.html$/, "");
   const rel = flowDir ? relative(process.cwd(), file) : basename(file);
   const html = `<!doctype html>

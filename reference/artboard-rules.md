@@ -33,3 +33,17 @@ A single artboard that shows the whole path: one box per step (number, name, sur
 > Comment on the canvas with the artboard name first, e.g. `02-Account-Error: the message reads like a toast`.
 
 Draw it with inline SVG or absolutely positioned boxes; keep it under 1440x900 so it reads without zooming.
+
+## Interactive (prototype) artboards
+
+Allowed only when `flow.json.prototype` is `true`, and only on the screens the designer asked to be clickable (normally the Default state of each step). Every other state stays static.
+
+- Copy stays literal. Holes (`{{name}}`) are used only for state-driven values: a selection highlight in a `style` attribute, a computed total, a count. `<sc-if value="{{flag}}" hint-placeholder-val="{{ true }}">…</sc-if>` reveals or hides a block. Never `<sc-for>`: write list items literally and reveal extra, pre-written rows with `<sc-if>`.
+- Events: `onClick="{{ handler }}"`, `onInput="{{ handler }}"` bound to functions returned from `renderVals()`; state lives in `this.state`.
+- The script tag carries `data-flat`, a JSON object with the static value of every hole, as the screen should read in the developer handoff (the Default state): `<script data-dc-script data-props='{}' data-flat='{"selectedId":"c2","total":"$6,450.00","showNewClient":false}'>`. The handoff converter renders the static reference from it (drops the script and event bindings, resolves `<sc-if>` by the flat values, substitutes holes). Single-quote the attribute; escape `&` as `&amp;` and a literal single quote as `&#39;`.
+- `canvas.json` marks the artboard `"is_interactive": true`.
+- `flow-check` verifies: no `<sc-for>`, `data-flat` present and covering every hole; static artboards in the same flow still follow the static rules.
+
+## Mobile variants
+
+When `flow.json.devices` includes `"mobile"`, every referenced state has a sibling `NN-StepId-State-Mobile.dc.html` with a 390-wide root. Same content and states, stacked layout, a sticky bottom bar for the primary action, chrome via `CmpNavbarMobile`. Mobile artboards go in a second block of rows on the Flow page (see canvas-layout.md).

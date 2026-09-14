@@ -112,14 +112,28 @@ function checkDesign(tokens) {
 
 // ---------- artboard content checks ----------
 const SECRET_RE = /(sk_(live|test)_[A-Za-z0-9]{8,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|password\s*=\s*\S+|[A-Za-z0-9._%+-]+@(?!example\.(com|org|net)|test\.com|vitalknowledge\.test)[A-Za-z0-9.-]+\.[A-Za-z]{2,})/;
-function checkArtboard(file, tokens, { screen }) {
+function checkArtboard(file, tokens, opts) {
+  const { screen, prototype = false } = opts;
   const name = basename(file), src = readFileSync(file, "utf8");
   if (!src.includes('<script src="./support.js"></script>')) err("ARTBOARD_SUPPORT", 'missing the exact <script src="./support.js"></script> head line', name);
   if (!/<x-dc>[\s\S]*<\/x-dc>/.test(src)) err("ARTBOARD_XDC", "missing <x-dc> root", name);
-  if (screen) {
-    if (/\{\{/.test(src)) err("ARTBOARD_BINDING", "screen-state artboards must be literal markup (no {{bindings}})", name);
+  const hasScript = /<script[^>]*data-dc-script/.test(src);
+  if (screen && !(prototype && hasScript)) {
+    if (/\{\{/.test(src)) err("ARTBOARD_BINDING", "screen-state artboards must be literal markup (no {{bindings}})" + (prototype ? " unless the artboard carries a data-dc-script (interactive)" : ""), name);
     if (/<sc-(for|if)\b/.test(src)) err("ARTBOARD_LOGIC", "screen-state artboards must not use <sc-for>/<sc-if>", name);
-    if (/<script[^>]*data-dc-script/.test(src)) err("ARTBOARD_SCRIPT", "screen-state artboards must be static (no data-dc-script)", name);
+    if (hasScript) err("ARTBOARD_SCRIPT", "screen-state artboards must be static (no data-dc-script); set flow.json.prototype to allow interactive Default screens", name);
+  }
+  if (screen && prototype && hasScript) {
+    // interactive artboard: holes and <sc-if> allowed, <sc-for> not; every hole must have a static value in data-flat for the handoff render
+    if (/<sc-for\b/.test(src)) err("PROTO_FOR", "interactive artboards must not use <sc-for>; write items literally and reveal extras with <sc-if>", name);
+    const tag = (src.match(/<script[^>]*data-dc-script[^>]*>/) || [""])[0];
+    const flatRaw = (tag.match(/data-flat='([^']*)'/) || tag.match(/data-flat="([^"]*)"/) || [])[1];
+    let flat = null;
+    if (flatRaw) { try { flat = JSON.parse(flatRaw.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&#39;/g, "'")); } catch (e) { err("PROTO_FLAT_PARSE", "data-flat is not valid JSON: " + e.message, name); } }
+    const holes = new Set([...src.matchAll(/\{\{\s*([A-Za-z_$][\w$]*)/g)].map(m => m[1]).filter(h => !["true", "false", "null"].includes(h)));
+    if (holes.size && !flat) err("PROTO_FLAT_MISSING", "interactive artboard uses holes but has no data-flat attribute with their static values", name);
+    if (flat) for (const h of holes) if (!(h in flat)) err("PROTO_FLAT_HOLE", `hole {{${h}}} has no static value in data-flat`, name);
+    if (!/is_interactive/.test(src) && opts.canvasInteractive === false) warn("PROTO_CANVAS", "interactive artboard is not marked is_interactive in canvas.json", name);
   }
   for (const m of src.matchAll(/<dc-import\b([^>]*)>/g)) {
     const nm = (m[1].match(/name="([^"]+)"/) || [])[1] || "";
@@ -189,12 +203,24 @@ function checkFlow(tokens) {
     }
     for (const req of REQUIRED_BY_KIND[kind] || []) if (!coverage[n].states[req]) gap("COVERAGE", `required state ${req} for kind ${kind} is neither designed nor waived`, where);
   }
+  const devices = Array.isArray(flow.devices) && flow.devices.length ? flow.devices : ["desktop"];
+  const wantsMobile = devices.includes("mobile");
   for (const f of files) {
     if (referenced.has(f) || /^Cmp[A-Za-z0-9]+\.dc\.html$/.test(f)) continue;
+    const mobile = f.match(/^(\d{2}-[A-Z][A-Za-z0-9]*-[A-Za-z0-9]+)-Mobile\.dc\.html$/);
+    if (mobile) {
+      const desktop = mobile[1] + ".dc.html";
+      if (!referenced.has(desktop)) warn("ORPHAN", `${f} is a mobile variant of an unreferenced state (${desktop})`, f);
+      else if (!wantsMobile) warn("MOBILE_UNEXPECTED", `${f} exists but flow.json.devices does not include "mobile"`, f);
+      continue;
+    }
     if (/^\d{2}-[A-Z][A-Za-z0-9]*-[A-Za-z0-9-]+\.dc\.html$/.test(f)) warn("ORPHAN", `${f} is not referenced by flow.json`, f);
     else err("ARTBOARD_NAME", `${f} does not follow NN-StepId-State.dc.html`, f);
   }
-  for (const f of files) checkArtboard(join(flowDir, f), tokens, { screen: /^\d{2}-/.test(f) });
+  if (wantsMobile) for (const f of referenced) { if (f === "Main.dc.html") continue; const m = f.replace(/\.dc\.html$/, "-Mobile.dc.html"); if (!files.includes(m)) gap("MOBILE_MISSING", `${m} is missing (flow.json.devices includes mobile)`, f); }
+  let canvasInteractiveByFile = {};
+  try { const c = JSON.parse(readFileSync(join(flowDir, "canvas.json"), "utf8")); for (const a of c.artboards || []) canvasInteractiveByFile[a.file] = a.is_interactive === true; } catch {}
+  for (const f of files) checkArtboard(join(flowDir, f), tokens, { screen: /^\d{2}-/.test(f), prototype: flow.prototype === true, canvasInteractive: f in canvasInteractiveByFile ? canvasInteractiveByFile[f] : null });
   // canvas.json
   const cj = join(flowDir, "canvas.json");
   if (!existsSync(cj)) err("CANVAS_MISSING", "canvas.json not found", flowDir);
