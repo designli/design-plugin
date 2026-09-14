@@ -3,7 +3,7 @@ name: init
 description: Set up a product repo for prompt-driven flow design. Installs the pinned impeccable build, declares the canonical component library, writes PRODUCT.md and DESIGN.md anchored to the real tokens and components, and publishes a Components sheet canvas. Run once per repo; --refresh after implementation changes tokens or components; --check only verifies the install.
 argument-hint: "[--refresh] [--check] [--force]"
 disable-model-invocation: true
-allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/install-impeccable.mjs*), Bash(node *scripts/tokens-css.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *), Bash(git diff *), Bash(git rev-parse *)
+allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/install-impeccable.mjs*), Bash(node *scripts/tokens-css.mjs*), Bash(node *scripts/bundle.mjs*), Bash(node *scripts/portal.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *), Bash(git diff *), Bash(git rev-parse *)
 ---
 
 # init: design DNA from the repo
@@ -60,6 +60,16 @@ Use AskUserQuestion, one question: "Which components should new designs be built
 }
 ```
 
+## Publish target (asked once, in the same round as the library question)
+
+Add one question to round 1: "Where should flows be published for review?" Options: **Designli portal (recommended)** (asks for the portal URL and project id; defaults: `DESIGNLI_PORTAL_URL` and the repo name), **Local bundle only** (files under `design/flows/<slug>/bundle/`, no sharing), **Claude canvas** (the built-in design canvas artifact; editing in place, org-only sharing). Write the answer to `design/library.json.publish`:
+
+```json
+"publish": { "target": "portal", "portal": { "url": "https://design.designli.com", "projectId": "kite" } }
+```
+
+For `portal`: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" login-check --url <url>`. If it reports no token, print exactly this and continue with the target still set to portal: "Set your portal token once: `export DESIGNLI_PORTAL_TOKEN=<token>` (or `node <plugin>/scripts/portal.mjs login --url <url> --token <token>`)". If the project does not exist on the portal, `portal.mjs projects --create <id> --name "<name>" --access-code <code>` (ask the designer for the customer access code; never invent one silently). After the Components sheet is authored (Step 7 or B5), push it: `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" components push --components design/components`.
+
 ## Step 5: question round 2 (product identity) and PRODUCT.md
 
 One grouped AskUserQuestion (up to 4 questions): register (prefilled from the hypothesis), brand personality in three words (offer three options derived from the existing UI), anti-references (offer "none" plus two guesses), accessibility target (default WCAG 2.1 AA; mention any brand color that fails contrast for body text).
@@ -90,7 +100,10 @@ Read `${CLAUDE_PLUGIN_ROOT}/reference/artboard-rules.md` and `canvas-layout.md`.
 
 Write `design/components/canvas.json` (single page, no `pages` key, rows of 960-wide frames, 120 px gaps, `launch: {"view":"canvas"}`) and `design/README.md` (what lives where, how to run the four verbs).
 
-Then invoke the Skill tool with skill `design` and no arguments, purely to learn its base directory for this session (note the "Base directory for this skill" line; do not ask what to design, do not start a brief). Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/seed-flow.mjs" --skill-dir "<base dir>" --flow design/components --title "<Product name> Components" --out design/components/<product-slug>-components.html`, then publish that file with the Artifact tool exactly as the design skill's step 4 prescribes (its contract pin, capabilities from the roster, a favicon, a one-line description). Record the URL in `design/library.json.componentsCanvas`. If publishing is declined or unavailable, keep the local file, set `componentsCanvas` to `null`, say the sheet is local-only, and continue.
+Then publish the sheet per `library.json.publish.target`:
+- `portal`: `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" components push --components design/components`; record the project URL (`<portal url>/projects/<id>?tab=components`) in `design/library.json.componentsCanvas`.
+- `local`: `node "${CLAUDE_PLUGIN_ROOT}/scripts/bundle.mjs" --components design/components --kind components`; set `componentsCanvas` to `null`.
+- `claude-canvas`: invoke the Skill tool with skill `design` and no arguments, purely to learn its base directory (note the "Base directory for this skill" line; do not start a brief), run `node "${CLAUDE_PLUGIN_ROOT}/scripts/seed-flow.mjs" --skill-dir "<base dir>" --flow design/components --title "<Product name> Components" --out design/components/<product-slug>-components.html`, publish that file with the Artifact tool exactly as the design skill's step 4 prescribes, and record the URL. If publishing is declined, keep the local file and set `componentsCanvas` to `null`.
 
 ## Step 8: repo hygiene and handover
 

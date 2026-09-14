@@ -47,6 +47,10 @@ info.library = existsSync(lib) ? JSON.parse(readFileSync(lib, "utf8")) : null;
 if (!info.library) (require_.has("library") ? block : warn)("LIBRARY_MISSING", "design/library.json not found", "run /designli-design:init");
 info.flows = existsSync(join(project, "design", "flows")) ? execSync("ls", { cwd: join(project, "design", "flows"), encoding: "utf8" }).split("\n").filter(Boolean) : [];
 
+// Publish target (informational; never prints token values)
+info.publish = { target: (info.library && info.library.publish && info.library.publish.target) || "local", portal: info.library && info.library.publish && info.library.publish.portal ? { url: info.library.publish.portal.url, projectId: info.library.publish.portal.projectId } : null, tokenSource: process.env.DESIGNLI_PORTAL_TOKEN ? "env" : (existsSync(join(process.env.HOME || "", ".config", "designli-design", "credentials.json")) ? "credentials" : null) };
+if (info.publish.target === "portal" && !info.publish.tokenSource) warn("PORTAL_TOKEN", "publish target is portal but no token is configured", "export DESIGNLI_PORTAL_TOKEN=... or node <plugin>/scripts/portal.mjs login --url <url> --token <token>");
+
 // Git state (informational)
 try {
   info.gitBranch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: project, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();

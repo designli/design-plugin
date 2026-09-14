@@ -3,7 +3,7 @@
 //   node flow-check.mjs --flow design/flows/<slug> [--project <dir>] [--strict] [--json]
 //   node flow-check.mjs --design-only [--project <dir>] [--json]
 // Exit 0 when there are no errors (in --strict, coverage gaps and drift are errors).
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -111,7 +111,7 @@ function checkDesign(tokens) {
 }
 
 // ---------- artboard content checks ----------
-const SECRET_RE = /(sk_(live|test)_[A-Za-z0-9]{8,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|password\s*=\s*\S+|[A-Za-z0-9._%+-]+@(?!example\.(com|org|net)|test\.com|vitalknowledge\.test)[A-Za-z0-9.-]+\.[A-Za-z]{2,})/;
+const SECRET_RE = /(dpat_[A-Za-z0-9_]{16,}|sk_(live|test)_[A-Za-z0-9]{8,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|password\s*=\s*\S+|[A-Za-z0-9._%+-]+@(?!example\.(com|org|net)|test\.com|vitalknowledge\.test)[A-Za-z0-9.-]+\.[A-Za-z]{2,})/;
 function checkArtboard(file, tokens, opts) {
   const { screen, prototype = false } = opts;
   const name = basename(file), src = readFileSync(file, "utf8");
@@ -264,7 +264,19 @@ function checkFlow(tokens) {
       });
     }
   }
-  if (strict && !(flow.artifact && flow.artifact.url) && !args.includes("--allow-local")) err("ARTIFACT_URL", "flow.json has no published canvas url (use --allow-local to hand off a local-only canvas)", "flow.json");
+  // publish evidence per target
+  let libPublish = {}; try { libPublish = JSON.parse(readFileSync(join(project, "design", "library.json"), "utf8")).publish || {}; } catch {}
+  const target = (flow.publish && flow.publish.target) || libPublish.target || "local";
+  const bundleManifest = join(flowDir, "bundle", "manifest.json");
+  if (!existsSync(bundleManifest)) gap("BUNDLE_MISSING", "bundle/manifest.json not found (run bundle.mjs)", flowDir);
+  else { try { const m = JSON.parse(readFileSync(bundleManifest, "utf8")); const built = new Date(m.generatedAt).getTime(); const newer = files.filter(fn => statSync(join(flowDir, fn)).mtimeMs > built); if (newer.length) gap("BUNDLE_STALE", `${newer.length} artboard(s) changed after the bundle was built; rebuild`, "bundle/manifest.json"); } catch (e) { err("BUNDLE_PARSE", e.message, bundleManifest); } }
+  if (strict && !args.includes("--allow-local")) {
+    if (target === "portal" && !(flow.portal && flow.portal.version)) err("PUBLISH", "publish target is portal but flow.json.portal.version is missing (run portal.mjs push)", "flow.json");
+    if (target === "claude-canvas" && !(flow.artifact && flow.artifact.url)) err("PUBLISH", "publish target is claude-canvas but flow.json.artifact.url is missing", "flow.json");
+  }
+  // comments file sanity
+  const cf = join(flowDir, "comments.json");
+  if (existsSync(cf)) { try { const c = JSON.parse(readFileSync(cf, "utf8")); if (c.schema !== 1) warn("COMMENTS_SCHEMA", "comments.json schema is not 1", cf); const stems = new Set(files.map(x => x.replace(/(-Mobile)?\.dc\.html$/, ""))); for (const t of c.threads || []) { if (t.screen && !stems.has(t.screen.id)) warn("COMMENTS_SCREEN", `thread ${t.id} points at unknown screen ${t.screen.id}`, cf); if (!["open", "resolved"].includes(t.status)) warn("COMMENTS_STATUS", `thread ${t.id} has status ${t.status}`, cf); } } catch (e) { err("COMMENTS_PARSE", e.message, cf); } }
 }
 
 const tokens = await loadTokens();

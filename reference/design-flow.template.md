@@ -79,7 +79,7 @@
 
 # Design References
 
-- Canvas: <artifact url> (version <n>, published <date>)
+- Portal: <portal url> (v<n>, pushed <date>)  or  Canvas: <artifact url> (version <n>)
 - Flow map: design/Main.html
 - Screen references: design/*.html (flattened static HTML; inline styles are exact values)
 - Sources: design/flows/<flow-slug>/*.dc.html (edit these; the canvas re-seeds from them)

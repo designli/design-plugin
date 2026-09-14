@@ -2,7 +2,7 @@
 name: flow
 description: Design a multi-screen user flow (steps, states, transitions) for this product as a visual canvas the designer can tweak and comment on. Use when a designer describes a journey to design ("checkout", "cancel subscription", "reset password", "onboarding") or asks to add screens or states to an existing flow.
 argument-hint: "\"<flow name or brief>\" [--extend <flow-slug>] [--device desktop|mobile|both] [--prototype]"
-allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *)
+allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node *scripts/bundle.mjs*), Bash(node *scripts/portal.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *)
 ---
 
 # flow: a user path with all its states, on a canvas
@@ -69,17 +69,17 @@ Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/flow-check.mjs" --flow design/flows/<sl
 
 Write `design/flows/<slug>/design-flow.md` from `design-flow.template.md`: every section filled from the flow facts and the artboards; verbatim copy; the States Coverage table with `[x]` or `n/a: reason` per cell; Open Questions for every default you picked on the designer's behalf.
 
-## Step 7: seed and publish
+## Step 7: bundle and publish
 
-Once per session, invoke the Skill tool with skill `design` and no arguments, purely to learn its base directory: note the "Base directory for this skill" line it prints; do not ask the designer what to design and do not start a brief. Then run:
+Always build the bundle first: `node "${CLAUDE_PLUGIN_ROOT}/scripts/bundle.mjs" --flow design/flows/<slug> --components design/components --json` (screens flattened to static HTML plus `manifest.json`; interactive screens render their Default state). Then publish per `design/library.json.publish.target` (a per-flow `flow.json.publish.target` overrides it):
 
-`node "${CLAUDE_PLUGIN_ROOT}/scripts/seed-flow.mjs" --skill-dir "<base dir>" --flow design/flows/<slug> --components design/components --title "<Product> <Flow title>" --out design/flows/<slug>/<slug>.html`
-
-Publish `design/flows/<slug>/<slug>.html` with the Artifact tool exactly as the design skill's step 4 prescribes (contract pin, capabilities from the roster, favicon, description). Record `artifact.url`, `artifact.version` (from the publish result) and `publishedAt` in `flow.json`. On `--extend`, republish to the same path with the same favicon and no capabilities.
+- **portal** (default when configured): if the flow already exists on the portal (`node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" head --flow design/flows/<slug>` says `exists: true`), run `portal.mjs pull --flow design/flows/<slug>` first so no customer feedback is lost, and fold anything pending into this round before pushing. Then `node "${CLAUDE_PLUGIN_ROOT}/scripts/portal.mjs" push --flow design/flows/<slug> --note "<what changed>"`. On `stale: true`, pull, review, and push again; never pass `--force` on the designer's behalf. Show the returned `url`.
+- **local**: nothing else; the handover names `design/flows/<slug>/bundle/` and the portal can be pointed at it later.
+- **claude-canvas**: once per session invoke the Skill tool with skill `design` and no arguments, purely to learn its base directory (note the "Base directory for this skill" line; do not start a brief), then `node "${CLAUDE_PLUGIN_ROOT}/scripts/seed-flow.mjs" --skill-dir "<base dir>" --flow design/flows/<slug> --components design/components --title "<Product> <Flow title>" --out design/flows/<slug>/<slug>.html` and publish with the Artifact tool exactly as the design skill's step 4 prescribes; record `artifact.url` and `artifact.version` in `flow.json`.
 
 ## Step 8: handover
 
-Show the link. Two sentences: what you assumed, what is placeholder. Then: "Comment on the canvas using the artboard name, then run `/designli-design:review <slug>`. When it is ready for developers: `/designli-design:handoff <slug> "<story title>"`." Run the design skill's background second look over the working files (never the seeded output).
+Show the link (portal URL, canvas URL, or the bundle path). Two sentences: what you assumed, what is placeholder. Then: "Review it on the portal: click through the prototype, comment on any screen, or switch to Edit copy and change a text in place. Share it with the customer from the Share button. When there is feedback, run `/designli-design:review <slug>`. When it is ready for developers: `/designli-design:handoff <slug> "<story title>"`." Run a background second look over the working files (never the bundle or seeded output): an agent that only reads the artboards against the rules and the brief and reports problems.
 
 ## Failure modes
 
