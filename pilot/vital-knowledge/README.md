@@ -65,3 +65,25 @@ Project: `/Users/gabriel/Develop/Designli/design-pilot-mvp` (empty git repo). Th
 4. Later, once a codebase exists: `/designli-design:init --refresh` re-documents from code and flows migrate their component references.
 
 Done for the greenfield pilot: all four verbs complete within the question budgets; `flow-check --strict` clean; a developer (or agent) can scaffold the app from `design/tokens.css` and build the flow from `specs/<story>/` without asking the designer anything that is already in the spec.
+
+---
+
+# Running the pilot against the design portal (2026-09-14)
+
+The portal replaces the Claude canvas as the review surface. It runs locally in Docker; the real deployment implements the same contract (`reference/portal-api.md`).
+
+```
+cd ~/Develop/Designli/design-portal && docker compose up -d --build   # db on :5434, app on :8787
+docker compose logs api | grep DESIGNLI_PORTAL_TOKEN                   # the designer token, printed once
+export DESIGNLI_PORTAL_TOKEN=dpat_...                                  # or: node <plugin>/scripts/portal.mjs login --url http://localhost:8787 --token dpat_...
+```
+
+In the pilot project (`~/Develop/Designli/design-pilot-mvp`), `design/library.json.publish` is `{ target: "portal", portal: { url: "http://localhost:8787", projectId: "kite" } }`. The seed creates project `kite` (access code `kite-2026`).
+
+Loop per flow:
+1. `/designli-design:flow "<brief>"` builds the bundle and pushes it; the reply shows the portal URL.
+2. Open the flow: Prototype (click through, device toggle, Comment, Edit copy), Canvas (all artboards at the plugin layout), Versions, Comments, Edits. Share → Create link gives customers a `/s/<token>` URL; they enter a name and the access code.
+3. `/designli-design:review <slug>` pulls comments and copy edits, applies the edits to the sources, republishes, replies and resolves.
+4. `/designli-design:handoff <slug> "<story>"` records the portal version and copies the bundle into `specs/<story>/design/`.
+
+Agents outside the plugin can use the MCP server: `.mcp.json` with `{ "type": "http", "url": "http://localhost:8787/mcp", "headers": { "Authorization": "Bearer dpat_..." } }`.
