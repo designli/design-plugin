@@ -204,6 +204,13 @@ if (kind === "flow") {
       prd: flow.prd,
       prototype: !!flow.prototype,
       sourceDir: relative(process.cwd(), srcDir),
+      // journey map: where this flow sits and where it leads (portal draws the map from these)
+      order: Number.isInteger(flow.order) ? flow.order : null,
+      next: Array.isArray(flow.next)
+        ? flow.next
+            .filter((l) => l && typeof l.flow === "string")
+            .map((l) => ({ flow: l.flow, on: String(l.on ?? "") }))
+        : [],
     },
     devices,
     defaultDevice: "desktop",
@@ -244,7 +251,13 @@ if (kind === "flow") {
     generatedAt: new Date().toISOString(),
     contentHash,
     kind: "components",
-    flow: { slug: "components", title: "Components", sourceDir: relative(process.cwd(), srcDir) },
+    flow: {
+      slug: "components",
+      title: "Components",
+      sourceDir: relative(process.cwd(), srcDir),
+      order: null,
+      next: [],
+    },
     devices: { desktop: { w: 960, h: 720 } },
     defaultDevice: "desktop",
     entryPoints: [],

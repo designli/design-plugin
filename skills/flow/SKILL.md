@@ -1,7 +1,7 @@
 ---
 name: flow
 description: Design a multi-screen user flow (steps, states, transitions) for this product as a visual canvas the designer can tweak and comment on. Use when a designer describes a journey to design ("checkout", "cancel subscription", "reset password", "onboarding") or asks to add screens or states to an existing flow.
-argument-hint: "\"<flow name or brief>\" [--extend <flow-slug>] [--device desktop|mobile|both] [--prototype]"
+argument-hint: '"<flow name or brief>" [--extend <flow-slug>] [--device desktop|mobile|both] [--prototype]'
 allowed-tools: Bash(node *scripts/preflight.mjs*), Bash(node *scripts/flow-check.mjs*), Bash(node *scripts/seed-flow.mjs*), Bash(node *scripts/bundle.mjs*), Bash(node *scripts/portal.mjs*), Bash(node .claude/skills/impeccable/scripts/*), Bash(IMPECCABLE_NO_UPDATE_CHECK=1 node .claude/skills/impeccable/scripts/*), Bash(git status *)
 ---
 
@@ -28,7 +28,9 @@ Find the closest existing surface: routes under `src/app`, the components they r
 ## Step 2: question round 1 (path and framing)
 
 One grouped AskUserQuestion:
+
 - Steps: the ordered list you derived (each with kind: form, data, choice, confirmation, result, info) with entry points; offer "as proposed", "fewer steps", "more steps" and let them correct in free text.
+- Place in the journey (only when `design/flows/` already holds other flows): where this flow sits in the product's order (propose the next free number) and which existing flows it leads to, with the trigger ("after the invoice is sent → `get-paid`"). Offer "last, no connections" as the default.
 - Device: desktop 1440x900 (default), mobile 390x844, both. `--device` skips this.
 - Static mockups (default) or clickable prototype. `--prototype` skips this.
 
@@ -39,17 +41,37 @@ One AskUserQuestion showing the states matrix: for each step, the required state
 Write `design/flows/<slug>/flow.json`:
 
 ```json
-{ "schema": 1, "slug": "<slug>", "title": "<Title>", "goal": "<one sentence>",
-  "device": "desktop", "frame": { "w": 1440, "h": 900 }, "prototype": false,
-  "status": "draft", "story": null,
-  "entryPoints": [ { "from": "<where>", "to": "01-<StepId>" } ],
-  "steps": [ { "n": "01", "id": "<StepId>", "kind": "form", "surface": "<route>",
-               "states": { "Default": "01-<StepId>-Default.dc.html", "Empty": "n/a: <reason>" } } ],
-  "transitions": [ { "from": "01-<StepId>-Default", "on": "<trigger>", "to": "02-<StepId>-Default" } ],
-  "artifact": { "url": null, "version": null, "publishedAt": null }, "reviews": [] }
+{
+  "schema": 1,
+  "slug": "<slug>",
+  "title": "<Title>",
+  "goal": "<one sentence>",
+  "device": "desktop",
+  "frame": { "w": 1440, "h": 900 },
+  "prototype": false,
+  "status": "draft",
+  "story": null,
+  "order": 1,
+  "next": [{ "flow": "<sibling slug>", "on": "<trigger>" }],
+  "entryPoints": [{ "from": "<where>", "to": "01-<StepId>" }],
+  "steps": [
+    {
+      "n": "01",
+      "id": "<StepId>",
+      "kind": "form",
+      "surface": "<route>",
+      "states": { "Default": "01-<StepId>-Default.dc.html", "Empty": "n/a: <reason>" }
+    }
+  ],
+  "transitions": [
+    { "from": "01-<StepId>-Default", "on": "<trigger>", "to": "02-<StepId>-Default" }
+  ],
+  "artifact": { "url": null, "version": null, "publishedAt": null },
+  "reviews": []
+}
 ```
 
-Slug: kebab-case from the title. StepId: PascalCase. State names: the fixed vocabulary.
+Slug: kebab-case from the title. StepId: PascalCase. State names: the fixed vocabulary. `order` is the flow's place in the product journey (1 = first) and `next` lists the flows it leads to; the portal draws its journey map from them and `flow-check` refuses a `next` slug that is not a sibling under `design/flows/`. Leave `next` empty when nothing follows.
 
 ## Step 4: author the artboards
 

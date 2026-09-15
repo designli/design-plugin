@@ -4,7 +4,7 @@
 //   node flow-check.mjs --design-only [--project <dir>] [--json]
 // Exit 0 when there are no errors (in --strict, coverage gaps and drift are errors).
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, resolve, basename } from "node:path";
+import { join, resolve, basename, dirname, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
@@ -362,6 +362,42 @@ function checkFlow(tokens) {
   }
   for (const k of ["slug", "title", "steps"])
     if (!flow[k]) err("FLOW_FIELD", `flow.json missing "${k}"`, "flow.json");
+  // journey map fields: "order" places the flow, "next" links it to sibling flows
+  if (
+    flow.order !== undefined &&
+    flow.order !== null &&
+    !(Number.isInteger(flow.order) && flow.order >= 1)
+  )
+    err(
+      "ORDER_TYPE",
+      `"order" must be a whole number from 1 (got ${JSON.stringify(flow.order)})`,
+      "flow.json",
+    );
+  if (flow.next !== undefined) {
+    if (!Array.isArray(flow.next))
+      err("NEXT_SHAPE", '"next" must be a list of { "flow", "on" }', "flow.json");
+    else {
+      const siblings = new Set(
+        readdirSync(dirname(flowDir), { withFileTypes: true })
+          .filter((d) => d.isDirectory() && existsSync(join(dirname(flowDir), d.name, "flow.json")))
+          .map((d) => d.name),
+      );
+      for (const l of flow.next) {
+        if (!l || typeof l.flow !== "string" || !l.flow)
+          err("NEXT_SHAPE", `"next" entry ${JSON.stringify(l)} needs a "flow" slug`, "flow.json");
+        else if (l.flow === flow.slug)
+          err("NEXT_SELF", '"next" points at this flow itself', "flow.json");
+        else if (!siblings.has(l.flow))
+          gap(
+            "NEXT_UNKNOWN",
+            `"next" points at "${l.flow}", which is not a flow under ${relative(process.cwd(), dirname(flowDir)) || "."}`,
+            "flow.json",
+          );
+        if (l && typeof l.on !== "string")
+          warn("NEXT_ON", `"next" link to "${l?.flow}" has no "on" trigger label`, "flow.json");
+      }
+    }
+  }
   const files = readdirSync(flowDir).filter((f) => f.endsWith(".dc.html"));
   const referenced = new Set(["Main.dc.html"]);
   if (!files.includes("Main.dc.html"))

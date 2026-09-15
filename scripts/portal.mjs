@@ -422,11 +422,20 @@ function writeCommentsFile(dir, url, project, flow, threads) {
       lastPullAt: r.json.serverTime || new Date().toISOString(),
       remoteVersion: head.json?.version ?? null,
     };
+    // the journey order can be changed in the portal (drag in the list); the repository follows
+    const remoteOrder = head.json?.flow?.position;
+    let orderChanged = null;
+    if (Number.isInteger(remoteOrder) && remoteOrder !== flow.order) {
+      orderChanged = { from: flow.order ?? null, to: remoteOrder };
+      flow.order = remoteOrder;
+    }
     saveFlowJson(dir, flow);
     out({
       ok: true,
       project,
       flow: slug,
+      order: flow.order ?? null,
+      orderChanged,
       pulled: threads.length,
       open: threads.filter((t) => t.status === "open").length,
       unmapped: threads.filter((t) => !t.screen).map((t) => t.id),
