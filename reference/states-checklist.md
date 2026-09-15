@@ -2,14 +2,14 @@
 
 Every step in a flow has a `kind`. The kind decides which states are required. A required state is either designed as an artboard or explicitly waived with `n/a: <reason>` in the coverage table. `flow-check.mjs --strict` blocks handoff on any required state that is neither.
 
-| Kind | Use for | Required states | Optional states |
-|---|---|---|---|
-| `form` | A step where the user enters data and submits | Default, Validation, Submitting, Error | Loading (prefilled data), Success (only if the step itself shows a success view), Disabled |
-| `data` | A step that displays fetched data (lists, details, dashboards) | Default, Loading, Empty, Error | Partial (some data failed), Stale |
-| `choice` | A step where the user picks one of a few options (plans, methods) | Default, Loading, Error | Selected (if the selection is a distinct view), Empty |
-| `confirmation` | A modal or view that asks "are you sure" and performs an action | Default, Submitting, Error, Success | |
-| `result` | A terminal view (done, thank you, receipt, redirect target) | Default, Success | Error (if the result can still fail) |
-| `info` | Static content (terms, explanation, landing) | Default | Loading |
+| Kind           | Use for                                                           | Required states                        | Optional states                                                                            |
+| -------------- | ----------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `form`         | A step where the user enters data and submits                     | Default, Validation, Submitting, Error | Loading (prefilled data), Success (only if the step itself shows a success view), Disabled |
+| `data`         | A step that displays fetched data (lists, details, dashboards)    | Default, Loading, Empty, Error         | Partial (some data failed), Stale                                                          |
+| `choice`       | A step where the user picks one of a few options (plans, methods) | Default, Loading, Error                | Selected (if the selection is a distinct view), Empty                                      |
+| `confirmation` | A modal or view that asks "are you sure" and performs an action   | Default, Submitting, Error, Success    |                                                                                            |
+| `result`       | A terminal view (done, thank you, receipt, redirect target)       | Default, Success                       | Error (if the result can still fail)                                                       |
+| `info`         | Static content (terms, explanation, landing)                      | Default                                | Loading                                                                                    |
 
 State vocabulary is fixed. Use exactly these names in file stems and tables:
 

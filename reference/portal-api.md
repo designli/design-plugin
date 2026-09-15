@@ -7,7 +7,7 @@ Implemented by `design-portal` (Bun + Hono + Drizzle + PostgreSQL). The plugin t
 - **Designli staff** sign in to the web app with Google Workspace (`GET /auth/google`, hosted domain `designli.co`; other domains are refused). A first sign-in creates a `staff` user with no project access; emails listed in the portal's `ADMIN_EMAILS` become `admin`. Local Docker runs also accept `POST /auth/dev {email, name}` for allowed-domain emails (`AUTH_DEV_LOGIN=1`, never in production).
 - **Clients** are created by an admin (Admin → Projects → Invite a client). They receive an invite link (`/invite/<token>`, 7 days), set a password, and sign in with `POST /auth/password {email, password}`. Regenerating an invite resets the password and signs them out everywhere.
 - **Personal access tokens** for the plugin and agents: staff mint them on the portal Account page (`POST /account/tokens`), then `Authorization: Bearer dpat_…`. Add `X-Designli-On-Behalf: agent` on writes made by an agent so the portal records the author as "Claude (designli-design)" with role `agent`. `POST /session {token}` turns a token into a cookie session (API-only, used by helpers and tests).
-- Token lookup in `portal.mjs`: `--token` flag, then `DESIGNLI_PORTAL_TOKEN`, then `~/.config/designli-design/credentials.json` (0600). Never in a repo.
+- Token lookup in `portal.mjs`: `DESIGNLI_PORTAL_TOKEN`, then `~/.config/designli-design/credentials.json` (0600, written by `setup.mjs` or `portal.mjs login`, which read the token from stdin). Never a command-line flag, never in a repo. Mint scoped tokens (project, permissions, expiry) on the portal's Account page.
 
 ### Permissions
 

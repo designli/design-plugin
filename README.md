@@ -1,106 +1,86 @@
-# designli-design (plugin name is a placeholder)
+# designli-design
 
-A Claude Code plugin that lets Figma-native product designers design **user flows** by prompting, on a visual canvas they can tweak and comment on, anchored to the product's real design system, and hand the result to the designli-skills dev pipeline as a spec.
+Design product **user flows** by prompting, anchored to the product's real design system, reviewed by the client on the Designli portal (prototype, comments, copy edits), and handed to the designli-skills dev pipeline as a spec.
 
-It runs entirely inside Claude Code (desktop app or CLI) on the designer's own subscription. It builds on two things that already exist:
+The core is harness-neutral: a **local MCP server** (tools, resources, prompts) plus dependency-free Node scripts. Claude Code gets the same workflow as slash commands through a thin plugin; any other MCP client gets it through the server. Nothing depends on a particular harness. It wraps a pinned [impeccable](https://github.com/pbakaus/impeccable) 3.5.0 (Apache-2.0) for design DNA, critique, harden and clarify.
 
-- the built-in `design` skill (Claude Design's canvas preview): artboards, WYSIWYG editing, PNG/PDF export, comments;
-- [impeccable](https://github.com/pbakaus/impeccable) 3.5.0 (Apache-2.0), vendored and pinned: design DNA (`PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`), UX critique, harden and clarify checklists, live mode.
+## Three ways in
 
-## Verbs
-
-| Command                                                                            | What it does                                                                                                                                                                                         | Questions        |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| `/designli-design:init [--refresh] [--check]`                                      | Installs the pinned impeccable into the repo, declares the canonical component library, writes `PRODUCT.md` and `DESIGN.md` from the real tokens and components, publishes a Components sheet canvas | 3 rounds         |
-| `/designli-design:flow "<brief>" [--extend <slug>] [--device ...] [--prototype]`   | Turns a brief into an ordered path with all states, authors one artboard per screen state, publishes the canvas, drafts `design-flow.md`                                                             | 2 rounds         |
-| `/designli-design:review <slug> [--comments-only] [--critique-only] [--apply-all]` | Reads canvas comments, folds in canvas edits, runs a critique and hardening checklist, applies approved changes, republishes, replies and resolves                                                   | 1 round          |
-| `/designli-design:handoff <slug> "<user story title>"`                             | Gates on states coverage and drift, writes `specs/<story>/design-flow.md` and flattened HTML references for the dev pipeline                                                                         | 0-1              |
-| `/designli-design:iterate <slug>`                                                  | Phase 2: impeccable live on the running app, then resync                                                                                                                                             | not in the pilot |
-
-## Install
-
-Development, from the product repo:
-
-```
-claude --plugin-dir /path/to/design-tool
-claude plugin validate /path/to/design-tool
-```
-
-Persistent:
-
-```
-/plugin marketplace add /path/to/design-tool      # or designli/design-tool once pushed
-/plugin install designli-design@designli-tools
-```
+| You use        | Do this                                                                                                                                                                                                                                                                                 |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code    | `claude --plugin-dir /path/to/design-tool` (or `/plugin marketplace add /path/to/design-tool` then `/plugin install designli-design@designli-tools`). The plugin registers the `designli-design` MCP server and the slash commands below.                                               |
+| Any MCP client | `node /path/to/design-tool/scripts/setup.mjs` in the product repo prints the `mcpServers` config: `designli-design` (local, stdio) and `designli-portal` (the portal's `/mcp`, token by `${DESIGNLI_PORTAL_TOKEN}`). Then use the `setup`, `init`, `flow`, `review`, `handoff` prompts. |
+| A shell        | the scripts under `scripts/` (`preflight`, `setup`, `flow-check`, `bundle`, `portal`, `tokens-css`, `dc-to-html`).                                                                                                                                                                      |
 
 Requires Node >= 22.12 (24 recommended, `nvm install 24`).
 
+## Setup (once per repository)
+
+```
+node /path/to/design-tool/scripts/setup.mjs
+```
+
+It checks Node and git, asks for the portal URL (https only; localhost excepted), reads your personal access token with the echo off (mint a **scoped** one on the portal's Account page: this project, the permissions the workflow needs, an expiry) and stores it in `~/.config/designli-design/credentials.json` (0600, never in the repo; `DESIGNLI_PORTAL_TOKEN` works too), lists the projects the token can see, writes `design/library.json` (`publish`, `harness`), `.mcp.json` for Claude Code (token by environment expansion) and `.gitignore` entries, and prints what to run next: `init` then `flow` for a new product; `portal_pull` and `review` for flows with feedback; `portal_push` for local flows never pushed. The same steps are the `setup` prompt of the server for agent-driven setup.
+
+## Verbs
+
+| Prompt / command                                                                              | What it does                                                                                                                                                                                                                                                 | Questions |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| `setup` / `/designli-design:setup`                                                            | Connects the repo to the portal (above)                                                                                                                                                                                                                      | 3         |
+| `init` / `/designli-design:init [--refresh] [--check]`                                        | Installs the pinned impeccable, declares the canonical component library, writes `PRODUCT.md` and `DESIGN.md` from the real tokens and components (or, greenfield, from an interview and three directions pushed to the portal), pushes the Components sheet | 3 rounds  |
+| `flow` / `/designli-design:flow "<brief>" [--extend <slug>] [--device …] [--prototype]`       | Turns a brief into an ordered path with all states, one artboard per screen state, pushes it to the portal, drafts `design-flow.md`                                                                                                                          | 2 rounds  |
+| `review` / `/designli-design:review <slug> [--comments-only] [--critique-only] [--apply-all]` | Pulls comments and copy edits from the portal, folds edits into the sources, critiques and hardens, applies approved changes, pushes, replies and resolves                                                                                                   | 1 round   |
+| `handoff` / `/designli-design:handoff <slug> "<story>"`                                       | Gates on states coverage and drift, writes `specs/<story>/design-flow.md` and flattened HTML references for the dev pipeline                                                                                                                                 | 0-1       |
+
+The workflows are the guides in `guides/*.md` (harness-neutral; the skills only point at them). The server serves them as `designli://guide/<name>` and as prompts.
+
+## The MCP server
+
+`node server/index.mjs [--project <dir>]`, stdio, protocol `2025-03-26`, no dependencies.
+
+- **Tools**: `project_status` (call it first), `credentials_status`, `portal_projects`, `setup_write`, `preflight`, `flow_check`, `bundle`, `tokens_css`, `portal_head`, `portal_pull`, `portal_push`, `portal_components_push`, `edits_apply`, `portal_reply`, `portal_resolve`. Each names its CLI twin. No tool accepts a token.
+- **Resources**: `designli://guide/*`, `designli://rules/{artboard-rules,canvas-layout,states-checklist}`, `designli://template/{design-flow,product-md,greenfield}`, `designli://reference/portal-api`, `designli://impeccable/*`, `designli://project/{status,library}`.
+- **Prompts**: `setup`, `init`, `flow`, `review`, `handoff` (guide + live project status + arguments).
+
+Tests: `node --test server/test/server.test.mjs`.
+
 ## What lands in the product repo
 
-| Path                                                                                                                                 | Commit |
-| ------------------------------------------------------------------------------------------------------------------------------------ | ------ |
-| `PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`, `.impeccable/token-truth.json`, `.impeccable/live/config.json`                 | yes    |
-| `design/library.json`, `design/components/*.dc.html`, `design/flows/<slug>/{flow.json,canvas.json,*.dc.html,design-flow.md,review/}` | yes    |
-| `specs/<story>/design-flow.md`, `specs/<story>/design/*.html`                                                                        | yes    |
-| `.claude/settings.json`, `.gitignore`, `.prettierignore` entries                                                                     | yes    |
-| `.claude/skills/impeccable/`, `.claude/agents/impeccable-*.md` (installed per machine)                                               | no     |
-| `design/**/*.html` seeded canvases, `extract-*/`, `.seed/`, `.review/`, `.impeccable/critique/*`                                     | no     |
+| Path                                                                                                                                                               | Commit |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| `PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`, `.impeccable/token-truth.json`, `.impeccable/live/config.json`                                               | yes    |
+| `design/library.json`, `design/components/*.dc.html`, `design/flows/<slug>/{flow.json,canvas.json,*.dc.html,design-flow.md,comments.json,text-edits.json,review/}` | yes    |
+| `specs/<story>/design-flow.md`, `specs/<story>/design/*.html`                                                                                                      | yes    |
+| `.mcp.json` (no secrets), `.gitignore`, `.prettierignore` entries; on Claude Code `.claude/settings.json`                                                          | yes    |
+| `.claude/skills/impeccable/`, `.claude/agents/impeccable-*.md` (Claude Code only, installed per machine)                                                           | no     |
+| `design/**/bundle/`, `design/**/.review/`, `.impeccable/critique/*`, `.mcp.local.json`                                                                             | no     |
+| `~/.config/designli-design/credentials.json` (0600)                                                                                                                | never  |
+
+## Security
+
+- Tokens are never passed on a command line (`portal.mjs login` reads stdin; there is no `--token`), never written into the repository (`setup` refuses a literal `dpat_` in `.mcp.json`; `preflight` warns `TOKEN_IN_REPO`), and travel only over https (localhost excepted).
+- Mint scoped tokens: one project, the permissions the workflow needs, an expiry. A scoped admin token acts as a member, not as an admin.
+- Every portal write made by an agent is attributed to it ("Claude (designli-design)", role `agent`) on behalf of the token owner.
 
 ## Layout
 
 ```
-.claude-plugin/          plugin.json, marketplace.json
-skills/{init,flow,review,handoff,iterate}/SKILL.md
-agents/artboard-author.md
-hooks/                   PreToolUse guard that blocks npx impeccable update/install
-scripts/                 preflight, install-impeccable, flow-check, seed-flow, dc-to-html, gen-pin (Node ESM, no deps)
-reference/               artboard rules, canvas layout, states checklist, design-flow template, PRODUCT.md template
-vendor/impeccable/3.5.0/ unmodified impeccable build + LICENSE + NOTICE + PIN.json
-pilot/vital-knowledge/   pilot runbook
+.claude-plugin/   plugin.json, marketplace.json (Claude Code packaging)
+.mcp.json         registers server/index.mjs for Claude Code
+server/           index.mjs (the MCP server), lib/setup.mjs, test/
+guides/           setup, init, flow, review, handoff (the workflows, harness-neutral)
+skills/           thin Claude Code wrappers over the guides
+agents/           artboard-author (optional Claude Code parallel worker)
+scripts/          preflight, setup, install-impeccable, flow-check, bundle, dc-to-html, tokens-css, portal
+reference/        artboard-rules, canvas-layout, states-checklist, design-flow.template, product-md.template, greenfield, portal-api
+vendor/impeccable/3.5.0/   pinned impeccable (PIN.json sha256 map)
+hooks/            impeccable-guard (Claude Code only: blocks npx impeccable install/update)
 ```
 
 ## impeccable pin and upgrade
 
-The plugin invokes the **project-local** copy (`.claude/skills/impeccable/`), never the marketplace plugin, because impeccable's skill text calls its scripts by project-relative path. `install-impeccable.mjs --check` compares every installed file against `vendor/impeccable/3.5.0/PIN.json`; `preflight.mjs` runs that check before every verb. `IMPECCABLE_NO_UPDATE_CHECK=1` (written into the project's `.claude/settings.json`) silences impeccable's daily update ping, and the hook blocks `npx impeccable ... update|install`.
-
-Files the verbs depend on, to diff when upgrading: `SKILL.md`, `scripts/{context,context-signals,detect,critique-storage,design-parser}.mjs`, `reference/{document,critique,harden,clarify,live}.md`.
-
-Upgrade: copy a new build from `~/.claude/plugins/cache/impeccable/impeccable/<v>/` into `vendor/impeccable/<v>/` with `LICENSE` and `NOTICE.md`, run `node scripts/gen-pin.mjs --version <v> --upstream-commit <sha>`, bump `IMPECCABLE_PIN` in `scripts/install-impeccable.mjs`, diff the files above against the previous version, adjust skill text, bump the plugin minor version, rerun the pilot smoke (`init --check`, one `flow`, one `review`).
-
-## Greenfield projects
-
-When preflight finds no UI source files, `init` takes a greenfield path: product identity and direction question rounds, a "Directions" canvas with three low-fi direction artboards to pick from, then the plugin authors `DESIGN.md` (full hex-token frontmatter in impeccable's Stitch format), `.impeccable/design.json` (schemaVersion 2 primitives) and `design/tokens.css` (generated by `scripts/tokens-css.mjs`), and builds the Components sheet from them. Flows reference components in the sheet (`design/components/Cmp*.dc.html#Export/variant`) until code exists; `init --refresh` re-documents from code later. Details: `reference/greenfield.md`.
-
-## Publish targets and the design portal
-
-The portal documents its HTTP API and MCP server at `<portal>/docs/` (staff sign-in or token); agents should read `/docs/md/agents.md` or call the `read_docs` MCP tool first. `reference/portal-api.md` keeps the offline essentials.
-
-`design/library.json.publish.target` is `portal` (recommended), `local`, or `claude-canvas`. With `portal`, flows are pushed to the Designli design portal (repo `design-portal`, Bun + Hono + Drizzle + PostgreSQL) where customers click through prototypes, comment on screens and suggest copy edits; the plugin pulls that feedback (`portal.mjs pull`), applies copy edits to the sources (`portal.mjs edits apply`) and pushes new versions (`portal.mjs push`, which requires the last synced head via If-Match and refuses to overwrite unpulled feedback). The REST and MCP contract is in `reference/portal-api.md`. Token: `DESIGNLI_PORTAL_TOKEN` or `portal.mjs login` (stored in `~/.config/designli-design/credentials.json`).
-
-```
-node scripts/bundle.mjs --flow design/flows/<slug> --components design/components [--json]
-node scripts/bundle.mjs --components design/components --kind components
-node scripts/portal.mjs login-check | login --url U --token T | projects [--create ID --name N] (creating needs an admin token)
-node scripts/portal.mjs components push --components design/components [--project P]
-node scripts/portal.mjs head|push|pull --flow design/flows/<slug> [--project P] [--note "..."] [--force]
-node scripts/portal.mjs edits apply --flow design/flows/<slug>      node scripts/portal.mjs reply|resolve|reopen --flow DIR --thread ID [--text "..."]
-```
+`install-impeccable.mjs --project . [--harness claude|none]` copies the vendored build into `.claude/skills/impeccable/` (Claude Code) or only writes the ignore blocks (other harnesses read impeccable through `designli://impeccable/*`). To upgrade: replace `vendor/impeccable/<version>/`, bump `IMPECCABLE_PIN`, regenerate `PIN.json` with `scripts/gen-pin.mjs --version <v>`, run `--force` in each repo.
 
 ## Flow spec contract
 
-`reference/design-flow.template.md` is the handoff contract. The designli-skills pipeline depends only on: `# Screen States` file paths, `# States Coverage`, `# Components Used`, `# Design References`, `# Open Questions`. `scripts/flow-check.mjs --strict` enforces the coverage table, token and component drift, naming and secrets before handoff.
-
-## Scripts
-
-```
-node scripts/preflight.mjs [--project .] [--require impeccable,dna,library] [--json]
-node scripts/install-impeccable.mjs --project . [--check|--force] [--json]
-node scripts/flow-check.mjs --flow design/flows/<slug> [--strict] [--allow-local] [--json]
-node scripts/flow-check.mjs --design-only
-node scripts/seed-flow.mjs --skill-dir <design skill base dir> --flow design/flows/<slug> --components design/components --title "<Title>" --out design/flows/<slug>/<slug>.html
-node scripts/dc-to-html.mjs --flow design/flows/<slug> --components design/components --out "specs/<story>/design" [--force]
-node scripts/tokens-css.mjs [--project .] [--out design/tokens.css]
-node scripts/gen-pin.mjs --version 3.5.0 --upstream-commit <sha>
-```
-
-The design skill's base directory changes with every Claude Code release; skills learn it by loading the `design` skill in the session, never by hardcoding it.
+`reference/design-flow.template.md` is the section set `flow-check --strict` enforces in `design-flow.md`; `reference/states-checklist.md` the required states per step kind; `reference/artboard-rules.md` the `.dc.html` rules. The portal API essentials are in `reference/portal-api.md`; the full reference lives on the portal at `/docs` (agents: `/docs/md/agents.md` or the `read_docs` tool).

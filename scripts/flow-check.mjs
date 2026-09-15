@@ -614,10 +614,10 @@ function checkFlow(tokens) {
         "publish target is portal but flow.json.portal.version is missing (run portal.mjs push)",
         "flow.json",
       );
-    if (target === "claude-canvas" && !(flow.artifact && flow.artifact.url))
+    if (target === "claude-canvas")
       err(
         "PUBLISH",
-        "publish target is claude-canvas but flow.json.artifact.url is missing",
+        "the claude-canvas publish target is gone: set publish.target to portal (or local)",
         "flow.json",
       );
   }

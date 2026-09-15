@@ -16,20 +16,20 @@
 
 # Steps
 
-| # | Step | Kind | Surface | Purpose | Primary action | Next |
-|---|------|------|---------|---------|----------------|------|
-| 01 | <Step name> | form | <route or component> | <what the user accomplishes> | <button label> | 02 |
+| #   | Step        | Kind | Surface              | Purpose                      | Primary action | Next |
+| --- | ----------- | ---- | -------------------- | ---------------------------- | -------------- | ---- |
+| 01  | <Step name> | form | <route or component> | <what the user accomplishes> | <button label> | 02   |
 
 # Screen States
 
 ## 01 <Step name>
 
-| State | Artboard | Trigger | What the user sees | Copy | Data | Exit |
-|-------|----------|---------|--------------------|------|------|------|
-| Default | design/01-StepId-Default.html | <when> | <one line> | <key copy> | <fields or data shown> | <action -> next> |
-| Loading | design/01-StepId-Loading.html | <when> | <skeleton where> | | | |
-| Error | design/01-StepId-Error.html | <what failed> | <where the message lives> | "<message>" | | <recovery> |
-| Empty | n/a: <reason> | | | | | |
+| State   | Artboard                      | Trigger       | What the user sees        | Copy        | Data                   | Exit             |
+| ------- | ----------------------------- | ------------- | ------------------------- | ----------- | ---------------------- | ---------------- |
+| Default | design/01-StepId-Default.html | <when>        | <one line>                | <key copy>  | <fields or data shown> | <action -> next> |
+| Loading | design/01-StepId-Loading.html | <when>        | <skeleton where>          |             |                        |                  |
+| Error   | design/01-StepId-Error.html   | <what failed> | <where the message lives> | "<message>" |                        | <recovery>       |
+| Empty   | n/a: <reason>                 |               |                           |             |                        |                  |
 
 (one subsection per step, in order)
 
@@ -41,8 +41,8 @@
 
 # Copy
 
-| Key | Text | Where |
-|-----|------|-------|
+| Key        | Text              | Where      |
+| ---------- | ----------------- | ---------- |
 | <step.key> | <verbatim string> | <NN State> |
 
 (Verbatim strings; developers reuse them as-is. Reuse existing strings from the codebase where they exist.)
@@ -70,16 +70,16 @@
 
 # Components Used
 
-| Component | Source | Variant / notes |
-|-----------|--------|-----------------|
-| Button | src/components/ui/button.tsx#Button | default, outline; loading uses the built-in spinner |
-| <NEW> <Name> | NEW | <why an existing component does not cover it> |
+| Component    | Source                              | Variant / notes                                     |
+| ------------ | ----------------------------------- | --------------------------------------------------- |
+| Button       | src/components/ui/button.tsx#Button | default, outline; loading uses the built-in spinner |
+| <NEW> <Name> | NEW                                 | <why an existing component does not cover it>       |
 
 (Everything listed must exist in the repo or be marked NEW with a justification. Legacy widgets carry `data-legacy` in the artboard and a reason here.)
 
 # Design References
 
-- Portal: <portal url> (v<n>, pushed <date>)  or  Canvas: <artifact url> (version <n>)
+- Portal: <portal url> (v<n>, pushed <date>) or Canvas: <artifact url> (version <n>)
 - Flow map: design/Main.html
 - Screen references: design/*.html (flattened static HTML; inline styles are exact values)
 - Sources: design/flows/<flow-slug>/*.dc.html (edit these; the canvas re-seeds from them)
@@ -88,9 +88,9 @@
 
 # States Coverage
 
-| Step | Default | Loading | Empty | Validation | Submitting | Error | Success |
-|------|---------|---------|-------|------------|------------|-------|---------|
-| 01 <Step> | [x] | [x] | n/a: <reason> | n/a: <reason> | n/a: <reason> | [x] | n/a: <reason> |
+| Step      | Default | Loading | Empty         | Validation    | Submitting    | Error | Success       |
+| --------- | ------- | ------- | ------------- | ------------- | ------------- | ----- | ------------- |
+| 01 <Step> | [x]     | [x]     | n/a: <reason> | n/a: <reason> | n/a: <reason> | [x]   | n/a: <reason> |
 
 (Every cell is `[x]` or `n/a: <reason>`. `[ ]` blocks handoff. Required states per kind are in the plugin's states-checklist.)
 

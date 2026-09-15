@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Doctor for every designli-design verb.
-//   node preflight.mjs [--project <dir>] [--require impeccable,dna,library] [--json]
+//   node preflight.mjs [--project <dir>] [--require setup,impeccable,dna,library] [--json]
 // Prints { ok, blockers:[{code,message,fix}], warnings:[...], info:{...} }.
 // Blockers depend on --require; everything else is reported as info/warnings.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -102,7 +102,36 @@ if (info.publish.target === "portal" && !info.publish.tokenSource)
   warn(
     "PORTAL_TOKEN",
     "publish target is portal but no token is configured",
-    "export DESIGNLI_PORTAL_TOKEN=... or node <plugin>/scripts/portal.mjs login --url <url> --token <token>",
+    "run node <plugin>/scripts/setup.mjs (or export DESIGNLI_PORTAL_TOKEN before starting the agent)",
+  );
+// Connection to the portal: setup writes publish.portal and the harness config
+info.harness = (info.library && info.library.harness) || null;
+info.mcpJson = existsSync(join(project, ".mcp.json"));
+if (!info.library || !info.library.publish)
+  (require_.has("setup") ? block : warn)(
+    "SETUP",
+    "this repository is not connected to a portal project yet",
+    "run node <plugin>/scripts/setup.mjs (or the setup prompt of the designli-design MCP server)",
+  );
+if (info.mcpJson) {
+  const text = readFileSync(join(project, ".mcp.json"), "utf8");
+  if (/dpat_[A-Za-z0-9_-]{8,}/.test(text))
+    warn(
+      "TOKEN_IN_REPO",
+      ".mcp.json contains a literal personal access token",
+      "revoke it on the portal's Account page and reference ${DESIGNLI_PORTAL_TOKEN} instead",
+    );
+}
+if (
+  info.publish.target === "portal" &&
+  info.publish.portal &&
+  /^http:\/\//.test(info.publish.portal.url || "") &&
+  !/^http:\/\/(localhost|127\.0\.0\.1)/.test(info.publish.portal.url)
+)
+  warn(
+    "PORTAL_HTTP",
+    "the portal url is plain http; the token would travel unencrypted",
+    "use https",
   );
 
 // Git state (informational)

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Client for the Designli design portal (REST contract in reference/portal-api.md). JSON on stdout; never echoes secrets.
 //   node portal.mjs login-check [--url U]
-//   node portal.mjs login --url U --token T            (stores ~/.config/designli-design/credentials.json, 0600)
+//   node portal.mjs login --url U   (token from DESIGNLI_PORTAL_TOKEN or stdin; stored 0600 in ~/.config/designli-design)
 //   node portal.mjs projects [--create ID --name N] [--url U]
 //   node portal.mjs head --flow DIR [--project P]
 //   node portal.mjs push --flow DIR [--project P] [--force] [--note "..."]
@@ -68,8 +68,11 @@ function resolveUrl() {
     );
   return u.replace(/\/$/, "");
 }
-function resolveToken(url) {
-  if (opt("--token")) return { token: opt("--token"), source: "flag" };
+export function resolveToken(url) {
+  if (has("--token"))
+    fail(
+      "--token is not accepted: put the token in DESIGNLI_PORTAL_TOKEN or run `portal.mjs login` (it reads stdin)",
+    );
   if (process.env.DESIGNLI_PORTAL_TOKEN)
     return { token: process.env.DESIGNLI_PORTAL_TOKEN, source: "env" };
   const c = creds().portals?.[url];
@@ -111,6 +114,29 @@ async function call(url, token, method, path, body, headers = {}, gzip = false) 
   return { status: res.status, json, text };
 }
 const agentHeaders = { "x-designli-on-behalf": "agent" };
+async function readSecretFromStdin() {
+  if (process.stdin.isTTY) {
+    const rl = (await import("node:readline")).createInterface({
+      input: process.stdin,
+      output: process.stderr,
+      terminal: true,
+    });
+    return new Promise((res) => {
+      process.stderr.write("Paste the token (input hidden): ");
+      const orig = rl._writeToOutput;
+      rl._writeToOutput = () => {};
+      rl.question("", (a) => {
+        rl._writeToOutput = orig;
+        process.stderr.write("\n");
+        rl.close();
+        res(a.trim());
+      });
+    });
+  }
+  const chunks = [];
+  for await (const c of process.stdin) chunks.push(c);
+  return Buffer.concat(chunks).toString("utf8").trim().split(/\s+/)[0] || null;
+}
 
 function ensureBundle(dir, kind, compDir) {
   if (!existsSync(dir)) fail(`no such directory: ${dir}`);
@@ -150,11 +176,7 @@ function ensureBundle(dir, kind, compDir) {
 }
 
 const escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const rxEscape = (s) =>
-  s.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\function writeCommentsFile(dir, url, project, flow, threads) {",
-  );
+const rxEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Builds a regex matching the escaped text between a ">" and a "<" with flexible whitespace.
 function textPattern(text) {
   const parts = escHtml(text).trim().split(/\s+/).map(rxEscape);
@@ -218,24 +240,34 @@ function writeCommentsFile(dir, url, project, flow, threads) {
   }
   const url = resolveUrl();
   const { token, source } = resolveToken(url);
+  let loginToken = null;
   if (cmd === "login") {
-    if (!opt("--token")) fail("login needs --token");
+    // never on the command line (shell history, process lists, transcripts): env or stdin
+    loginToken = process.env.DESIGNLI_PORTAL_TOKEN || (await readSecretFromStdin());
+    if (!loginToken)
+      fail(
+        "login needs the token in DESIGNLI_PORTAL_TOKEN or on stdin (e.g. `pbpaste | node portal.mjs login --url U`)",
+      );
+    if (!/^dpat_[A-Za-z0-9_-]{16,}$/.test(loginToken))
+      fail("that does not look like a dpat_ token");
+    if (!/^https:\/\//.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(url))
+      fail("refusing to send a token over plain http; use https (localhost is allowed)");
     const c = creds();
     c.portals = c.portals || {};
-    c.portals[url] = { token: opt("--token"), savedAt: new Date().toISOString() };
+    c.portals[url] = { token: loginToken, savedAt: new Date().toISOString() };
     mkdirSync(join(homedir(), ".config", "designli-design"), { recursive: true, mode: 0o700 });
     writeFileSync(CRED, JSON.stringify(c, null, 2) + "\n", { mode: 0o600 });
     chmodSync(CRED, 0o600);
   }
   if (cmd === "login" || cmd === "login-check") {
-    const t = cmd === "login" ? opt("--token") : token;
+    const t = cmd === "login" ? loginToken : token;
     if (!t)
       out({
         ok: false,
         url,
         tokenSource: null,
         error:
-          "no token: set DESIGNLI_PORTAL_TOKEN or run portal.mjs login --url <url> --token <token>",
+          "no token: set DESIGNLI_PORTAL_TOKEN or run `portal.mjs login --url <url>` (token on stdin)",
       });
     const r = await call(url, t, "GET", "/me");
     if (r.status !== 200)
@@ -252,6 +284,7 @@ function writeCommentsFile(dir, url, project, flow, threads) {
       tokenSource: cmd === "login" ? "credentials" : source,
       user: r.json.user,
       memberships: r.json.memberships,
+      scope: r.json.scope ?? null,
     });
   }
   if (!token) fail("no token: set DESIGNLI_PORTAL_TOKEN or run portal.mjs login", { url });
@@ -354,7 +387,7 @@ function writeCommentsFile(dir, url, project, flow, threads) {
       flowId: slug,
       version: r.json.version,
       contentHash: r.json.contentHash,
-      url: r.json.url,
+      versionUrl: r.json.url,
       pushedAt: new Date().toISOString(),
       lastPullAt: flow.portal?.lastPullAt ?? new Date().toISOString(),
     };

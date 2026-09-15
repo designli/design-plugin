@@ -5,6 +5,7 @@
 //   node install-impeccable.mjs --project <dir> --force    always rewrite
 //   node install-impeccable.mjs --project <dir> --check    report only, exit 1 unless OK
 //   node install-impeccable.mjs --project <dir> --json     machine-readable output
+//   node install-impeccable.mjs --project <dir> --harness none   ignore blocks only (no .claude/ files)
 //
 // Writes: <project>/.claude/skills/impeccable/**, <project>/.claude/agents/impeccable-*.md,
 //         <project>/.claude/skills/impeccable/.designli-pin.json,
@@ -40,7 +41,6 @@ const GITIGNORE_BLOCK = `
 design/**/*.html
 !design/**/*.dc.html
 design/**/extract-*/
-design/**/.seed/
 design/**/.review/
 `;
 const PRETTIERIGNORE_BLOCK = `
@@ -117,10 +117,11 @@ function mergeSettings(project) {
     "Bash(node *scripts/preflight.mjs*)",
     "Bash(node *scripts/install-impeccable.mjs*)",
     "Bash(node *scripts/flow-check.mjs*)",
-    "Bash(node *scripts/seed-flow.mjs*)",
     "Bash(node *scripts/dc-to-html.mjs*)",
     "Bash(node *scripts/tokens-css.mjs*)",
-    "Bash(node *seed-canvas.mjs*)",
+    "Bash(node *scripts/bundle.mjs*)",
+    "Bash(node *scripts/portal.mjs*)",
+    "Bash(node *scripts/setup.mjs*)",
     "Bash(pnpm dev)",
     "Bash(pnpm lint)",
     "Bash(git status *)",
@@ -131,9 +132,19 @@ function mergeSettings(project) {
   writeFileSync(file, JSON.stringify(s, null, 2) + "\n");
 }
 
-export function install(project, { force = false } = {}) {
+export function install(project, { force = false, harness = "claude" } = {}) {
   const before = checkInstall(project);
   const written = [];
+  if (harness !== "claude") {
+    // other harnesses read impeccable through the designli-design MCP resources; only the ignore blocks land in the repo
+    if (ensureBlock(join(project, ".gitignore"), GITIGNORE_BLOCK, "designli-design plugin"))
+      written.push(".gitignore");
+    if (
+      ensureBlock(join(project, ".prettierignore"), PRETTIERIGNORE_BLOCK, "designli-design plugin")
+    )
+      written.push(".prettierignore");
+    return { before: before.status, after: { status: "SKIPPED", harness }, written };
+  }
   if (force || before.status !== "OK") {
     const skillDir = join(project, ".claude", "skills", "impeccable");
     const agentsDir = join(project, ".claude", "agents");
@@ -202,11 +213,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     );
     process.exit(r.status === "OK" ? 0 : 1);
   }
-  const r = install(project, { force: args.includes("--force") });
+  const hi = args.indexOf("--harness");
+  const harness = hi >= 0 ? args[hi + 1] : "claude";
+  const r = install(project, { force: args.includes("--force"), harness });
   console.log(
     json
       ? JSON.stringify(r)
       : `impeccable ${r.before} -> ${r.after.status} (${IMPECCABLE_PIN}); wrote: ${r.written.join(", ")}`,
   );
-  process.exit(r.after.status === "OK" ? 0 : 1);
+  process.exit(r.after.status === "OK" || r.after.status === "SKIPPED" ? 0 : 1);
 }
