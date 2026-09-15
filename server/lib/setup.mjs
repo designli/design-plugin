@@ -121,15 +121,19 @@ export function writePublish(project, { url, projectId, target = "portal" }) {
   writeFileSync(p, JSON.stringify(lib, null, 2) + "\n");
   return p;
 }
-/** The MCP servers any client needs: the local plugin server and the portal. Token by env expansion only. */
-export function mcpServers({ url, target = "portal" }) {
-  const servers = {
-    "designli-design": {
+/**
+ * The MCP servers a client needs. The portal one always; the local plugin server only when the
+ * client does not get it from the Claude Code plugin itself (which registers it via its .mcp.json).
+ * Token by env expansion only.
+ */
+export function mcpServers({ url, target = "portal", includeLocal = true }) {
+  const servers = {};
+  if (includeLocal)
+    servers["designli-design"] = {
       command: "node",
       args: [join(PLUGIN_ROOT, "server", "index.mjs")],
       env: { DESIGNLI_PORTAL_URL: normalizeUrl(url) },
-    },
-  };
+    };
   if (target === "portal")
     servers["designli-portal"] = {
       type: "http",

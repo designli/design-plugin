@@ -199,7 +199,11 @@ test("setup_write connects a fresh repo and points at init for a new product", a
     mcp.mcpServers["designli-portal"].headers.Authorization,
     "Bearer ${DESIGNLI_PORTAL_TOKEN}",
   );
-  assert.ok(mcp.mcpServers["designli-design"].args[0].endsWith("server/index.mjs"));
+  assert.equal(
+    mcp.mcpServers["designli-design"],
+    undefined,
+    "the Claude Code plugin registers the local server itself",
+  );
   assert.ok(readFileSync(join(dir, ".gitignore"), "utf8").includes("design/**/bundle/"));
   assert.ok(w.nextSteps[0].includes("init"), w.nextSteps[0]);
   assert.ok(w.nextSteps[0].includes("New product"), w.nextSteps[0]);

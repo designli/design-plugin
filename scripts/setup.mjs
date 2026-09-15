@@ -249,7 +249,7 @@ l2.harness = harness;
   join(project, "design", "library.json"),
   JSON.stringify(l2, null, 2) + "\n",
 );
-const servers = mcpServers({ url, target });
+const servers = mcpServers({ url, target, includeLocal: harness !== "claude" });
 if (harness === "claude") written.push(writeMcpJson(project, servers));
 const gi = ensureGitignore(project);
 if (gi.added.length) written.push(gi.path);

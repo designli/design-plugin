@@ -1,15 +1,19 @@
 {
   "name": "designli-tools",
-  "owner": { "name": "Designli" },
-  "metadata": { "description": "Designli internal Claude Code plugins." },
+  "owner": {
+    "name": "Designli"
+  },
+  "metadata": {
+    "description": "Designli internal Claude Code plugins."
+  },
   "plugins": [
     {
       "name": "designli-design",
-      "description": "Prompt-driven UX flow design on a canvas, anchored to the codebase design system, with review and handoff.",
+      "description": "Prompt-driven UX flow design anchored to the codebase design system, reviewed on the Designli portal, with review and handoff. Harness-neutral core (local MCP server) with Claude Code slash commands.",
       "version": "0.1.0",
       "source": "./",
       "category": "design",
-      "tags": ["design", "flows", "handoff"]
+      "tags": ["design", "flows", "portal", "mcp", "handoff"]
     }
   ]
 }

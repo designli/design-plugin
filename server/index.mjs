@@ -272,7 +272,7 @@ const TOOLS = [
       const l2 = JSON.parse(readFileSync(libPath, "utf8"));
       l2.harness = harness;
       (await import("node:fs")).writeFileSync(libPath, JSON.stringify(l2, null, 2) + "\n");
-      const servers = mcpServers({ url, target });
+      const servers = mcpServers({ url, target, includeLocal: harness !== "claude" });
       if (harness === "claude") written.push(writeMcpJson(PROJECT, servers));
       const gi = ensureGitignore(PROJECT);
       if (gi.added.length) written.push(gi.path);

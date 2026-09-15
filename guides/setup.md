@@ -27,7 +27,7 @@ Call `portal_projects`. Show the projects the token can see (id, name, preset). 
 Call `setup_write` with the URL, the project id and the harness (`claude` when the designer uses Claude Code, `generic` to only print the MCP configuration, `none` for CLI-only use). It writes:
 
 - `design/library.json` → `publish: { target: "portal", portal: { url, projectId } }` and `harness`;
-- for `claude`: `.mcp.json` in the repo with two servers, `designli-design` (this local server) and `designli-portal` (the portal's MCP endpoint) whose header is `Authorization: Bearer ${DESIGNLI_PORTAL_TOKEN}`, expanded from the environment at start; the literal token is never written;
+- for `claude`: `.mcp.json` in the repo with the `designli-portal` server (the portal's MCP endpoint) whose header is `Authorization: Bearer ${DESIGNLI_PORTAL_TOKEN}`, expanded from the environment at start; the literal token is never written. The local `designli-design` server comes with the plugin itself. For `generic`, both servers are printed;
 - `.gitignore` entries for `design/**/bundle/`, `design/**/.seed/`, `design/**/.review/` and `.mcp.local.json`.
 
 Show `git status --short` and say which of these files to commit (`.mcp.json` and `library.json` are safe: they hold no secret).
