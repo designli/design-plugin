@@ -73,6 +73,8 @@ When preflight finds no UI source files, `init` takes a greenfield path: product
 
 ## Publish targets and the design portal
 
+The portal documents its HTTP API and MCP server at `<portal>/docs/` (staff sign-in or token); agents should read `/docs/md/agents.md` or call the `read_docs` MCP tool first. `reference/portal-api.md` keeps the offline essentials.
+
 `design/library.json.publish.target` is `portal` (recommended), `local`, or `claude-canvas`. With `portal`, flows are pushed to the Designli design portal (repo `design-portal`, Bun + Hono + Drizzle + PostgreSQL) where customers click through prototypes, comment on screens and suggest copy edits; the plugin pulls that feedback (`portal.mjs pull`), applies copy edits to the sources (`portal.mjs edits apply`) and pushes new versions (`portal.mjs push`, which requires the last synced head via If-Match and refuses to overwrite unpulled feedback). The REST and MCP contract is in `reference/portal-api.md`. Token: `DESIGNLI_PORTAL_TOKEN` or `portal.mjs login` (stored in `~/.config/designli-design/credentials.json`).
 
 ```
