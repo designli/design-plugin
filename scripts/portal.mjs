@@ -396,17 +396,33 @@ function writeCommentsFile(dir, url, project, flow, threads) {
 
   if (cmd === "pull") {
     const status = opt("--status", "all");
-    const q = `?status=${status}`;
-    const r = await call(url, token, "GET", `/projects/${project}/flows/${slug}/comments${q}`);
-    if (r.status !== 200) fail(r.json?.error?.message || "pull failed", { status: r.status });
-    const e = await call(
-      url,
-      token,
-      "GET",
-      `/projects/${project}/flows/${slug}/text-edits?status=all`,
+    // both lists are paged (200 per page at most): follow nextCursor until the end
+    const pageAll = async (path, key) => {
+      const items = [];
+      let cursor = null;
+      let first = null;
+      do {
+        const r = await call(
+          url,
+          token,
+          "GET",
+          `${path}&limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+        );
+        if (r.status !== 200) fail(r.json?.error?.message || "pull failed", { status: r.status });
+        first ??= r.json;
+        items.push(...(r.json[key] || []));
+        cursor = r.json.nextCursor || null;
+      } while (cursor);
+      return { items, first };
+    };
+    const { items: threads, first: r } = await pageAll(
+      `/projects/${project}/flows/${slug}/comments?status=${status}`,
+      "threads",
     );
-    const threads = r.json.threads || [];
-    const edits = e.status === 200 ? e.json.edits || [] : [];
+    const { items: edits } = await pageAll(
+      `/projects/${project}/flows/${slug}/text-edits?status=all`,
+      "edits",
+    );
     const file = writeCommentsFile(dir, url, project, slug, threads);
     const prevEdits = readEditsFile(dir);
     writeEditsFile(dir, {
@@ -419,7 +435,7 @@ function writeCommentsFile(dir, url, project, flow, threads) {
     const head = await call(url, token, "GET", `/projects/${project}/flows/${slug}/head`);
     flow.portal = {
       ...(flow.portal || { url, projectId: project, flowId: slug }),
-      lastPullAt: r.json.serverTime || new Date().toISOString(),
+      lastPullAt: r?.serverTime || new Date().toISOString(),
       remoteVersion: head.json?.version ?? null,
     };
     // the journey order can be changed in the portal (drag in the list); the repository follows
