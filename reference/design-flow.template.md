@@ -5,7 +5,7 @@
 - Goal: <one sentence: who does what and what "done" means>
 - Device: desktop 1440x900 (mobile: <designed | not designed; responsive rules in # Accessibility>)
 - Theme: light (dark mode: <not designed | designed>)
-- Canvas: <artifact url> (version <n>)
+- Portal: <portal url> (v<n>)
 - Status: <draft | reviewed | handed-off>
 - Design system: DESIGN.md, components sheet <url>
 
@@ -79,10 +79,10 @@
 
 # Design References
 
-- Portal: <portal url> (v<n>, pushed <date>) or Canvas: <artifact url> (version <n>)
+- Portal: <portal url> (v<n>, pushed <date>)
 - Flow map: design/Main.html
 - Screen references: design/*.html (flattened static HTML; inline styles are exact values)
-- Sources: design/flows/<flow-slug>/*.dc.html (edit these; the canvas re-seeds from them)
+- Sources: design/flows/<flow-slug>/*.dc.html (edit these; the bundle and the portal version are built from them)
 - Components sheet: <url>
 - These references are the spec for this story, not the source of truth for the product's design system. After implementation the design DNA is refreshed from the code.
 

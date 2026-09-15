@@ -4,15 +4,15 @@ These rules apply to every artboard the plugin authors. The built-in `design` sk
 
 ## Files and names
 
-- Flow map: `Main.dc.html` (always present; the artboard a fresh canvas opens on).
+- Flow map: `Main.dc.html` (always present; the first artboard of the portal's Canvas view).
 - Screen state: `NN-StepId-State.dc.html`, for example `01-ChoosePlan-Default.dc.html`, `03-Payment-Error.dc.html`. `NN` is the two-digit step number, `StepId` is PascalCase without spaces or hyphens, `State` comes from `states-checklist.md`.
-- Component artboards: `Cmp<Name>.dc.html` (for example `CmpNavbar.dc.html`), owned by the Components sheet under `design/components/`. Flow canvases include them on a `Components` page but never edit them.
-- Stems are unique case-insensitively across the whole canvas.
+- Component artboards: `Cmp<Name>.dc.html` (for example `CmpNavbar.dc.html`), owned by the Components sheet under `design/components/`. Flows import them with `dc-import` but never edit them.
+- Stems are unique case-insensitively across the whole flow.
 
 ## Content rules
 
 1. **Lift, do not invent.** Every color, font, size, radius, border, shadow, spacing and control height comes from `DESIGN.md`, `.impeccable/design.json`, or the real component source. Follow tokens to their resolved values; never round to a 4/8px grid.
-2. **Inline styles on everything the designer may restyle.** The canvas properties panel edits inline `style="..."`; put shared resets and `a`/`a:hover` colors in `<helmet><style>`.
+2. **Inline styles on everything the designer may restyle.** Reviewers edit copy in place on the portal and developers read exact values from inline `style="..."`; put shared resets and `a`/`a:hover` colors in `<helmet><style>`.
 3. **Literal copy.** Text is written as literal markup so the designer retypes it in place. No `{{bindings}}`, `<sc-for>`, `<sc-if>` or `data-props` tweaks in screen-state artboards. (Static artboards need no `<script data-dc-script>` at all.)
 4. **Chrome via import only.** Navbar, categories bar, footer, and a modal frame may be included with `<dc-import name="CmpNavbar" hint-size="100%,88px"></dc-import>`. Everything else is literal markup. Never self-close `dc-import`, never capitalize it as a tag.
 5. **Traceability attributes** (inert in the editor, read by `flow-check.mjs` and dev agents):
@@ -30,7 +30,7 @@ These rules apply to every artboard the plugin authors. The built-in `design` sk
 
 A single artboard that shows the whole path: one box per step (number, name, surface), arrows for transitions with their trigger as a label, a short legend, and this exact comment convention printed on the map:
 
-> Comment on the canvas with the artboard name first, e.g. `02-Account-Error: the message reads like a toast`.
+> Comment on the screen in the portal; whole-flow comments start with the artboard name, e.g. `02-Account-Error: the message reads like a toast`.
 
 Draw it with inline SVG or absolutely positioned boxes; keep it under 1440x900 so it reads without zooming.
 
@@ -46,4 +46,4 @@ Allowed only when `flow.json.prototype` is `true`, and only on the screens the d
 
 ## Mobile variants
 
-When `flow.json.devices` includes `"mobile"`, every referenced state has a sibling `NN-StepId-State-Mobile.dc.html` with a 390-wide root. Same content and states, stacked layout, a sticky bottom bar for the primary action, chrome via `CmpNavbarMobile`. Mobile artboards go in a second block of rows on the Flow page (see canvas-layout.md).
+When `flow.json.devices` includes `"mobile"`, every referenced state has a sibling `NN-StepId-State-Mobile.dc.html` with a 390-wide root. Same content and states, stacked layout, a sticky bottom bar for the primary action, chrome via `CmpNavbarMobile`. Mobile artboards go in a second block of rows in `canvas.json` (see canvas-layout.md).
