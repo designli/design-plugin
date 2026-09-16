@@ -109,10 +109,12 @@ if (!skip("comments")) {
 }
 
 // copy edits: one in the screen, one in an include
+// the portal keeps one pending edit per element path, so every edit gets its own
+let pathN = round * 10;
 const edit = async (originalText, newText, tag) => {
   const e = await call(client, "POST", `/projects/${project}/flows/${flow.id}/text-edits`, {
     screen: { id: A.id, device: "desktop" },
-    elementPath: "b/0",
+    elementPath: `b/${pathN++}`,
     originalText,
     originalHash: textHash(originalText),
     newText,
