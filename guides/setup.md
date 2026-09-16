@@ -1,12 +1,12 @@
 # setup: connect this repository to the Designli portal
 
-Run this once per repository, before `init`. It is a conversation with the designer (or with the developer setting the repo up); every step has a default. The `designli-design` MCP server's `project_status`, `credentials_status`, `portal_projects` and `setup_write` tools do the work; the same steps are available as the interactive CLI `node <plugin>/scripts/setup.mjs`, which is the better route when a token has to be pasted (it reads it with the echo off).
+Run this once per repository, before `adopt`. It is a conversation with the designer (or with the developer setting the repo up); every step has a default. The `designli-design` MCP server's `project_status`, `credentials_status`, `portal_projects` and `setup_write` tools do the work; the same steps are available as the interactive CLI `node <plugin>/scripts/setup.mjs`, which is the better route when a token has to be pasted (it reads it with the echo off).
 
 Never ask for the token in chat, never write it into a file inside the repository, never print it back.
 
 ## Step 1: where are we
 
-Call `project_status`. Note `greenfield` (no UI code yet), whether `PRODUCT.md`/`DESIGN.md` exist, the flows under `design/flows/`, the `publish` block of `design/library.json`, the credentials state (`tokenSource`: `env`, `credentials` or none) and any harness config found (`.mcp.json`).
+Call `project_status`. Note the git remote (refuse to finish without one unless the designer accepts the risk: the portal keeps flattened screens, the source with its includes lives only in git), whether `design/prototype.json` exists, the flows under `design/flows/`, the `publish` block of `design/library.json`, the credentials state (`tokenSource`: `env`, `credentials` or none) and any harness config found (`.mcp.json`).
 
 ## Step 2: portal URL
 
@@ -36,12 +36,13 @@ Show `git status --short` and say which of these files to commit (`.mcp.json` an
 
 `setup_write` returns `nextSteps`; read them to the designer verbatim. They depend on the state found in Step 1:
 
-- new product or repo without design DNA → `init`, then `flow "<first user journey>"`;
-- design DNA present, flows on the portal → `portal_pull` and `review <slug>` for flows with open feedback (`init --refresh` first if the code changed);
-- local flows never pushed → `portal_push` each;
-- everything in place → `flow "<next journey>"`; when a flow is ready for developers, `handoff`.
+- nothing declared yet, screens under `design/` → `adopt` (building screens first? load the `prototype` guide);
+- nothing declared locally, flows on the portal → `adopt --from-portal` (a fresh clone or a lost repository);
+- feedback waiting on the portal → `feedback`;
+- flows with unpublished changes → `publish "<what changed>"`;
+- everything published → share the project URL with the client; `handoff <slug> "<story>"` when a flow is ready for developers.
 
-In Claude Code the prompts are `/designli-design:init`, `/designli-design:flow`, `/designli-design:review`, `/designli-design:handoff`; on any MCP client they are the `init`, `flow`, `review` and `handoff` prompts of this server.
+In Claude Code the prompts are `/designli-design:<name>`; on any MCP client they are the prompts of this server with the same names (`setup`, `prototype`, `adopt`, `publish`, `feedback`, `handoff`, `status`, `review`).
 
 ## Security rules you follow
 

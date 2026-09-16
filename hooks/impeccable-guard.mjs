@@ -27,7 +27,7 @@ process.stdin.on("end", () => {
         permissionDecision: "deny",
         permissionDecisionReason:
           "impeccable is pinned to 3.5.0 by the designli-design plugin. Do not update or reinstall it with npx; " +
-          "run /designli-design:init --check (or node <plugin>/scripts/install-impeccable.mjs --project . --force) instead.",
+          "run node <plugin>/scripts/install-impeccable.mjs --project . --check (or --force to reinstall) instead.",
       },
     }),
   );

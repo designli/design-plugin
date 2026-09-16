@@ -1,0 +1,953 @@
+// The portal client and the workflows built on it: publish (bundle → head → push → release),
+// feedback (pull, digest, apply copy edits), adopt from the portal, hand off. One HTTP contract,
+// the same scoped token the cloud MCP server uses. Nothing here prints; callers format.
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, resolve, relative, dirname } from "node:path";
+import { gzipSync } from "node:zlib";
+import { PLUGIN_VERSION, DEFAULT_PORTAL, normalizeUrl, tokenFor, readLibrary } from "./setup.mjs";
+import {
+  scanFile,
+  componentFile,
+  readPrototype,
+  readProduct,
+  isDc,
+  componentId,
+} from "./proto.mjs";
+import {
+  listFlows,
+  readFlow,
+  writeFlow,
+  resolveStates,
+  resolveFlowDir,
+  flowDirOf,
+  gapsOf,
+  BLOCKING,
+} from "./flows.mjs";
+import { buildFlowBundle, buildComponentsBundle } from "./bundle.mjs";
+
+export class PortalError extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.code = code;
+    this.details = details ?? null;
+  }
+}
+const codeOf = (status, json) =>
+  json?.error?.code ||
+  (status === 401
+    ? "UNAUTHORIZED"
+    : status === 403
+      ? "FORBIDDEN"
+      : status === 404
+        ? "NOT_FOUND"
+        : status === 409
+          ? "CONFLICT"
+          : status === 429
+            ? "RATE_LIMITED"
+            : "PORTAL");
+
+/** Resolves url, token and project id from the environment, the repo and explicit overrides. */
+export function context(project, { url, projectId } = {}) {
+  const lib = readLibrary(project) || {};
+  const u = normalizeUrl(url || process.env.DESIGNLI_PORTAL_URL || lib.publish?.portal?.url || "");
+  if (!u)
+    throw new PortalError(
+      "SETUP",
+      "no portal url: run setup (design/library.json.publish.portal.url) or set DESIGNLI_PORTAL_URL",
+    );
+  const { token, source } = tokenFor(u);
+  if (!token)
+    throw new PortalError(
+      "PORTAL_TOKEN",
+      `no token for ${u}: run the setup script (it reads the token with the echo off) or export DESIGNLI_PORTAL_TOKEN before starting the agent`,
+    );
+  const p = projectId || lib.publish?.portal?.projectId;
+  return { url: u, token, tokenSource: source, projectId: p, project };
+}
+const needProject = (ctx) => {
+  if (!ctx.projectId)
+    throw new PortalError(
+      "SETUP",
+      "no project id: run setup (design/library.json.publish.portal.projectId)",
+    );
+  return ctx.projectId;
+};
+export async function call(ctx, method, path, body, headers = {}, gzip = false) {
+  const h = {
+    "x-designli-client": `designli-design/${PLUGIN_VERSION}`,
+    authorization: `Bearer ${ctx.token}`,
+    ...headers,
+  };
+  let payload;
+  if (body !== undefined) {
+    const text = JSON.stringify(body);
+    if (gzip) {
+      payload = gzipSync(Buffer.from(text));
+      h["content-encoding"] = "gzip";
+    } else payload = text;
+    h["content-type"] = "application/json";
+  }
+  let res;
+  try {
+    res = await fetch(ctx.url + "/api/v1" + path, {
+      method,
+      headers: h,
+      body: payload,
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (e) {
+    throw new PortalError("UNREACHABLE", `cannot reach ${ctx.url}: ${e.message}`);
+  }
+  const text = await res.text();
+  let json = null;
+  try {
+    json = JSON.parse(text);
+  } catch {}
+  return { status: res.status, json, text, ok: res.ok };
+}
+const expect = (r, what, okStatuses = [200, 201]) => {
+  if (okStatuses.includes(r.status)) return r.json;
+  throw new PortalError(
+    codeOf(r.status, r.json),
+    r.json?.error?.message || `${what} failed (${r.status})`,
+    { status: r.status, ...(r.json?.error?.details ? { details: r.json.error.details } : {}) },
+  );
+};
+const AGENT = { "x-designli-on-behalf": "agent" };
+export const clientUrl = (ctx) => `${ctx.url}/projects/${ctx.projectId}`;
+
+// ---- reads ----
+export async function overview(ctx) {
+  const p = needProject(ctx);
+  const [proj, flows] = await Promise.all([
+    call(ctx, "GET", `/projects/${p}`),
+    call(ctx, "GET", `/projects/${p}/flows`),
+  ]);
+  if (proj.status === 404)
+    throw new PortalError(
+      "NOT_FOUND",
+      `project ${p} does not exist on ${ctx.url} (or the token cannot see it)`,
+    );
+  const pj = expect(proj, "project");
+  const fl = expect(flows, "flows");
+  return {
+    project: { id: pj.id, name: pj.name, product: pj.product ?? null, release: pj.release ?? null },
+    flows: (fl.flows || []).map((f) => ({
+      id: f.id,
+      title: f.title,
+      version: f.latestVersion,
+      openThreads: f.openThreads,
+      pendingEdits: f.pendingEdits,
+      missingStates: f.missingStates ?? null,
+      position: f.position ?? null,
+    })),
+    url: clientUrl(ctx),
+  };
+}
+export async function head(ctx, slug) {
+  const p = needProject(ctx);
+  const r = await call(ctx, "GET", `/projects/${p}/flows/${slug}/head`);
+  if (r.status === 404)
+    return {
+      exists: false,
+      version: 0,
+      contentHash: null,
+      openThreads: 0,
+      pendingEdits: 0,
+      lastActivityAt: null,
+      structure: null,
+      structureUpdatedAt: null,
+      flow: null,
+    };
+  return { exists: true, ...expect(r, "head") };
+}
+export async function listReleases(ctx) {
+  const p = needProject(ctx);
+  const j = expect(await call(ctx, "GET", `/projects/${p}/releases`), "releases");
+  const cache = {
+    schema: 1,
+    portal: { url: ctx.url, projectId: p },
+    fetchedAt: new Date().toISOString(),
+    releases: j.releases || [],
+  };
+  mkdirSync(join(ctx.project, "design"), { recursive: true });
+  writeFileSync(
+    join(ctx.project, "design", "releases.json"),
+    JSON.stringify(cache, null, 2) + "\n",
+  );
+  return cache.releases;
+}
+
+// ---- local sync files ----
+function readEdits(dir) {
+  try {
+    return JSON.parse(readFileSync(join(dir, "text-edits.json"), "utf8"));
+  } catch {
+    return { schema: 1, edits: [], appliedLocally: [] };
+  }
+}
+const writeEdits = (dir, data) =>
+  writeFileSync(join(dir, "text-edits.json"), JSON.stringify(data, null, 2) + "\n");
+function readComments(dir) {
+  try {
+    return JSON.parse(readFileSync(join(dir, "comments.json"), "utf8"));
+  } catch {
+    return { schema: 1, threads: [] };
+  }
+}
+/** "Unpulled" as the server sees it: activity or structure edits after the last pull. */
+const unpulled = (h, flow) => {
+  const since = Date.parse(flow.portal?.lastPullAt || 0) || 0;
+  const items = [];
+  if (h.lastActivityAt && Date.parse(h.lastActivityAt) > since)
+    items.push("comments or copy edits");
+  if (h.structureUpdatedAt && Date.parse(h.structureUpdatedAt) > since)
+    items.push("structure (waivers, titles, entry points)");
+  return items;
+};
+
+// ---- pull ----
+async function pageAll(ctx, path, key) {
+  const items = [];
+  let cursor = null;
+  let first = null;
+  do {
+    const r = await call(
+      ctx,
+      "GET",
+      `${path}&limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    );
+    const j = expect(r, "pull");
+    first ??= j;
+    items.push(...(j[key] || []));
+    cursor = j.nextCursor || null;
+  } while (cursor);
+  return { items, first };
+}
+/** Merges the portal-side structure into flow.json. A file always wins over a waiver. */
+export function mergeStructure(flow, dir, structure, position) {
+  const changes = [];
+  if (!structure && !Number.isInteger(position)) return changes;
+  const r = resolveStates(flow, dir);
+  const byN = new Map(r.steps.map((s) => [s.n, s]));
+  for (const [n, states] of Object.entries(structure?.waivers || {})) {
+    const local = (flow.steps || []).find((s) => s.n === n);
+    const res = byN.get(n);
+    if (!local || !res) continue;
+    for (const [state, reason] of Object.entries(states)) {
+      const cur = res.states[state];
+      if (cur?.status === "present") {
+        changes.push({
+          kind: "waiver-ignored",
+          step: n,
+          state,
+          reason,
+          why: "the state has a file; a file wins over a waiver",
+        });
+        continue;
+      }
+      const next = `n/a: ${reason}`;
+      if (local.states[state] !== next) {
+        local.states[state] = next;
+        changes.push({ kind: "waiver", step: n, state, reason });
+      }
+    }
+  }
+  for (const [n, title] of Object.entries(structure?.stepTitles || {})) {
+    const local = (flow.steps || []).find((s) => s.n === n);
+    if (local && local.title !== title) {
+      local.title = title;
+      changes.push({ kind: "step-title", step: n, title });
+    }
+  }
+  if (
+    Array.isArray(structure?.entryPoints) &&
+    JSON.stringify(structure.entryPoints) !== JSON.stringify(flow.entryPoints || [])
+  ) {
+    flow.entryPoints = structure.entryPoints;
+    changes.push({ kind: "entry-points", entryPoints: structure.entryPoints });
+  }
+  if (Number.isInteger(position) && position !== flow.order) {
+    changes.push({ kind: "order", from: flow.order ?? null, to: position });
+    flow.order = position;
+  }
+  return changes;
+}
+/** Pulls threads, copy edits and structure of one flow into the repo. */
+export async function pullFlow(ctx, dir, { status = "all" } = {}) {
+  const p = needProject(ctx);
+  const flow = readFlow(dir);
+  const slug = flow.slug;
+  const h = await head(ctx, slug);
+  if (!h.exists)
+    return { flow: slug, exists: false, pulled: 0, textEdits: 0, structureChanges: [] };
+  const { items: threads, first } = await pageAll(
+    ctx,
+    `/projects/${p}/flows/${slug}/comments?status=${status}`,
+    "threads",
+  );
+  const { items: edits } = await pageAll(
+    ctx,
+    `/projects/${p}/flows/${slug}/text-edits?status=all`,
+    "edits",
+  );
+  const cur = readComments(dir);
+  const byId = new Map((cur.threads || []).map((t) => [t.id, t]));
+  for (const t of threads) {
+    const prev = byId.get(t.id);
+    if (!prev || new Date(t.updatedAt) >= new Date(prev.updatedAt)) byId.set(t.id, t);
+  }
+  writeFileSync(
+    join(dir, "comments.json"),
+    JSON.stringify(
+      {
+        schema: 1,
+        flow: slug,
+        source: "portal",
+        portal: { url: ctx.url, projectId: p, flowId: slug },
+        pulledAt: new Date().toISOString(),
+        threads: [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  const prevEdits = readEdits(dir);
+  writeEdits(dir, {
+    schema: 1,
+    flow: slug,
+    pulledAt: new Date().toISOString(),
+    edits,
+    appliedLocally: prevEdits.appliedLocally || [],
+  });
+  const structureChanges = mergeStructure(flow, dir, h.structure, h.flow?.position);
+  flow.portal = {
+    ...(flow.portal || { url: ctx.url, projectId: p, flowId: slug }),
+    previousPullAt: flow.portal?.lastPullAt ?? null,
+    lastPullAt: first?.serverTime || new Date().toISOString(),
+    remoteVersion: h.version ?? null,
+    structureUpdatedAt: h.structureUpdatedAt ?? null,
+  };
+  writeFlow(dir, flow);
+  return {
+    flow: slug,
+    exists: true,
+    pulled: threads.length,
+    open: threads.filter((t) => t.status === "open").length,
+    sentToAgent: threads.filter((t) => t.sentToAgent && t.status === "open").length,
+    textEdits: edits.length,
+    pendingEdits: edits.filter((e) => e.status === "pending").length,
+    structureChanges,
+    remoteVersion: h.version,
+    localVersion: flow.portal?.version ?? 0,
+  };
+}
+export async function pullAll(ctx, { flows, status } = {}) {
+  const all = listFlows(ctx.project).filter((f) => !flows || flows.includes(f.slug));
+  const out = [];
+  for (const f of all) out.push(await pullFlow(ctx, f.dir, { status }));
+  return out;
+}
+
+// ---- push and publish ----
+async function markApplied(ctx, dir, slug, version) {
+  const ed = readEdits(dir);
+  const ids = (ed.appliedLocally || []).map((a) => a.id);
+  if (!ids.length) return 0;
+  const m = await call(
+    ctx,
+    "POST",
+    `/projects/${ctx.projectId}/flows/${slug}/text-edits/mark-applied`,
+    { ids, version },
+    AGENT,
+  );
+  if (m.status !== 200) return 0;
+  ed.appliedLocally = [];
+  ed.edits = (ed.edits || []).map((e) =>
+    ids.includes(e.id) ? { ...e, status: "applied", appliedInVersion: version } : e,
+  );
+  writeEdits(dir, ed);
+  return m.json.updated ?? ids.length;
+}
+/** Pushes one flow (bundle first). Throws STALE_LOCAL when the portal has feedback the repo has not pulled. */
+export async function pushFlow(ctx, flowRef, { force = false, note } = {}) {
+  const p = needProject(ctx);
+  const dir = resolveFlowDir(ctx.project, flowRef);
+  const b = buildFlowBundle(ctx.project, dir);
+  if (!b.ok)
+    throw new PortalError("BUNDLE", `${b.slug}: ${b.errors.join("; ")}`, { errors: b.errors });
+  const flow = readFlow(dir);
+  const slug = flow.slug;
+  const h = await head(ctx, slug);
+  const localHead = flow.portal?.version ?? 0;
+  const ifMatch = force ? String(h.version) : String(localHead);
+  const headers = { "if-match": ifMatch };
+  if (flow.portal?.lastPullAt) headers["x-designli-last-pull"] = flow.portal.lastPullAt;
+  const q = [force ? "force=1" : null, note ? "note=" + encodeURIComponent(note) : null]
+    .filter(Boolean)
+    .join("&");
+  const r = await call(
+    ctx,
+    "POST",
+    `/projects/${p}/flows/${slug}/versions${q ? "?" + q : ""}`,
+    { manifest: b.manifest, files: b.files },
+    headers,
+    true,
+  );
+  if (r.status === 409)
+    throw new PortalError(
+      "STALE_LOCAL",
+      r.json?.error?.message || `${slug}: the portal changed since the last pull`,
+      {
+        flow: slug,
+        remoteHead: h.version,
+        localHead,
+        details: r.json?.error?.details,
+        fix: "run feedback_pull (the feedback prompt), review what arrived, then publish again; force only when a human asked",
+      },
+    );
+  const j = expect(r, "push");
+  flow.portal = {
+    ...(flow.portal || {}),
+    url: ctx.url,
+    projectId: p,
+    flowId: slug,
+    version: j.version,
+    contentHash: j.contentHash,
+    versionUrl: j.url,
+    pushedAt: new Date().toISOString(),
+    lastPullAt: flow.portal?.lastPullAt ?? new Date().toISOString(),
+  };
+  writeFlow(dir, flow);
+  let marked = 0;
+  if (!j.reused) marked = await markApplied(ctx, dir, slug, j.version);
+  // the repo mirrors the portal after a push: threads, edits (now marked) and the pull time
+  await pullFlow(ctx, dir, { status: "all" });
+  return {
+    flow: slug,
+    version: j.version,
+    reused: !!j.reused,
+    url: j.url,
+    contentHash: j.contentHash,
+    editsMarkedApplied: marked,
+    screens: b.screens,
+    warnings: b.warnings,
+  };
+}
+export async function pushComponents(ctx) {
+  const p = needProject(ctx);
+  const b = buildComponentsBundle(ctx.project);
+  if (b.empty) return { pushed: false, reason: "no components" };
+  if (!b.ok) throw new PortalError("BUNDLE", b.errors.join("; "), { errors: b.errors });
+  const j = expect(
+    await call(
+      ctx,
+      "POST",
+      `/projects/${p}/components/versions`,
+      { manifest: b.manifest, files: b.files },
+      {},
+      true,
+    ),
+    "components push",
+  );
+  return {
+    pushed: true,
+    version: j.version,
+    reused: !!j.reused,
+    contentHash: j.contentHash,
+    screens: b.screens,
+  };
+}
+/**
+ * Publishes a release: every flow (or the listed ones) is bundled and pushed when changed, the
+ * components too, then one release records the snapshot. Refuses before pushing anything when a
+ * flow has unpulled feedback (unless force), so a release never overwrites unread comments.
+ */
+export async function publish(ctx, { note, flows, dryRun = false, force = false } = {}) {
+  const p = needProject(ctx);
+  const all = listFlows(ctx.project).filter((f) => !flows || flows.includes(f.slug));
+  if (!all.length)
+    throw new PortalError(
+      "VALIDATION",
+      flows
+        ? `no such flows: ${flows.join(", ")}`
+        : "no flows declared under design/flows; run adopt first",
+    );
+  const plan = [];
+  const stale = [];
+  for (const f of all) {
+    const b = buildFlowBundle(ctx.project, f.dir);
+    const g = gapsOf(ctx.project, { flow: f.slug }).gaps;
+    const h = await head(ctx, f.slug);
+    const flow = readFlow(f.dir);
+    const localVersion = flow.portal?.version ?? 0;
+    const entry = {
+      flow: f.slug,
+      version: h.version,
+      localVersion,
+      contentHash: b.contentHash,
+      remoteHash: h.contentHash,
+      screens: b.screens,
+      gaps: g.filter((x) => !BLOCKING.has(x.kind)).length,
+      errors: b.errors,
+    };
+    if (!b.ok) entry.status = "error";
+    else if (!h.exists) entry.status = "new";
+    else if (h.version !== localVersion && !force) entry.status = "behind";
+    else if (h.contentHash === b.contentHash) entry.status = "unchanged";
+    else entry.status = "changed";
+    const u = h.exists ? unpulled(h, flow) : [];
+    if (u.length && !force) {
+      entry.unpulled = u;
+      stale.push(entry);
+    }
+    plan.push(entry);
+  }
+  const comps = buildComponentsBundle(ctx.project);
+  const compState = comps.empty ? "none" : comps.ok ? "ready" : "error";
+  if (dryRun)
+    return {
+      dryRun: true,
+      flows: plan,
+      components: { state: compState, screens: comps.screens ?? 0, errors: comps.errors },
+      wouldRefuse: stale.map((s) => ({ flow: s.flow, unpulled: s.unpulled })),
+      clientUrl: clientUrl(ctx),
+    };
+  if (stale.length)
+    throw new PortalError(
+      "STALE_LOCAL",
+      `unpulled feedback on ${stale.map((s) => s.flow).join(", ")}: pull it first so the release does not overwrite what the client said`,
+      {
+        flows: stale.map((s) => ({ flow: s.flow, unpulled: s.unpulled })),
+        fix: "run feedback_pull (the feedback prompt), address or acknowledge what arrived, then publish again; force only when a human asked",
+      },
+    );
+  const behind = plan.filter((e) => e.status === "behind");
+  if (behind.length)
+    throw new PortalError(
+      "STALE_LOCAL",
+      `the portal has newer versions of ${behind.map((e) => `${e.flow} (v${e.version}, this repo knows v${e.localVersion})`).join(", ")}`,
+      {
+        flows: behind,
+        fix: "someone else published from another checkout: run adopt_from_portal to rebuild the declarations from the portal, or force when a human decided this repo wins",
+      },
+    );
+  const errors = plan.filter((e) => e.status === "error");
+  if (errors.length)
+    throw new PortalError(
+      "BUNDLE",
+      `cannot bundle ${errors.map((e) => `${e.flow}: ${e.errors.join("; ")}`).join(" | ")}`,
+      { flows: errors },
+    );
+  const pushed = [];
+  const unchangedFlows = [];
+  for (const e of plan) {
+    const r = await pushFlow(ctx, e.flow, { force, note });
+    (r.reused ? unchangedFlows : pushed).push({
+      flow: r.flow,
+      version: r.version,
+      url: r.url,
+      editsMarkedApplied: r.editsMarkedApplied,
+    });
+  }
+  let components = { state: "none" };
+  if (compState === "ready") {
+    const c = await pushComponents(ctx);
+    components = {
+      state: c.reused ? "unchanged" : "pushed",
+      version: c.version,
+      screens: c.screens,
+    };
+  } else if (compState === "error") components = { state: "error", errors: comps.errors };
+  const rel = expect(
+    await call(ctx, "POST", `/projects/${p}/releases`, {
+      note: note || null,
+      flows: all.map((f) => f.slug),
+      product: readProduct(ctx.project),
+    }),
+    "release",
+    [201],
+  );
+  await listReleases(ctx).catch(() => null);
+  return {
+    release: { number: rel.number, url: rel.url, note: rel.note, flows: rel.flows },
+    pushed,
+    unchanged: unchangedFlows,
+    components,
+    gaps: plan.reduce((n, e) => n + e.gaps, 0),
+    clientUrl: clientUrl(ctx),
+  };
+}
+
+// ---- feedback ----
+const screenIndex = (flow, dir) => {
+  const r = resolveStates(flow, dir);
+  const idx = new Map();
+  for (const st of r.steps)
+    for (const [state, v] of Object.entries(st.states))
+      if (v.status === "present")
+        idx.set(v.screen, { step: st.n, stepId: st.id, state, files: v.files });
+  return idx;
+};
+/** Threads and copy edits across flows, newest first, sent-to-agent first, with the file to change. */
+export function digest(project, { since, flows } = {}) {
+  const items = [];
+  for (const { slug, dir, flow } of listFlows(project)) {
+    if (flows && !flows.includes(slug)) continue;
+    const idx = screenIndex(flow, dir);
+    const cutoff =
+      since === "last-publish"
+        ? flow.portal?.pushedAt
+        : since === "last-pull"
+          ? flow.portal?.previousPullAt
+          : since;
+    const t0 = cutoff ? Date.parse(cutoff) : 0;
+    const fileOf = (screen) => {
+      const s = screen && idx.get(screen.id);
+      const f = s?.files?.[screen?.device] || s?.files?.desktop;
+      return f ? relative(project, f) : null;
+    };
+    for (const t of readComments(dir).threads || []) {
+      if (Date.parse(t.updatedAt) < t0) continue;
+      const s = t.screen && idx.get(t.screen.id);
+      items.push({
+        flow: slug,
+        kind: "thread",
+        id: t.id,
+        status: t.status,
+        sentToAgent: !!t.sentToAgent,
+        screen: t.screen?.id ?? null,
+        device: t.screen?.device ?? null,
+        step: s?.step ?? null,
+        state: s?.state ?? null,
+        file: fileOf(t.screen),
+        author: `${t.author.name} (${t.author.role})`,
+        text: t.text,
+        replies: (t.replies || []).length,
+        updatedAt: t.updatedAt,
+        url: flow.portal?.url
+          ? `${flow.portal.url}/projects/${flow.portal.projectId}/flows/${slug}?tab=comments&thread=${t.id}`
+          : null,
+      });
+    }
+    for (const e of readEdits(dir).edits || []) {
+      if (Date.parse(e.updatedAt) < t0) continue;
+      const s = idx.get(e.screen.id);
+      items.push({
+        flow: slug,
+        kind: "edit",
+        id: e.id,
+        status: e.status,
+        sentToAgent: false,
+        screen: e.screen.id,
+        device: e.screen.device,
+        step: s?.step ?? null,
+        state: s?.state ?? null,
+        file: fileOf(e.screen),
+        author: `${e.author.name} (${e.author.role})`,
+        text: { original: e.originalText, new: e.newText },
+        updatedAt: e.updatedAt,
+      });
+    }
+  }
+  const rank = (i) =>
+    (i.status === "open" || i.status === "pending" ? 0 : 1) * 10 + (i.sentToAgent ? 0 : 1);
+  items.sort((a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt));
+  return {
+    items,
+    open: items.filter((i) => i.kind === "thread" && i.status === "open").length,
+    pendingEdits: items.filter((i) => i.kind === "edit" && i.status === "pending").length,
+  };
+}
+const escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const rxEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const textPattern = (text) =>
+  new RegExp(
+    "(>\\s*)" + escHtml(text).trim().split(/\s+/).map(rxEscape).join("\\s+") + "(\\s*<)",
+    "g",
+  );
+function applyEditToFile(file, edit) {
+  if (!file || !existsSync(file)) return { file, result: "missing-file" };
+  const src = readFileSync(file, "utf8");
+  const rx = textPattern(edit.originalText);
+  // the head (a <title> that repeats the h1) is not what the client edited
+  const headEnd = (() => {
+    const m = src.match(/<\/head>/i);
+    return m ? m.index : 0;
+  })();
+  const matches = [...src.matchAll(rx)].filter((m) => m.index >= headEnd);
+  if (matches.length === 0) return { file, result: "not-found" };
+  if (matches.length > 1) return { file, result: "ambiguous", count: matches.length };
+  const m = matches[0];
+  const next =
+    src.slice(0, m.index) + m[1] + escHtml(edit.newText) + m[2] + src.slice(m.index + m[0].length);
+  writeFileSync(file, next);
+  return { file, result: "applied" };
+}
+/** Applies pending copy edits to the screen file, or to the include that holds the text. */
+export function editsApply(project, flowRef) {
+  const dir = resolveFlowDir(project, flowRef);
+  const flow = readFlow(dir);
+  const proto = readPrototype(project);
+  const compDir = resolve(project, proto.components);
+  const idx = screenIndex(flow, dir);
+  const data = readEdits(dir);
+  const pending = (data.edits || []).filter(
+    (e) => e.status === "pending" && !(data.appliedLocally || []).some((a) => a.id === e.id),
+  );
+  const results = [];
+  for (const e of pending) {
+    const s = idx.get(e.screen.id);
+    const main = s?.files?.[e.screen.device] || s?.files?.desktop || null;
+    const r = {
+      id: e.id,
+      screen: e.screen,
+      originalText: e.originalText,
+      newText: e.newText,
+      files: [],
+    };
+    let hit = applyEditToFile(main, e);
+    r.files.push({ ...hit, file: hit.file ? relative(project, hit.file) : null });
+    if (hit.result === "not-found" && main) {
+      // the text may live in a shared part
+      for (const name of scanFile(main).includes) {
+        const cf = componentFile(name, [compDir, dir]);
+        if (!cf) continue;
+        const h2 = applyEditToFile(cf, e);
+        r.files.push({ ...h2, file: relative(project, cf), include: name });
+        if (h2.result === "applied") {
+          hit = h2;
+          break;
+        }
+      }
+    } else if (hit.result === "applied" && s?.files) {
+      const other = e.screen.device === "mobile" ? s.files.desktop : s.files.mobile;
+      if (other && other !== main) {
+        const h3 = applyEditToFile(other, e);
+        r.files.push({ ...h3, file: relative(project, other), sibling: true });
+      }
+    }
+    r.result = hit.result;
+    if (hit.result === "applied")
+      data.appliedLocally = [
+        ...(data.appliedLocally || []),
+        {
+          id: e.id,
+          files: r.files.filter((f) => f.result === "applied").map((f) => f.file),
+          at: new Date().toISOString(),
+        },
+      ];
+    results.push(r);
+  }
+  writeEdits(dir, data);
+  return {
+    flow: flow.slug,
+    applied: results.filter((r) => r.result === "applied").length,
+    needsManual: results.filter((r) => r.result !== "applied"),
+    results,
+    note: "the next publish marks applied edits as applied on the portal",
+  };
+}
+export async function reply(ctx, flowRef, thread, text) {
+  const p = needProject(ctx);
+  const slug = readFlow(resolveFlowDir(ctx.project, flowRef)).slug;
+  return {
+    thread,
+    reply: expect(
+      await call(
+        ctx,
+        "POST",
+        `/projects/${p}/flows/${slug}/comments/${thread}/replies`,
+        { text },
+        AGENT,
+      ),
+      "reply",
+      [201],
+    ),
+  };
+}
+export async function resolveThread(ctx, flowRef, thread, reopen = false) {
+  const p = needProject(ctx);
+  const slug = readFlow(resolveFlowDir(ctx.project, flowRef)).slug;
+  return {
+    thread: expect(
+      await call(
+        ctx,
+        "POST",
+        `/projects/${p}/flows/${slug}/comments/${thread}/${reopen ? "reopen" : "resolve"}`,
+        {},
+        AGENT,
+      ),
+      reopen ? "reopen" : "resolve",
+    ),
+  };
+}
+
+// ---- adopt from the portal ----
+/** Rebuilds prototype.json and every flow.json from the portal's latest versions; downloads screens whose source is not in the repo. */
+export async function adoptFromPortal(ctx) {
+  const p = needProject(ctx);
+  const ov = await overview(ctx);
+  const written = [];
+  const downloaded = [];
+  const proto = readPrototype(ctx.project);
+  const { exists, ...protoBase } = proto;
+  const nextProto = {
+    ...protoBase,
+    ...(ov.project.product ? { product: ov.project.product } : {}),
+  };
+  for (const f of ov.flows) {
+    if (!f.version) continue;
+    const v = expect(
+      await call(ctx, "GET", `/projects/${p}/flows/${f.id}/versions/latest`),
+      `version of ${f.id}`,
+    );
+    const m = v.manifest;
+    const h = await head(ctx, f.id);
+    const dir = flowDirOf(ctx.project, f.id);
+    mkdirSync(dir, { recursive: true });
+    const cur = readFlow(dir) || { schema: 2, slug: f.id, status: "draft", reviews: [] };
+    const byId = new Map((m.screens || []).map((s) => [s.id, s]));
+    const devices = Object.keys(m.devices || { desktop: {} });
+    const steps = [];
+    for (const st of m.steps || []) {
+      const states = {};
+      for (const x of st.states || []) {
+        if (x.waived) {
+          states[x.state] = `n/a: ${x.waived}`;
+          continue;
+        }
+        const sc = byId.get(x.screen);
+        if (!sc) continue;
+        const files = {};
+        for (const [dev, d] of Object.entries(sc.devices || {})) {
+          if (!d) continue;
+          const local = d.source && existsSync(join(dir, d.source)) ? d.source : null;
+          if (local) files[dev] = local;
+          else {
+            const name = `${x.screen}${dev === "mobile" ? "-Mobile" : ""}.html`;
+            const raw = await fetch(`${ctx.url}/p/${p}/${f.id}/v${v.number}/${d.file}?raw=1`, {
+              headers: { authorization: `Bearer ${ctx.token}` },
+            });
+            if (!raw.ok)
+              throw new PortalError(
+                "PORTAL",
+                `cannot download ${d.file} of ${f.id} (${raw.status})`,
+              );
+            writeFileSync(join(dir, name), await raw.text());
+            downloaded.push(relative(ctx.project, join(dir, name)));
+            files[dev] = name;
+          }
+        }
+        states[x.state] = Object.keys(files).length === 1 && files.desktop ? files.desktop : files;
+      }
+      steps.push({
+        n: st.n,
+        id: st.id,
+        kind: st.kind,
+        ...(h.structure?.stepTitles?.[st.n] ? { title: h.structure.stepTitles[st.n] } : {}),
+        ...(st.surface ? { surface: st.surface } : {}),
+        ...(st.purpose ? { purpose: st.purpose } : {}),
+        ...(st.primaryAction ? { primaryAction: st.primaryAction } : {}),
+        states,
+      });
+    }
+    const flow = {
+      ...cur,
+      schema: 2,
+      slug: f.id,
+      title: h.flow?.title || m.flow?.title || f.id,
+      goal: h.flow?.goal ?? m.flow?.goal ?? "",
+      order: Number.isInteger(h.flow?.position) ? h.flow.position : (m.flow?.order ?? null),
+      next: h.flow?.next || m.flow?.next || [],
+      entryPoints: h.structure?.entryPoints || m.entryPoints || [],
+      devices,
+      ...(m.flow?.prototype ? { prototype: true } : {}),
+      steps,
+      transitions: m.transitions || [],
+      portal: {
+        ...(cur.portal || {}),
+        url: ctx.url,
+        projectId: p,
+        flowId: f.id,
+        version: v.number,
+        contentHash: v.contentHash,
+        versionUrl: v.url,
+        pushedAt: v.createdAt,
+        lastPullAt: cur.portal?.lastPullAt ?? null,
+      },
+    };
+    delete flow.device;
+    delete flow.frame;
+    delete flow.mobileFrame;
+    delete flow.artifact;
+    mergeStructure(flow, dir, h.structure, h.flow?.position);
+    writeFlow(dir, flow);
+    written.push(relative(ctx.project, join(dir, "flow.json")));
+    await pullFlow(ctx, dir, { status: "all" });
+  }
+  mkdirSync(join(ctx.project, "design"), { recursive: true });
+  writeFileSync(
+    join(ctx.project, "design", "prototype.json"),
+    JSON.stringify(nextProto, null, 2) + "\n",
+  );
+  written.push("design/prototype.json");
+  await listReleases(ctx).catch(() => null);
+  return {
+    written,
+    downloaded,
+    flows: ov.flows.map((f) => f.id),
+    release: ov.project.release,
+    note: downloaded.length
+      ? "downloaded screens are flattened (includes inlined); the source with includes lives only in git"
+      : undefined,
+  };
+}
+
+// ---- handoff ----
+export async function handoff(ctx, flowRef, { story, components } = {}) {
+  const p = needProject(ctx);
+  const dir = resolveFlowDir(ctx.project, flowRef);
+  const flow = readFlow(dir);
+  if (!story || !String(story).trim())
+    throw new PortalError("VALIDATION", "a story title is required");
+  const g = gapsOf(ctx.project, { flow: flow.slug, strict: true }).gaps.filter(
+    (x) => x.kind !== "no-product",
+  );
+  if (g.length)
+    throw new PortalError(
+      "VALIDATION",
+      `${flow.slug} has ${g.length} gap(s) that block the handoff`,
+      { gaps: g },
+    );
+  const b = buildFlowBundle(ctx.project, dir);
+  const h = await head(ctx, flow.slug);
+  if (!h.exists || h.contentHash !== b.contentHash)
+    throw new PortalError(
+      "VALIDATION",
+      `${flow.slug}: the portal does not have the current screens; publish first`,
+      { remoteHash: h.contentHash, localHash: b.contentHash },
+    );
+  const comps = [
+    ...new Set([...(components || []), ...b.manifest.screens.flatMap((s) => s.includes || [])]),
+  ].map(componentId);
+  const j = expect(
+    await call(ctx, "POST", `/projects/${p}/flows/${flow.slug}/handoffs`, {
+      story: String(story).trim(),
+      components: comps,
+    }),
+    "handoff",
+    [200, 201],
+  );
+  flow.status = "handed-off";
+  flow.story = String(story).trim();
+  writeFlow(dir, flow);
+  return {
+    id: j.id,
+    url: j.url,
+    specUrl: j.specUrl,
+    version: j.version,
+    releaseNumber: j.releaseNumber ?? null,
+    components: comps,
+  };
+}

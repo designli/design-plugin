@@ -8,7 +8,6 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, basename } from "node:path";
 import {
-  PLUGIN_ROOT,
   DEFAULT_PORTAL,
   normalizeUrl,
   urlAllowed,
@@ -21,9 +20,10 @@ import {
   mcpServers,
   writeMcpJson,
   ensureGitignore,
-  nextSteps,
   CRED_FILE,
 } from "../server/lib/setup.mjs";
+import { preflight as runPreflight, nextSteps, gitInfo } from "../server/lib/status.mjs";
+import { overview, context } from "../server/lib/portal.mjs";
 
 const argv = process.argv.slice(2);
 const opt = (k, d) => {
@@ -86,17 +86,22 @@ try {
 if (!gitRoot)
   die(`${project} is not inside a git repository; run setup from the product repo root`);
 if (resolve(gitRoot) !== project) die(`run setup from the repository root: ${gitRoot}`);
-const preflight = JSON.parse(
-  execSync(
-    `${JSON.stringify(process.execPath)} ${JSON.stringify(join(PLUGIN_ROOT, "scripts", "preflight.mjs"))} --json`,
-    { cwd: project, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
-  ).toString() || "{}",
-);
-const info = preflight.info ?? {};
+const git = gitInfo(project);
+if (!git.remote) {
+  say(
+    "This repository has no git remote. The portal keeps the flattened screens, but the source with its includes lives only here: a lost laptop loses it.",
+  );
+  if (yes && !has("--allow-no-remote"))
+    die("add a remote first (git remote add origin …) or pass --allow-no-remote");
+  if (!yes && (await ask("Continue without a remote? y/n", "n")) !== "y")
+    die("add a remote first: git remote add origin <url> && git push -u origin main");
+}
+const status0 = runPreflight(project);
+const info = status0.info;
 const lib = readLibrary(project);
 say(`designli-design setup for ${basename(project)}`);
 say(
-  `  ${info.greenfield ? "no UI code yet (greenfield)" : `codebase: ${info.framework ?? "unknown framework"}`}; design DNA ${info.dna?.PRODUCT && info.dna?.DESIGN ? "present" : "missing"}; flows: ${(info.flows ?? []).join(", ") || "none"}`,
+  `  prototype ${info.prototype?.exists ? "adopted" : "not adopted yet"}; flows: ${(info.flows ?? []).map((f) => f.slug).join(", ") || "none"}; product ${info.product?.name ?? "not set"}`,
 );
 
 // ---- 2. portal url ----
@@ -272,30 +277,17 @@ if (harness === "generic") {
 }
 
 // ---- 7. next steps ----
-let portalFlows = [];
+let portal = null;
 if (target === "portal") {
-  const { token } = tokenFor(url);
-  if (token) {
-    const r = await fetch(`${url}/api/v1/projects/${projectId}/flows`, {
-      headers: { authorization: `Bearer ${token}` },
-    }).catch(() => null);
-    if (r?.ok)
-      portalFlows = ((await r.json()).flows || []).map((f) => ({
-        id: f.id,
-        openThreads: f.openThreads,
-        pendingEdits: f.pendingEdits,
-      }));
+  try {
+    portal = await overview(context(project, { url, projectId }));
+  } catch (e) {
+    say(`  (could not read the project on the portal: ${e.message})`);
   }
 }
 say("");
 say("Next:");
-for (const s of nextSteps({
-  greenfield: !!info.greenfield,
-  hasDna: !!(info.dna?.PRODUCT && info.dna?.DESIGN && info.dna?.designJson),
-  localFlows: info.flows ?? [],
-  portalFlows,
-  harness,
-}))
+for (const s of nextSteps({ status: runPreflight(project, { hashes: true }), portal, harness }))
   say(`  - ${s}`);
 say("");
 say(

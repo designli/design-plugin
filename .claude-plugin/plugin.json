@@ -1,12 +1,11 @@
 {
   "name": "designli-design",
-  "description": "Design product UX flows by prompting, anchored to the real design system, reviewed by the client on the Designli portal, handed off as a spec. Harness-neutral core: a local MCP server (tools, resources, prompts) plus dependency-free Node scripts; Claude Code skills are thin wrappers. Wraps a pinned impeccable 3.5.0.",
+  "description": "Adopts a static HTML prototype (one file per screen state), publishes releases to the Designli portal, tracks versions by content hash, feeds the client's feedback back into the repository and hands flows off to dev agents through the portal. Harness-neutral core: a local MCP server plus dependency-free Node scripts; Claude Code skills are thin wrappers.",
   "version": "0.1.0",
   "author": {
     "name": "Designli"
   },
-  "keywords": ["design", "ux-flows", "portal", "mcp", "handoff", "impeccable"],
+  "keywords": ["design", "prototype", "user-flows", "portal", "mcp", "releases", "handoff"],
   "skills": "./skills/",
-  "agents": ["./agents/artboard-author.md"],
   "mcpServers": "./.mcp.json"
 }

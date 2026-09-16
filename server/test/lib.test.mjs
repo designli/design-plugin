@@ -1,0 +1,339 @@
+// The library on a scratch static-HTML prototype: scan, propose, write, gaps, bundle, edits, digest.
+//   node --test "server/test/*.test.mjs"
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  scanPrototype,
+  proposeFlows,
+  writeFlows,
+  gapsOf,
+  readFlow,
+  guessStem,
+} from "../lib/flows.mjs";
+import { buildFlowBundle, buildComponentsBundle } from "../lib/bundle.mjs";
+import { editsApply, digest, mergeStructure } from "../lib/portal.mjs";
+import { flatten, readProduct } from "../lib/proto.mjs";
+
+const page = (title, body, extra = "") => `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${title}</title>
+<style>body{font-family:sans-serif}</style>
+</head>
+<body>
+<dc-import name="Navbar"></dc-import>
+<main>
+<h1>${title}</h1>
+${body}
+</main>
+${extra}
+</body>
+</html>
+`;
+/** A two-step signup prototype with an include, links, a mobile variant and a state gap. */
+function scratch() {
+  const dir = mkdtempSync(join(tmpdir(), "proto-"));
+  mkdirSync(join(dir, "design", "components"), { recursive: true });
+  mkdirSync(join(dir, "design", "flows", "signup"), { recursive: true });
+  writeFileSync(
+    join(dir, "design", "components", "Navbar.html"),
+    `<nav><a href="#">Home</a><span>Sign in</span></nav>\n`,
+  );
+  const f = (n, c) => writeFileSync(join(dir, "design", "flows", "signup", n), c);
+  f(
+    "email.html",
+    page(
+      "Enter your email",
+      `<form><input type="email"><a href="email-validation.html" data-on="Continue with a bad email">Continue</a><a href="done-success.html">Continue</a></form>`,
+    ),
+  );
+  f(
+    "email-m.html",
+    page(
+      "Enter your email",
+      `<form><input type="email"><a href="done-success.html">Continue</a></form>`,
+    ),
+  );
+  f(
+    "email-validation.html",
+    page(
+      "Enter your email",
+      `<form><input type="email"><p role="alert">Enter a valid email address</p></form>`,
+    ),
+  );
+  f("done-success.html", page("You are in", `<p>Welcome aboard</p>`));
+  writeFileSync(
+    join(dir, "PRODUCT.md"),
+    "# Product\n\n## Product Purpose\nAcme Mail is email for teams who hate email.\n",
+  );
+  return dir;
+}
+
+test("guessStem reads numbers, steps, states and custom states from file names", () => {
+  assert.deepEqual(guessStem("02-details-validation"), {
+    n: "02",
+    stepId: "Details",
+    state: "Validation",
+  });
+  assert.deepEqual(guessStem("client"), { n: null, stepId: "Client", state: "Default" });
+  assert.deepEqual(guessStem("ReviewSubmitting"), {
+    n: null,
+    stepId: "Review",
+    state: "Submitting",
+  });
+  assert.deepEqual(guessStem("plan-custom-trial-extended"), {
+    n: null,
+    stepId: "Plan",
+    state: "Custom-TrialExtended",
+  });
+});
+
+test("scan → propose → write → gaps on a plain HTML prototype", () => {
+  const dir = scratch();
+  const scan = scanPrototype(dir);
+  assert.equal(scan.screens.length, 4);
+  assert.deepEqual(
+    scan.components.map((c) => c.id),
+    ["CmpNavbar"],
+  );
+  assert.equal(scan.components[0].usedBy.length, 4);
+  assert.equal(scan.unassigned.length, 4);
+  assert.deepEqual(readProduct(dir), {
+    name: "Acme Mail",
+    summary: "Acme Mail is email for teams who hate email.",
+  });
+  const prop = proposeFlows(dir, scan);
+  assert.equal(prop.flows.length, 1);
+  const flow = prop.flows[0];
+  assert.equal(flow.slug, "signup");
+  assert.deepEqual(
+    flow.steps.map((s) => `${s.n}-${s.id}`),
+    ["01-Email", "02-Done"],
+  );
+  assert.equal(flow.steps[0].kind, "form");
+  assert.equal(flow.steps[1].kind, "result");
+  assert.deepEqual(flow.steps[0].states, {
+    Default: { desktop: "email.html", mobile: "email-m.html" },
+    Validation: "email-validation.html",
+  });
+  assert.deepEqual(flow.steps[1].states, { Success: "done-success.html" });
+  assert.ok(
+    flow.transitions.some(
+      (t) =>
+        t.from === "01-Email-Default" &&
+        t.to === "01-Email-Validation" &&
+        t.on === "Continue with a bad email",
+    ),
+  );
+  assert.ok(
+    flow.transitions.some(
+      (t) => t.from === "01-Email-Default" && t.to === "02-Done-Success" && t.on === "Continue",
+    ),
+  );
+  assert.deepEqual(flow.entryPoints, [{ from: "?", to: "01-Email" }]);
+  const q = prop.questions.filter((x) => x.flow === "signup");
+  assert.ok(q.some((x) => x.field === "steps.01.states" && x.why.includes("Submitting")));
+  assert.ok(q.some((x) => x.field === "entryPoints"));
+  // the designer answers: waive two states, name the entry point
+  flow.steps[0].states.Submitting = "n/a: instant, no network call";
+  flow.entryPoints = [{ from: "Landing: Get started", to: "01-Email" }];
+  flow.goal = "Create an account with an email";
+  const w = writeFlows(dir, {
+    flows: [flow],
+    prototype: {
+      product: { name: "Acme Mail", summary: "Email for teams" },
+      devices: { desktop: { w: 1440, h: 900 }, mobile: { w: 390, h: 844 } },
+    },
+  });
+  assert.ok(w.written.includes("design/prototype.json"));
+  const fj = readFlow(join(dir, "design", "flows", "signup"));
+  assert.equal(fj.schema, 2);
+  assert.equal(fj.order, 1);
+  assert.equal(fj.steps[0].states.Submitting, "n/a: instant, no network call");
+  const gaps = gapsOf(dir).gaps;
+  assert.deepEqual(gaps.map((g) => g.kind + ":" + g.where).sort(), [
+    "state-missing:01 Error",
+    "state-missing:02 Default",
+  ]);
+  assert.equal(gapsOf(dir, { strict: true }).gaps.length, 2);
+  assert.equal(scanPrototype(dir).unassigned.length, 0, "declared files are not proposed again");
+  assert.equal(proposeFlows(dir).flows.length, 0);
+});
+
+test("the bundle names screens by id, inlines includes, rewrites links and infers transitions", () => {
+  const dir = scratch();
+  const flow = proposeFlows(dir).flows[0];
+  flow.steps[0].states.Submitting = "n/a: instant";
+  flow.steps[0].states.Error = "n/a: no server";
+  flow.steps[1].states.Default = "n/a: success is the view";
+  writeFlows(dir, { flows: [flow] });
+  const b = buildFlowBundle(dir, "signup");
+  assert.equal(b.ok, true, b.errors.join("; "));
+  assert.deepEqual(b.entries.map((e) => e.path).sort(), [
+    "screens/01-Email-Default-Mobile.html",
+    "screens/01-Email-Default.html",
+    "screens/01-Email-Validation.html",
+    "screens/02-Done-Success.html",
+  ]);
+  const m = b.manifest;
+  assert.equal(m.product.name, "Acme Mail");
+  const first = m.screens.find((s) => s.id === "01-Email-Default");
+  assert.deepEqual(first.includes, ["CmpNavbar"]);
+  assert.equal(first.devices.desktop.source, "email.html");
+  assert.equal(first.devices.mobile.source, "email-m.html");
+  assert.equal(first.devices.mobile.w, 390);
+  const html = readFileSync(
+    join(dir, "design", "flows", "signup", "bundle", "screens", "01-Email-Default.html"),
+    "utf8",
+  );
+  assert.ok(html.includes('data-imported-component="Navbar"'), "include inlined");
+  assert.ok(html.includes('href="02-Done-Success.html"'), "link rewritten to the screen id");
+  assert.ok(!html.includes("dc-import"), "no include holes left");
+  assert.ok(m.transitions.some((t) => t.from === "01-Email-Default" && t.to === "02-Done-Success"));
+  assert.ok(m.steps[0].states.some((s) => s.state === "Submitting" && s.waived === "instant"));
+  // deterministic: a rebuild of unchanged sources gives the same hash
+  assert.equal(buildFlowBundle(dir, "signup").contentHash, b.contentHash);
+  const c = buildComponentsBundle(dir);
+  assert.equal(c.ok, true);
+  assert.deepEqual(
+    c.manifest.screens.map((s) => s.id),
+    ["CmpNavbar"],
+  );
+  assert.ok(
+    c.files[0].content.startsWith("<!doctype html>"),
+    "a fragment is wrapped into a document",
+  );
+});
+
+test("a broken include and a broken file are blocking gaps and bundle errors", () => {
+  const dir = scratch();
+  const flow = proposeFlows(dir).flows[0];
+  flow.steps[0].states.Loading = "missing.html";
+  writeFlows(dir, { flows: [flow] });
+  writeFileSync(
+    join(dir, "design", "flows", "signup", "done-success.html"),
+    page("You are in", `<dc-import name="Footer"></dc-import>`),
+  );
+  const g = gapsOf(dir);
+  assert.ok(g.blocking.some((x) => x.kind === "broken-file"));
+  assert.ok(g.blocking.some((x) => x.kind === "broken-include"));
+  const b = buildFlowBundle(dir, "signup");
+  assert.equal(b.ok, false);
+  assert.ok(b.errors.some((e) => /missing\.html/.test(e)));
+  assert.ok(b.errors.some((e) => /Footer/.test(e)));
+});
+
+test("copy edits land in the screen, in the other device, or in the include that holds the text", () => {
+  const dir = scratch();
+  const flow = proposeFlows(dir).flows[0];
+  writeFlows(dir, { flows: [flow] });
+  const fdir = join(dir, "design", "flows", "signup");
+  const edit = (id, screen, device, originalText, newText) => ({
+    id,
+    flowVersion: 1,
+    screen: { id: screen, device },
+    elementPath: "b",
+    componentRef: null,
+    originalText,
+    originalHash: "x",
+    newText,
+    author: { name: "Client", role: "client" },
+    status: "pending",
+    createdAt: "2026-09-16T10:00:00Z",
+    updatedAt: "2026-09-16T10:00:00Z",
+  });
+  writeFileSync(
+    join(fdir, "text-edits.json"),
+    JSON.stringify({
+      schema: 1,
+      edits: [
+        edit("e1", "01-Email-Default", "desktop", "Enter your email", "Your work email"),
+        edit("e2", "01-Email-Default", "desktop", "Sign in", "Log in"),
+        edit("e3", "02-Done-Success", "desktop", "Not on the page", "Whatever"),
+      ],
+    }),
+  );
+  const r = editsApply(dir, "signup");
+  assert.equal(r.applied, 2);
+  assert.equal(r.needsManual.length, 1);
+  assert.equal(r.needsManual[0].id, "e3");
+  assert.ok(readFileSync(join(fdir, "email.html"), "utf8").includes("<h1>Your work email</h1>"));
+  assert.ok(
+    readFileSync(join(fdir, "email-m.html"), "utf8").includes("<h1>Your work email</h1>"),
+    "the mobile variant follows",
+  );
+  assert.ok(
+    readFileSync(join(dir, "design", "components", "Navbar.html"), "utf8").includes("Log in"),
+    "edited once in the include",
+  );
+  const e2 = r.results.find((x) => x.id === "e2");
+  assert.ok(e2.files.some((f) => f.include === "Navbar" && f.result === "applied"));
+  const d = digest(dir);
+  assert.equal(d.items.length, 3);
+  assert.equal(d.items[0].kind, "edit");
+  assert.equal(d.items[0].file, "design/flows/signup/email.html");
+});
+
+test("portal structure merges into flow.json; a file wins over a waiver", () => {
+  const dir = scratch();
+  const flow = proposeFlows(dir).flows[0];
+  writeFlows(dir, { flows: [flow] });
+  const fdir = join(dir, "design", "flows", "signup");
+  const fj = readFlow(fdir);
+  const changes = mergeStructure(
+    fj,
+    fdir,
+    {
+      waivers: { "01": { Error: "no server call", Validation: "portal says so" } },
+      stepTitles: { "01": "Your email" },
+      entryPoints: [{ from: "Nav", to: "01-Email" }],
+    },
+    3,
+  );
+  assert.deepEqual(changes.map((c) => c.kind).sort(), [
+    "entry-points",
+    "order",
+    "step-title",
+    "waiver",
+    "waiver-ignored",
+  ]);
+  assert.equal(fj.steps[0].states.Error, "n/a: no server call");
+  assert.equal(
+    fj.steps[0].states.Validation,
+    "email-validation.html",
+    "the designed state keeps its file",
+  );
+  assert.equal(fj.steps[0].title, "Your email");
+  assert.equal(fj.order, 3);
+});
+
+test("flatten keeps .dc.html output on the previous flattener's template", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dc-"));
+  writeFileSync(
+    join(dir, "Cmp.dc.html"),
+    `<html><head><script src="./support.js"></script></head><body><x-dc><helmet><style>p{color:red}</style></helmet><p>nav</p></x-dc></body></html>`,
+  );
+  writeFileSync(
+    join(dir, "01-A-Default.dc.html"),
+    `<html><head><script src="./support.js"></script></head><body><x-dc><helmet><style>body{margin:0}</style></helmet><div><dc-import name="Cmp" hint-size="100%,72px"></dc-import><h1>Hi</h1></div></x-dc></body></html>`,
+  );
+  const r = flatten(join(dir, "01-A-Default.dc.html"), { componentDirs: [dir], project: dir });
+  assert.deepEqual(r.includes, ["Cmp"]);
+  assert.ok(r.html.startsWith('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">'));
+  assert.ok(
+    r.html.includes(
+      "<!-- generated by designli-design from 01-A-Default.dc.html; do not edit, edit the .dc.html source and re-run handoff -->",
+    ),
+  );
+  assert.ok(
+    r.html.includes(
+      `<!-- begin Cmp --><div data-imported-component="Cmp"><p>nav</p></div><!-- end Cmp -->`,
+    ),
+  );
+  assert.ok(!r.html.includes("hint-size"));
+  assert.ok(existsSync(dir));
+});

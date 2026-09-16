@@ -1,6 +1,6 @@
 # Required states per step kind
 
-Every step in a flow has a `kind`. The kind decides which states are required. A required state is either designed as an artboard or explicitly waived with `n/a: <reason>` in the coverage table. `flow-check.mjs --strict` blocks handoff on any required state that is neither.
+Every step in a flow has a `kind`. The kind decides which states are required. A required state is either designed as a screen file or explicitly waived with `n/a: <reason>` in `flow.json`. A required state that is neither shows as a gap on the portal (the states grid) and blocks the handoff; it does not block publishing.
 
 | Kind           | Use for                                                           | Required states                        | Optional states                                                                            |
 | -------------- | ----------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -15,7 +15,7 @@ State vocabulary is fixed. Use exactly these names in file stems and tables:
 
 `Default` · `Loading` · `Empty` · `Validation` · `Submitting` · `Error` · `Success` · `Disabled` · `Selected` · `Partial` · `Stale`
 
-Custom states are allowed only as `Custom-<Name>` (for example `Custom-TrialExtended`) and must be explained in `# Screen States`.
+Custom states are allowed only as `Custom-<Name>` (for example `Custom-TrialExtended`); the step's `purpose` should say what it is.
 
 ## What each state must show
 

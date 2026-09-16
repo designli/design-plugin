@@ -9,11 +9,11 @@
   "plugins": [
     {
       "name": "designli-design",
-      "description": "Prompt-driven UX flow design anchored to the codebase design system, reviewed on the Designli portal, with review and handoff. Harness-neutral core (local MCP server) with Claude Code slash commands.",
+      "description": "Adopt a static HTML prototype, publish releases to the Designli portal, pull the client's feedback into the repository, hand flows off to dev agents. Harness-neutral core (local MCP server) with Claude Code slash commands.",
       "version": "0.1.0",
       "source": "./",
       "category": "design",
-      "tags": ["design", "flows", "portal", "mcp", "handoff"]
+      "tags": ["design", "prototype", "flows", "portal", "mcp", "handoff"]
     }
   ]
 }
