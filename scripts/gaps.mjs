@@ -19,10 +19,10 @@ try {
   console.error(`gaps: ${e.message}`);
   process.exit(2);
 }
-if (args.includes("--json")) console.log(JSON.stringify(r, null, 2));
+if (args.includes("--json")) process.stdout.write(JSON.stringify(r, null, 2) + "\n");
 else {
   console.log(r.gaps.length ? `${r.gaps.length} gap(s)${strict ? " (strict)" : ""}:` : "no gaps");
   for (const g of r.gaps)
     console.log(`  ${g.flow ? g.flow + " " : ""}${g.kind} @ ${g.where}: ${g.proposal}`);
 }
-process.exit((strict ? r.gaps.length : r.blocking.length) ? 1 : 0);
+process.exitCode = (strict ? r.gaps.length : r.blocking.length) ? 1 : 0;

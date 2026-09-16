@@ -45,15 +45,14 @@ const list = (n) =>
         .filter(Boolean)
     : undefined;
 const project = resolve(opt("--project", process.env.DESIGNLI_PROJECT_DIR || process.cwd()));
+// write, then exit once stdout drained (a bare process.exit truncates large piped output)
 const out = (o) => {
-  console.log(JSON.stringify(o, null, 2));
-  process.exit(o.ok === false ? 1 : 0);
+  process.stdout.write(JSON.stringify(o, null, 2) + "\n", () =>
+    process.exit(o.ok === false ? 1 : 0),
+  );
+  return new Promise(() => {});
 };
 const fail = (message, extra = {}) => out({ ok: false, error: message, ...extra });
-if (has("--token"))
-  fail(
-    "--token is not accepted: put the token in DESIGNLI_PORTAL_TOKEN or run `portal.mjs login` (it reads stdin)",
-  );
 if (!cmd || has("--help")) {
   console.log(
     readFileSync(new URL(import.meta.url), "utf8")
@@ -87,117 +86,131 @@ async function readSecretFromStdin() {
   return Buffer.concat(chunks).toString("utf8").trim().split(/\s+/)[0] || null;
 }
 
-try {
-  const url = normalizeUrl(
-    opt("--url") ||
-      process.env.DESIGNLI_PORTAL_URL ||
-      readLibrary(project)?.publish?.portal?.url ||
-      DEFAULT_PORTAL,
-  );
-  if (cmd === "login") {
-    const t = process.env.DESIGNLI_PORTAL_TOKEN || (await readSecretFromStdin());
-    if (!t)
-      fail(
-        "login needs the token in DESIGNLI_PORTAL_TOKEN or on stdin (e.g. `pbpaste | node portal.mjs login --url U`)",
-      );
-    if (!looksLikeToken(t)) fail("that does not look like a dpat_ token");
-    if (!urlAllowed(url))
-      fail("refusing to send a token over plain http; use https (localhost is allowed)");
-    const w = await whoami(url, t);
-    if (!w.ok) out({ ok: false, url, status: w.status, error: w.error });
-    storeToken(url, t);
-    out({ ok: true, url, tokenSource: "credentials", user: w.user, scope: w.scope });
-  }
-  if (cmd === "login-check") {
-    const { token, source } = tokenFor(url);
-    if (!token)
-      out({
-        ok: false,
-        url,
-        tokenSource: null,
-        error:
-          "no token: set DESIGNLI_PORTAL_TOKEN or run `portal.mjs login --url <url>` (token on stdin)",
-      });
-    const w = await whoami(url, token);
-    if (!w.ok) out({ ok: false, url, tokenSource: source, status: w.status, error: w.error });
-    out({
-      ok: true,
-      url,
-      tokenSource: source,
-      user: w.user,
-      memberships: w.memberships,
-      scope: w.scope,
-    });
-  }
-  if (cmd === "projects") {
-    const { token } = tokenFor(url);
-    if (!token) fail("no token: run portal.mjs login");
-    const c = { url, token, project, projectId: null };
-    if (opt("--create")) {
-      const r = await P.call(c, "POST", "/projects", {
-        id: opt("--create"),
-        name: opt("--name") || opt("--create"),
-      });
-      if (r.status !== 201) fail(r.json?.error?.message || "create failed", { status: r.status });
-      out({ ok: true, created: r.json });
+(async () => {
+  if (has("--token"))
+    return fail(
+      "--token is not accepted: put the token in DESIGNLI_PORTAL_TOKEN or run `portal.mjs login` (it reads stdin)",
+    );
+  try {
+    const url = normalizeUrl(
+      opt("--url") ||
+        process.env.DESIGNLI_PORTAL_URL ||
+        readLibrary(project)?.publish?.portal?.url ||
+        DEFAULT_PORTAL,
+    );
+    if (cmd === "login") {
+      const t = process.env.DESIGNLI_PORTAL_TOKEN || (await readSecretFromStdin());
+      if (!t)
+        return fail(
+          "login needs the token in DESIGNLI_PORTAL_TOKEN or on stdin (e.g. `pbpaste | node portal.mjs login --url U`)",
+        );
+      if (!looksLikeToken(t)) return fail("that does not look like a dpat_ token");
+      if (!urlAllowed(url))
+        return fail("refusing to send a token over plain http; use https (localhost is allowed)");
+      const w = await whoami(url, t);
+      if (!w.ok) return out({ ok: false, url, status: w.status, error: w.error });
+      storeToken(url, t);
+      return out({ ok: true, url, tokenSource: "credentials", user: w.user, scope: w.scope });
     }
-    const w = await whoami(url, token);
-    if (!w.ok) fail(w.error, { status: w.status });
-    out({ ok: true, projects: w.projects });
+    if (cmd === "login-check") {
+      const { token, source } = tokenFor(url);
+      if (!token)
+        return out({
+          ok: false,
+          url,
+          tokenSource: null,
+          error:
+            "no token: set DESIGNLI_PORTAL_TOKEN or run `portal.mjs login --url <url>` (token on stdin)",
+        });
+      const w = await whoami(url, token);
+      if (!w.ok)
+        return out({ ok: false, url, tokenSource: source, status: w.status, error: w.error });
+      return out({
+        ok: true,
+        url,
+        tokenSource: source,
+        user: w.user,
+        memberships: w.memberships,
+        scope: w.scope,
+      });
+    }
+    if (cmd === "projects") {
+      const { token } = tokenFor(url);
+      if (!token) return fail("no token: run portal.mjs login");
+      const c = { url, token, project, projectId: null };
+      if (opt("--create")) {
+        const r = await P.call(c, "POST", "/projects", {
+          id: opt("--create"),
+          name: opt("--name") || opt("--create"),
+        });
+        if (r.status !== 201)
+          return fail(r.json?.error?.message || "create failed", { status: r.status });
+        return out({ ok: true, created: r.json });
+      }
+      const w = await whoami(url, token);
+      if (!w.ok) return fail(w.error, { status: w.status });
+      return out({ ok: true, projects: w.projects });
+    }
+    const ctx = P.context(project, { url: opt("--url"), projectId: opt("--project-id") });
+    if (cmd === "status") return out({ ok: true, ...(await P.overview(ctx)) });
+    if (cmd === "publish")
+      return out({
+        ok: true,
+        ...(await P.publish(ctx, {
+          note: opt("--note"),
+          flows: list("--flows"),
+          dryRun: has("--dry-run"),
+          force: has("--force"),
+        })),
+      });
+    if (cmd === "pull")
+      return out({
+        ok: true,
+        flows: await P.pullAll(ctx, { flows: list("--flows"), status: opt("--status", "all") }),
+      });
+    if (cmd === "digest")
+      return out({
+        ok: true,
+        ...P.digest(project, { since: opt("--since"), flows: list("--flows") }),
+      });
+    if (cmd === "edits" && sub === "apply")
+      return out({ ok: true, ...P.editsApply(project, opt("--flow")) });
+    if (cmd === "reply")
+      return out({
+        ok: true,
+        ...(await P.reply(ctx, opt("--flow"), opt("--thread"), opt("--text"))),
+      });
+    if (cmd === "resolve" || cmd === "reopen")
+      return out({
+        ok: true,
+        ...(await P.resolveThread(ctx, opt("--flow"), opt("--thread"), cmd === "reopen")),
+      });
+    if (cmd === "handoff")
+      return out({
+        ok: true,
+        ...(await P.handoff(ctx, opt("--flow"), {
+          story: opt("--story"),
+          components: list("--components"),
+        })),
+      });
+    if (cmd === "adopt") return out({ ok: true, ...(await P.adoptFromPortal(ctx)) });
+    if (cmd === "releases") return out({ ok: true, releases: await P.listReleases(ctx) });
+    if (cmd === "head") {
+      const slug = opt("--flow");
+      if (!slug) return fail("head needs --flow <slug>");
+      return out({ ok: true, flow: slug, ...(await P.head(ctx, slug.split("/").pop())) });
+    }
+    if (cmd === "push")
+      return out({
+        ok: true,
+        ...(await P.pushFlow(ctx, opt("--flow"), { force: has("--force"), note: opt("--note") })),
+      });
+    return fail(`unknown command ${cmd}`);
+  } catch (e) {
+    return fail(e.message, {
+      code: e.code ?? null,
+      details: e.details ?? null,
+      ...(e.code === "STALE_LOCAL" ? { stale: true } : {}),
+    });
   }
-  const ctx = P.context(project, { url: opt("--url"), projectId: opt("--project-id") });
-  if (cmd === "status") out({ ok: true, ...(await P.overview(ctx)) });
-  if (cmd === "publish")
-    out({
-      ok: true,
-      ...(await P.publish(ctx, {
-        note: opt("--note"),
-        flows: list("--flows"),
-        dryRun: has("--dry-run"),
-        force: has("--force"),
-      })),
-    });
-  if (cmd === "pull")
-    out({
-      ok: true,
-      flows: await P.pullAll(ctx, { flows: list("--flows"), status: opt("--status", "all") }),
-    });
-  if (cmd === "digest")
-    out({ ok: true, ...P.digest(project, { since: opt("--since"), flows: list("--flows") }) });
-  if (cmd === "edits" && sub === "apply")
-    out({ ok: true, ...P.editsApply(project, opt("--flow")) });
-  if (cmd === "reply")
-    out({ ok: true, ...(await P.reply(ctx, opt("--flow"), opt("--thread"), opt("--text"))) });
-  if (cmd === "resolve" || cmd === "reopen")
-    out({
-      ok: true,
-      ...(await P.resolveThread(ctx, opt("--flow"), opt("--thread"), cmd === "reopen")),
-    });
-  if (cmd === "handoff")
-    out({
-      ok: true,
-      ...(await P.handoff(ctx, opt("--flow"), {
-        story: opt("--story"),
-        components: list("--components"),
-      })),
-    });
-  if (cmd === "adopt") out({ ok: true, ...(await P.adoptFromPortal(ctx)) });
-  if (cmd === "releases") out({ ok: true, releases: await P.listReleases(ctx) });
-  if (cmd === "head") {
-    const slug = opt("--flow");
-    if (!slug) fail("head needs --flow <slug>");
-    out({ ok: true, flow: slug, ...(await P.head(ctx, slug.split("/").pop())) });
-  }
-  if (cmd === "push")
-    out({
-      ok: true,
-      ...(await P.pushFlow(ctx, opt("--flow"), { force: has("--force"), note: opt("--note") })),
-    });
-  fail(`unknown command ${cmd}`);
-} catch (e) {
-  fail(e.message, {
-    code: e.code ?? null,
-    details: e.details ?? null,
-    ...(e.code === "STALE_LOCAL" ? { stale: true } : {}),
-  });
-}
+})();

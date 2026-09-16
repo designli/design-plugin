@@ -44,4 +44,4 @@ else {
   for (const w of res.warnings || []) console.log(`  warning: ${w}`);
   for (const e of res.errors || []) console.log(`  ERROR: ${e}`);
 }
-process.exit(res.ok ? 0 : 1);
+process.exitCode = res.ok ? 0 : 1;

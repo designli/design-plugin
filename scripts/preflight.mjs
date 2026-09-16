@@ -27,4 +27,4 @@ else {
     `  prototype ${i.prototype?.exists ? "adopted" : "not adopted"}; flows: ${i.flows.map((f) => `${f.slug} (${f.screens} screens, ${f.missingStates.length} missing, v${f.publishedVersion ?? 0})`).join(", ") || "none"}; gaps ${i.gaps.total}`,
   );
 }
-process.exit(out.ok ? 0 : 1);
+process.exitCode = out.ok ? 0 : 1;
