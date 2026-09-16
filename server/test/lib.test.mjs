@@ -271,7 +271,9 @@ test("copy edits land in the screen, in the other device, or in the include that
     "edited once in the include",
   );
   const e2 = r.results.find((x) => x.id === "e2");
-  assert.ok(e2.files.some((f) => f.include === "Navbar" && f.result === "applied"));
+  assert.ok(
+    e2.files.some((f) => f.include === "Navbar" && f.result === "applied" && f.screensUsing === 4),
+  );
   const d = digest(dir);
   assert.equal(d.items.length, 3);
   assert.equal(d.items[0].kind, "edit");

@@ -740,7 +740,11 @@ export function editsApply(project, flowRef) {
         const cf = componentFile(name, [compDir, dir]);
         if (!cf) continue;
         const h2 = applyEditToFile(cf, e);
-        r.files.push({ ...h2, file: relative(project, cf), include: name });
+        // how far the include reaches: every screen file of every flow that pulls it in
+        const screensUsing = listFlows(project)
+          .flatMap((f) => [...resolveStates(f.flow, f.dir).usedFiles.keys()])
+          .filter((sf) => scanFile(sf).includes.includes(name)).length;
+        r.files.push({ ...h2, file: relative(project, cf), include: name, screensUsing });
         if (h2.result === "applied") {
           hit = h2;
           break;
