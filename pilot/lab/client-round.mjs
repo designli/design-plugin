@@ -65,9 +65,9 @@ const htmlA = await call(
   undefined,
   true,
 );
-const includeBlock = (htmlA.match(
-  /<div data-imported-component="[^"]+">[\s\S]*?<!-- end [^>]+ -->/,
-) || [""])[0];
+const includeBlocks = [
+  ...htmlA.matchAll(/<div data-imported-component="[^"]+">[\s\S]*?<!-- end [^>]+ -->/g),
+].map((m) => m[0]);
 const outsideIncludes = htmlA.replace(/<!-- begin [^>]+ -->[\s\S]*?<!-- end [^>]+ -->/g, "");
 
 // comments
@@ -127,7 +127,7 @@ if (screenText)
     screenText.endsWith("!") ? screenText.slice(0, -1) : screenText + " today",
     "screen",
   );
-const includeText = includeBlock ? pickText(includeBlock) : null;
+const includeText = includeBlocks.map(pickText).find(Boolean) || null;
 if (includeText)
   await edit(
     includeText,
