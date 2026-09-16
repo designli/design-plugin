@@ -40,8 +40,13 @@ function textHash(s) {
 /** First short visible text in a tag that copy edits usually target. */
 const pickText = (html) => {
   const m = html.match(/<(h1|h2|h3|button|label|a|p)\b[^>]*>([^<]{3,60})<\/\1>/i);
-  return m ? normalize(m[2]) : null;
+  if (m) return normalize(m[2]);
+  const any = [...html.matchAll(/>([^<>]{3,40})</g)]
+    .map((x) => normalize(x[1]))
+    .find((t) => /[A-Za-z]{3,}/.test(t));
+  return any || null;
 };
+const only = opt("--only"); // "edits" reruns just the copy edits
 
 const out = { round, threads: [], edits: [], waiver: null, reorder: null };
 const flows = (await call(client, "GET", `/projects/${project}/flows`)).flows.filter(
@@ -66,6 +71,7 @@ const includeBlock = (htmlA.match(
 const outsideIncludes = htmlA.replace(/<!-- begin [^>]+ -->[\s\S]*?<!-- end [^>]+ -->/g, "");
 
 // comments
+const skip = (what) => only && only !== what;
 const post = async (text, screen, anchor) => {
   const t = await call(client, "POST", `/projects/${project}/flows/${flow.id}/comments`, {
     text: `${text} (round ${round})`,
@@ -76,29 +82,31 @@ const post = async (text, screen, anchor) => {
   out.threads.push({ id: t.id, screen: screen?.id ?? null, text });
   return t;
 };
-await post(
-  "Overall this flows well, but I get lost after paying: where do I find the code again?",
-  null,
-);
-await post(
-  "The primary button is too far from the total; can they sit together?",
-  { id: A.id, device: "desktop" },
-  { x: 70, y: 80 },
-);
-await post(
-  "This error message blames me. Say what to do instead.",
-  { id: B.id, device: "desktop" },
-  { x: 50, y: 40 },
-);
-const forAgent = await post(
-  "Please make the station names links to a map. Sending this to the agent.",
-  { id: A.id, device: "desktop" },
-  { x: 30, y: 30 },
-);
-await call(staff, "PATCH", `/projects/${project}/flows/${flow.id}/comments/${forAgent.id}`, {
-  sentToAgent: true,
-});
-out.threads[out.threads.length - 1].sentToAgent = true;
+if (!skip("comments")) {
+  await post(
+    "Overall this flows well, but I get lost after paying: where do I find the code again?",
+    null,
+  );
+  await post(
+    "The primary button is too far from the total; can they sit together?",
+    { id: A.id, device: "desktop" },
+    { x: 70, y: 80 },
+  );
+  await post(
+    "This error message blames me. Say what to do instead.",
+    { id: B.id, device: "desktop" },
+    { x: 50, y: 40 },
+  );
+  const forAgent = await post(
+    "Please make the station names links to a map. Sending this to the agent.",
+    { id: A.id, device: "desktop" },
+    { x: 30, y: 30 },
+  );
+  await call(staff, "PATCH", `/projects/${project}/flows/${flow.id}/comments/${forAgent.id}`, {
+    sentToAgent: true,
+  });
+  out.threads[out.threads.length - 1].sentToAgent = true;
+}
 
 // copy edits: one in the screen, one in an include
 const edit = async (originalText, newText, tag) => {
@@ -129,20 +137,22 @@ if (includeText)
 else out.edits.push({ tag: "include", skipped: "screen A has no include with a short text" });
 
 // structure: waive the first missing state, reorder the journey
-const grid = await call(staff, "GET", `/projects/${project}/flows/${flow.id}/states`);
-if (grid.missing?.length) {
-  const m = grid.missing[0];
-  await call(staff, "POST", `/projects/${project}/flows/${flow.id}/waivers`, {
-    step: m.step,
-    state: m.state,
-    reason: `client decision, round ${round}: this state does not occur in the pilot`,
-  });
-  out.waiver = m;
-}
-const all = (await call(staff, "GET", `/projects/${project}/flows`)).flows.map((f) => f.id);
-if (all.length > 1) {
-  const ids = [...all].reverse();
-  await call(staff, "PUT", `/projects/${project}/flows/order`, { ids });
-  out.reorder = ids;
+if (!skip("structure")) {
+  const grid = await call(staff, "GET", `/projects/${project}/flows/${flow.id}/states`);
+  if (grid.missing?.length) {
+    const m = grid.missing[0];
+    await call(staff, "POST", `/projects/${project}/flows/${flow.id}/waivers`, {
+      step: m.step,
+      state: m.state,
+      reason: `client decision, round ${round}: this state does not occur in the pilot`,
+    });
+    out.waiver = m;
+  }
+  const all = (await call(staff, "GET", `/projects/${project}/flows`)).flows.map((f) => f.id);
+  if (all.length > 1) {
+    const ids = [...all].reverse();
+    await call(staff, "PUT", `/projects/${project}/flows/order`, { ids });
+    out.reorder = ids;
+  }
 }
 console.log(JSON.stringify(out, null, 2));
