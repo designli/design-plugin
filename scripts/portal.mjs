@@ -12,6 +12,7 @@
 //   node portal.mjs handoff --flow SLUG --story "..." [--components A,B]
 //   node portal.mjs adopt                       rebuild flow.json files from the portal
 //   node portal.mjs releases                    list releases (refreshes design/releases.json)
+//   node portal.mjs diagnose [--lines N] [--run ID]   the run log, secrets redacted (DESIGNLI_DEBUG=1 mirrors it to stderr)
 //   node portal.mjs head --flow SLUG            low level: head version and feedback counts
 //   node portal.mjs push --flow SLUG [--force] [--note "..."]   low level: one flow, no release
 // Every command needs a project: run from the repository root or pass --project <dir>.
@@ -28,6 +29,7 @@ import {
   DEFAULT_PORTAL,
 } from "../server/lib/setup.mjs";
 import * as P from "../server/lib/portal.mjs";
+import { setRun, log, tail } from "../server/lib/log.mjs";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -46,18 +48,20 @@ const list = (n) =>
     : undefined;
 const project = resolve(opt("--project", process.env.DESIGNLI_PROJECT_DIR || process.cwd()));
 // write, then exit once stdout drained (a bare process.exit truncates large piped output)
+const RUN = setRun();
 const out = (o) => {
+  if (o.ok === false) log("cli.error", { cmd, code: o.code ?? null, error: o.error });
   process.stdout.write(JSON.stringify(o, null, 2) + "\n", () =>
     process.exit(o.ok === false ? 1 : 0),
   );
   return new Promise(() => {});
 };
-const fail = (message, extra = {}) => out({ ok: false, error: message, ...extra });
+const fail = (message, extra = {}) => out({ ok: false, error: message, run: RUN, ...extra });
 if (!cmd || has("--help")) {
   console.log(
     readFileSync(new URL(import.meta.url), "utf8")
       .split("\n")
-      .slice(1, 18)
+      .slice(1, 19)
       .join("\n"),
   );
   process.exit(0);
@@ -151,7 +155,10 @@ async function readSecretFromStdin() {
       if (!w.ok) return fail(w.error, { status: w.status });
       return out({ ok: true, projects: w.projects });
     }
+    log("cli", { cmd, project });
     const ctx = P.context(project, { url: opt("--url"), projectId: opt("--project-id") });
+    if (cmd === "diagnose")
+      return out({ ok: true, ...tail(Number(opt("--lines")) || 100, { run: opt("--run") }) });
     if (cmd === "status") return out({ ok: true, ...(await P.overview(ctx)) });
     if (cmd === "publish")
       return out({

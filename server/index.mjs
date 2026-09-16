@@ -25,6 +25,7 @@ import { preflight, nextSteps, gitInfo } from "./lib/status.mjs";
 import { scanPrototype, proposeFlows, writeFlows, gapsOf } from "./lib/flows.mjs";
 import { buildFlowBundle, buildComponentsBundle } from "./lib/bundle.mjs";
 import * as P from "./lib/portal.mjs";
+import { setRun, log, tail, LOG_DIR } from "./lib/log.mjs";
 
 const PROTOCOL = "2025-03-26";
 const argv = process.argv.slice(2);
@@ -414,6 +415,22 @@ const TOOLS = [
     run: wrap(async () => ({ releases: await P.listReleases(ctx()) })),
   },
   {
+    name: "diagnose",
+    description:
+      "The plugin's own run log (tool calls, HTTP requests with status and duration, errors), newest last, secrets redacted; give run to see one failed call. Attach it when reporting a problem. Log dir: ~/.config/designli-design/logs (7 days). DESIGNLI_DEBUG=1 mirrors it to stderr.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        lines: { type: "integer", description: "how many (default 100)" },
+        run: str("a run id from an error"),
+      },
+    },
+    run: wrap((a) => ({
+      ...tail(Math.min(Number(a.lines) || 100, 1000), { run: a.run }),
+      project: PROJECT,
+    })),
+  },
+  {
     name: "portal_reply",
     description:
       "Replies to a comment thread as the agent. CLI: scripts/portal.mjs reply --flow <slug> --thread <id> --text ...",
@@ -675,8 +692,12 @@ async function handle(msg) {
   if (method === "tools/call") {
     const tool = TOOLS.find((t) => t.name === params.name);
     if (!tool) return rpcError(id, -32602, `Unknown tool ${params.name}`);
+    const run = setRun();
+    const t0 = Date.now();
+    log("tool", { tool: params.name, args: Object.keys(params.arguments ?? {}) });
     try {
       const out = await tool.run(params.arguments ?? {});
+      log("tool.ok", { tool: params.name, ms: Date.now() - t0 });
       return {
         jsonrpc: "2.0",
         id,
@@ -686,7 +707,18 @@ async function handle(msg) {
         },
       };
     } catch (e) {
-      const err = { code: e.code ?? "INTERNAL", message: e.message, details: e.details ?? null };
+      const err = {
+        code: e.code ?? "INTERNAL",
+        message: e.message,
+        details: e.details ?? null,
+        run,
+      };
+      log("tool.error", {
+        tool: params.name,
+        ms: Date.now() - t0,
+        code: err.code,
+        message: err.message,
+      });
       return {
         jsonrpc: "2.0",
         id,
@@ -778,5 +810,5 @@ rl.on("close", () => {
   maybeExit();
 });
 process.stderr.write(
-  `designli-design MCP server ${PLUGIN_VERSION} on stdio (project ${PROJECT})\n`,
+  `designli-design MCP server ${PLUGIN_VERSION} on stdio (project ${PROJECT}; log ${LOG_DIR})\n`,
 );

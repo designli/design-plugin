@@ -24,6 +24,7 @@ import {
   BLOCKING,
 } from "./flows.mjs";
 import { buildFlowBundle, buildComponentsBundle } from "./bundle.mjs";
+import { log, runId } from "./log.mjs";
 
 export class PortalError extends Error {
   constructor(code, message, details) {
@@ -72,9 +73,12 @@ const needProject = (ctx) => {
     );
   return ctx.projectId;
 };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** One HTTP call; a read (GET) is retried once on a network drop or a 429, a write never. */
 export async function call(ctx, method, path, body, headers = {}, gzip = false) {
   const h = {
     "x-designli-client": `designli-design/${PLUGIN_VERSION}`,
+    "x-designli-run": runId(),
     authorization: `Bearer ${ctx.token}`,
     ...headers,
   };
@@ -87,23 +91,45 @@ export async function call(ctx, method, path, body, headers = {}, gzip = false) 
     } else payload = text;
     h["content-type"] = "application/json";
   }
-  let res;
-  try {
-    res = await fetch(ctx.url + "/api/v1" + path, {
+  const retriable = method === "GET";
+  for (let attempt = 1; ; attempt++) {
+    const t0 = Date.now();
+    let res;
+    try {
+      res = await fetch(ctx.url + "/api/v1" + path, {
+        method,
+        headers: h,
+        body: payload,
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (e) {
+      log("http", { method, path, status: 0, ms: Date.now() - t0, error: e.message, attempt });
+      if (retriable && attempt === 1) {
+        await sleep(2000);
+        continue;
+      }
+      throw new PortalError("UNREACHABLE", `cannot reach ${ctx.url}: ${e.message}`);
+    }
+    const text = await res.text();
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch {}
+    log("http", {
       method,
-      headers: h,
-      body: payload,
-      signal: AbortSignal.timeout(60_000),
+      path,
+      status: res.status,
+      ms: Date.now() - t0,
+      bytes: payload ? Buffer.byteLength(payload) : 0,
+      ...(res.ok ? {} : { error: json?.error?.code || text.slice(0, 120) }),
+      ...(attempt > 1 ? { attempt } : {}),
     });
-  } catch (e) {
-    throw new PortalError("UNREACHABLE", `cannot reach ${ctx.url}: ${e.message}`);
+    if (res.status === 429 && retriable && attempt === 1) {
+      await sleep(Math.min(Number(res.headers.get("retry-after")) || 2, 10) * 1000);
+      continue;
+    }
+    return { status: res.status, json, text, ok: res.ok };
   }
-  const text = await res.text();
-  let json = null;
-  try {
-    json = JSON.parse(text);
-  } catch {}
-  return { status: res.status, json, text, ok: res.ok };
 }
 const expect = (r, what, okStatuses = [200, 201]) => {
   if (okStatuses.includes(r.status)) return r.json;

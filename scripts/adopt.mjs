@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { scanPrototype, proposeFlows, writeFlows } from "../server/lib/flows.mjs";
 import { context, adoptFromPortal } from "../server/lib/portal.mjs";
+import { setRun, log } from "../server/lib/log.mjs";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -18,7 +19,9 @@ const opt = (n, d) => {
 };
 const project = resolve(opt("--project", process.env.DESIGNLI_PROJECT_DIR || process.cwd()));
 // write, then exit once stdout drained (a bare process.exit truncates large piped output)
+const RUN = setRun();
 const out = (o) => {
+  if (o.ok === false) log("cli.error", { cmd, code: o.code ?? null, error: o.error });
   process.stdout.write(JSON.stringify(o, null, 2) + "\n", () =>
     process.exit(o.ok === false ? 1 : 0),
   );
