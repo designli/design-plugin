@@ -4,7 +4,7 @@ This guide is loaded while designing, not run as a step. It tells the designer's
 
 ## What to produce
 
-1. **One HTML file per screen state**, complete documents, under `design/flows/<slug>/`. Name files however reads best (`client-default.html`, `client-error.html`, `client-error-m.html` for mobile). A step's states are separate files, never a toggle.
+1. **One HTML file per screen state**, complete documents, under `design/flows/<slug>/`. Name files however reads best (`client-default.html`, `client-error.html`, `client-error-m.html` for mobile; the scan reads the state from the last word whatever its case, and `flow.json` records the vocabulary's spelling, `Default`, `Error`). A step's states are separate files, never a toggle.
 2. **Shared parts as includes**: `design/components/<Name>.html`, pulled in with `<dc-import name="Name"></dc-import>`. Navbar, footer, sidebar, any block that repeats.
 3. **Links are transitions**: `<a href="details-default.html">Continue</a>`; `data-on="…"` when the link text is not the trigger. Every primary action that leads somewhere links there.
 4. **Mock data inline**, realistic: names, amounts, dates, the real error copy. No fetches.

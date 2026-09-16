@@ -206,10 +206,9 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
       where: "design/prototype.json",
       proposal: "adopt asks for the product name and a one-line summary once",
     });
-  const flows = listFlows(project).filter(
-    (f) => !only || f.slug === only || f.dir === resolve(project, only),
-  );
-  const slugs = new Set(flows.map((f) => f.slug));
+  const every = listFlows(project);
+  const flows = every.filter((f) => !only || f.slug === only || f.dir === resolve(project, only));
+  const slugs = new Set(every.map((f) => f.slug));
   for (const { slug, dir, flow } of flows) {
     const r = resolveStates(flow, dir);
     if (!Number.isInteger(flow.order))
@@ -529,9 +528,22 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       idToN.set(nn, st.id);
       const isLast = i === ordered.length;
       const anyForm = st.files.some((f) => f.hasForm);
+      const anyChoice = st.files.some((f) => f.hasChoice);
       const anyTable = st.files.some((f) => f.hasTable);
       const hasSuccess = "Success" in st.states;
-      const kind = isLast && hasSuccess ? "result" : anyForm ? "form" : anyTable ? "data" : "info";
+      const hasSubmitting = "Submitting" in st.states;
+      const kind =
+        hasSuccess && hasSubmitting && !anyForm
+          ? "confirmation"
+          : isLast && hasSuccess
+            ? "result"
+            : anyForm
+              ? "form"
+              : anyChoice
+                ? "choice"
+                : anyTable
+                  ? "data"
+                  : "info";
       const proposal = {
         n: nn,
         id: st.id,
@@ -546,7 +558,7 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
         field: `steps.${nn}.kind`,
         proposal: kind,
         options: STEP_KINDS,
-        why: `guessed from the markup (${anyForm ? "inputs" : anyTable ? "a table or list" : "static content"})`,
+        why: `guessed from the markup (${anyForm ? "data entry" : anyChoice ? "a pick among options" : hasSubmitting && hasSuccess ? "submitting and success states" : anyTable ? "a table or list" : "static content"})`,
       });
       if (missing.length)
         questions.push({

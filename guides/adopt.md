@@ -26,7 +26,7 @@ For each flow in the proposal, show the designer what was inferred and ask, in o
 - **Steps**: the ordered list with each step's kind (form, data, choice, confirmation, result, info) and the files found per state. Offer "as proposed" as the default, then "reorder", "merge", "split", "rename" as free text.
 - **Missing required states** per step: for each, "design it later" (it stays a visible gap, the recommended default) or "waive: <reason>" (a fact, not a preference).
 - **Entry points**: where users come from (a navbar item, a dashboard action, an email link, another flow). A `?` proposal means the scan could not tell.
-- **Position in the journey** (`order`) and which flows this one leads to (`next`, with the trigger label), when the project has more than one flow.
+- **Position in the journey** (`order`, 1 = first) and which flows this one leads to (`next: [{ "flow": "<sibling slug>", "on": "<trigger label>" }]`), when the project has more than one flow.
 - **Folder**: if the files are not under `design/flows/<slug>/`, propose moving them there (default) or keeping them in place; moving is the designer's action, not the tool's.
 
 Do not ask what the scan already answered. Do not ask about transitions: they come from links, and the designer can edit `flow.json` later.

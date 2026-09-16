@@ -126,9 +126,23 @@ export function parseScreen(src) {
     textOf((src.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || "") ||
     "";
   const device = (src.match(/<meta\s+name="designli-device"\s+content="([^"]+)"/i) || [])[1];
-  const hasForm = /<(form|input|textarea|select)\b/i.test(src);
+  // data entry (text-like inputs) is a form; radios, checkboxes and selects alone are a choice
+  const hasForm =
+    /<textarea\b/i.test(src) ||
+    /<input\b(?![^>]*\btype\s*=\s*"?(radio|checkbox|hidden|submit|button)\b)[^>]*>/i.test(src);
+  const hasChoice =
+    !hasForm && /<input\b[^>]*\btype\s*=\s*"?(radio|checkbox)\b|<select\b/i.test(src);
   const hasTable = /<(table|tbody)\b/i.test(src) || (src.match(/<li\b/gi) || []).length >= 6;
-  return { title: decode(title), includes, links, dataComponents, device, hasForm, hasTable };
+  return {
+    title: decode(title),
+    includes,
+    links,
+    dataComponents,
+    device,
+    hasForm,
+    hasChoice,
+    hasTable,
+  };
 }
 export const scanFile = (file) => ({ file, ...parseScreen(readFileSync(file, "utf8")) });
 
