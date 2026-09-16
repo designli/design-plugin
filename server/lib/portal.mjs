@@ -677,7 +677,8 @@ export function digest(project, { since, flows } = {}) {
     }
   }
   const rank = (i) =>
-    (i.status === "open" || i.status === "pending" ? 0 : 1) * 10 + (i.sentToAgent ? 0 : 1);
+    (i.status === "open" || i.status === "pending" ? 0 : i.status === "dismissed" ? 1 : 2) * 10 +
+    (i.sentToAgent ? 0 : 1);
   items.sort((a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt));
   return {
     items,
@@ -777,6 +778,46 @@ export function editsApply(project, flowRef) {
     results,
     note: "the next publish marks applied edits as applied on the portal",
   };
+}
+/** Declines a copy edit with a reason the client reads as a thread on that screen. */
+export async function editsDismiss(ctx, flowRef, id, reason) {
+  const p = needProject(ctx);
+  const dir = resolveFlowDir(ctx.project, flowRef);
+  const slug = readFlow(dir).slug;
+  if (!reason || !String(reason).trim())
+    throw new PortalError("VALIDATION", "a reason is required");
+  const data = readEdits(dir);
+  const e = (data.edits || []).find((x) => x.id === id);
+  if (!e)
+    throw new PortalError("NOT_FOUND", `${id} is not in ${slug}'s text-edits.json; pull first`);
+  const patched = expect(
+    await call(
+      ctx,
+      "PATCH",
+      `/projects/${p}/flows/${slug}/text-edits/${id}`,
+      { status: "dismissed" },
+      AGENT,
+    ),
+    "dismiss",
+  );
+  const text = `Copy edit not applied: "${e.originalText}" → "${e.newText}". ${String(reason).trim()}`;
+  const thread = expect(
+    await call(
+      ctx,
+      "POST",
+      `/projects/${p}/flows/${slug}/comments`,
+      { text, screen: e.screen, flowVersion: e.flowVersion ?? null },
+      AGENT,
+    ),
+    "reply",
+    [201],
+  );
+  data.edits = data.edits.map((x) =>
+    x.id === id ? { ...x, status: "dismissed", updatedAt: patched.updatedAt ?? x.updatedAt } : x,
+  );
+  data.appliedLocally = (data.appliedLocally || []).filter((a) => a.id !== id);
+  writeEdits(dir, data);
+  return { flow: slug, edit: id, status: "dismissed", thread: thread.id };
 }
 export async function reply(ctx, flowRef, thread, text) {
   const p = needProject(ctx);

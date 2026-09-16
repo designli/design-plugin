@@ -190,13 +190,14 @@ test("portal tools without credentials fail with a clear code, never a crash", a
       call(2, "portal_projects"),
       call(3, "publish", { note: "x" }),
       call(4, "feedback_pull"),
+      call(5, "edits_dismiss", { flow: "x", id: "ted_1", reason: "no" }),
     ],
     { HOME: home, DESIGNLI_PORTAL_URL: "https://portal.example.test" },
   );
   assert.equal(r[1].result.structuredContent.ok, false);
   assert.equal(r[1].result.structuredContent.tokenSource, null);
   assert.ok(r[1].result.structuredContent.howTo.includes("setup.mjs"));
-  for (const id of [2, 3, 4]) {
+  for (const id of [2, 3, 4, 5]) {
     assert.equal(r[id].result.isError, true);
     assert.equal(
       r[id].result.structuredContent.error.code,

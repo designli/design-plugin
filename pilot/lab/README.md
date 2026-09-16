@@ -20,7 +20,7 @@ Roles and tokens (minted on the admin's Account page, scoped to `lab`, kept in f
 ## Session 1: the designer (prompts to paste, in order)
 
 1. `/designli-design:setup` — portal `http://localhost:8787`, project `lab`, harness Claude Code.
-2. `Read BRIEF.md and build the prototype it describes as static HTML under design/, following /designli-design:prototype. Do not ask me questions; make reasonable choices and note them in NOTES.md.`
+2. `Read BRIEF.md and build the prototype it describes as static HTML under design/, following /designli-design:prototype. Leave one required state of one step undesigned on purpose (so the waiver path gets exercised). Do not ask me questions; make reasonable choices and note them in NOTES.md.`
 3. `/designli-design:adopt` — answer the grouped questions as a designer would; count them.
 4. `/designli-design:publish "first cut"`.
 5. Stop. Note in `NOTES.md`: questions asked that the scan could have answered, anything unclear in the guides.
@@ -55,7 +55,9 @@ In a fresh clone of the bare remote with `design/flows/*/flow.json` deleted: `/d
 - [ ] prototype: one file per state, includes used, links present, mobile files for flow 1?
 - [ ] adopt: questions asked (count) / questions the scan could have answered / wrong guesses (kinds, states, entry points)
 - [ ] publish 1: release 1, both flows, components pushed, client URL; gaps listed on the portal match the repo's `gaps`
-- [ ] feedback: digest order (agent first), edits applied (screen, sibling, include once), `needsManual`, waiver and order in `flow.json`
+- [ ] canvas: one row per step, one column per state, mobile beside desktop, no overlap, name strips readable (a plain-HTML prototype has no canvas.json; the grid comes from the bundler and the portal re-flows rows by measured height)
+- [ ] feedback: digest order (agent first), edits applied (screen, sibling, include once with `screensUsing`), `needsManual`, waiver and order in `flow.json`; one edit declined with `edits_dismiss` shows as a thread on the screen
+- [ ] releases: a round that changed only an include reads "N screens changed only through Cmp…", not a list of every screen
 - [ ] publish 2: release diff names the changed screens; edits marked applied; replies and resolves on the threads
 - [ ] stale path: refused with the fix; no `force`
 - [ ] handoff: spec has steps, states, copy, transitions, components, feedback-derived edge cases
@@ -64,3 +66,7 @@ In a fresh clone of the bare remote with `design/flows/*/flow.json` deleted: `/d
 - [ ] run log: every failure carried a run id; `diagnose` shows it
 
 Inspect from the reviewer's side: `node <plugin>/scripts/portal.mjs status --project <repo>`, `releases`, `diagnose`, and the portal UI at `/projects/lab`.
+
+## Run of 2026-09-16 (Ferry)
+
+Three rounds, one dev-agent session and the lost-repository check passed. Found and fixed during the run: flow-scoped `gaps` did not know sibling flows; `next` link shape undocumented; pickers guessed as `form`; include edits did not say how many screens they reach; the dev-agents page lacked the HTTP equivalents; the canvas piled every board at (0,0) for a prototype without `canvas.json`; release diffs listed every screen when only an include changed; a copy edit could not be declined with a reason; the portal replaced a pending edit on the same element silently. Not exercised: the waiver path (no required state was missing), now forced by the prompt above.

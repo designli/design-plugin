@@ -197,6 +197,15 @@ test("the bundle names screens by id, inlines includes, rewrites links and infer
   assert.ok(m.steps[0].states.some((s) => s.state === "Submitting" && s.waived === "instant"));
   // deterministic: a rebuild of unchanged sources gives the same hash
   assert.equal(buildFlowBundle(dir, "signup").contentHash, b.contentHash);
+  // no canvas.json: a grid, one row per step, one column per state, mobile beside desktop
+  assert.equal(m.layout, "grid");
+  const L = (id, dev) => m.screens.find((s) => s.id === id).devices[dev].layout;
+  assert.deepEqual(L("01-Email-Default", "desktop"), { x: 0, y: 0 });
+  assert.deepEqual(L("01-Email-Default", "mobile"), { x: 1440 + 60, y: 0 });
+  assert.equal(L("01-Email-Validation", "desktop").y, 0);
+  assert.ok(L("01-Email-Validation", "desktop").x > 1440 + 60 + 390);
+  assert.ok(L("02-Done-Success", "desktop").y >= 900 + 160);
+  assert.match(first.devices.desktop.sourceSha256, /^sha256:[0-9a-f]{64}$/);
   const c = buildComponentsBundle(dir);
   assert.equal(c.ok, true);
   assert.deepEqual(

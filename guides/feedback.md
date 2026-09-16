@@ -20,7 +20,7 @@ Ask once: which items to address now (default: everything sent to the agent plus
 
 ## Step 4: address, then answer
 
-For each item the designer takes: the change happens in the source files (their agent, their tools; this guide does not author screens). When the changes are in, run `publish` (its guide) so the client sees them; then reply on each addressed thread with what changed and the release number, and resolve it. Threads not addressed get a reply with the reason and stay open. Never resolve a thread whose author still waits for an answer.
+For each item the designer takes: the change happens in the source files (their agent, their tools; this guide does not author screens). When the changes are in, run `publish` (its guide) so the client sees them; then reply on each addressed thread with what changed and the release number, and resolve it. Threads not addressed get a reply with the reason and stay open. Never resolve a thread whose author still waits for an answer. A copy edit the designer will not take is declined with `edits_dismiss` and a reason that is a fact ("the step indicator must stay a step indicator"): the portal marks it dismissed and the client reads the reason as a thread on that screen. Never drop an edit silently.
 
 ## Failure modes
 

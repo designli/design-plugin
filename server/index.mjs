@@ -386,6 +386,21 @@ const TOOLS = [
     run: wrap((a) => P.editsApply(PROJECT, a.flow)),
   },
   {
+    name: "edits_dismiss",
+    description:
+      "Declines a pending copy edit with a reason: marks it dismissed on the portal and opens a thread on that screen quoting the edit and the reason, so the client sees why. Use for edits the designer will not take; never silently. CLI: scripts/portal.mjs edits dismiss --flow <slug> --id <edit> --reason ...",
+    inputSchema: {
+      type: "object",
+      properties: {
+        flow: str(),
+        id: str("the edit id from feedback_digest"),
+        reason: str("a fact the client can act on"),
+      },
+      required: ["flow", "id", "reason"],
+    },
+    run: wrap((a) => P.editsDismiss(ctx(), a.flow, a.id, a.reason)),
+  },
+  {
     name: "adopt_from_portal",
     description:
       "Rebuilds design/prototype.json and every design/flows/<slug>/flow.json from the portal's latest versions (the portal is the record). Screens whose source file is not in the repo are downloaded flattened. Then pulls feedback. Use on a fresh clone or a lost repository. CLI: scripts/portal.mjs adopt",

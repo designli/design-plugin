@@ -54,6 +54,44 @@ const readCanvas = (dir) => {
   }
 };
 const generator = () => `designli-design/${PLUGIN_VERSION}`;
+const COL_GAP = 120;
+const ROW_GAP = 160; // room for the name strip
+const DEVICE_GAP = 60;
+/**
+ * Places artboards without a canvas.json: one row per step (Main first), one column per state in
+ * vocabulary order, the mobile artboard to the right of the desktop one. Deterministic; only
+ * layout.x/y change, never the content. The portal re-flows rows by measured heights.
+ */
+export function gridLayout(screens, steps) {
+  const cols = STATE_VOCAB.filter((st) => screens.some((s) => s.state === st));
+  for (const s of screens) if (s.state && !cols.includes(s.state)) cols.push(s.state);
+  const rows = [
+    ...(screens.some((s) => s.id === "Main") ? ["Main"] : []),
+    ...steps.map((st) => st.n),
+  ];
+  const cellW = Math.max(
+    0,
+    ...screens.map((s) => {
+      const d = s.devices.desktop?.w ?? 0;
+      const m = s.devices.mobile?.w ?? 0;
+      return d && m ? d + DEVICE_GAP + m : d || m;
+    }),
+  );
+  const rowH = Math.max(0, ...screens.flatMap((s) => Object.values(s.devices).map((d) => d.h)));
+  for (const s of screens) {
+    const row = rows.indexOf(s.id === "Main" ? "Main" : s.step);
+    const col = s.id === "Main" ? 0 : Math.max(cols.indexOf(s.state), 0);
+    const x0 = col * (cellW + COL_GAP);
+    const y0 = row * (rowH + ROW_GAP);
+    if (s.devices.desktop) s.devices.desktop.layout = { x: x0, y: y0 };
+    if (s.devices.mobile)
+      s.devices.mobile.layout = {
+        x: x0 + (s.devices.desktop ? s.devices.desktop.w + DEVICE_GAP : 0),
+        y: y0,
+      };
+  }
+  return screens;
+}
 
 /**
  * Bundles one flow into <dir>/bundle. Returns { manifest, files, entries, errors, warnings, out }.
@@ -138,6 +176,7 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
       w: a.w || frame.w,
       h: a.h || frame.h,
       sha256: "sha256:" + digest,
+      sourceSha256: "sha256:" + sha(readFileSync(t.src)),
       source: relative(dir, t.src),
       layout: { x: a.x ?? 0, y: a.y ?? 0 },
     };
@@ -149,6 +188,8 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
         if (toId && toId !== t.id) inferred.push({ from: t.id, on: l.label || "", to: toId });
       }
   }
+  const hasCanvas = Object.keys(dims).length > 0;
+  if (!hasCanvas) gridLayout([...screens.values()], r.steps);
   const rank = (s) =>
     s.id === "Main"
       ? "0"
@@ -212,6 +253,7 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
     componentsHash: compHash,
     publish: flow.portal ? { target: "portal", ...flow.portal } : null,
     product: readProduct(project),
+    layout: hasCanvas ? "canvas" : "grid",
   };
   if (!manifest.screens.length) errors.push("no screens: no state maps to an existing file");
   if (!dry) {
@@ -296,8 +338,9 @@ export function buildComponentsBundle(project, { out } = {}) {
           w: a.w || 960,
           h: a.h || 720,
           sha256: "sha256:" + digest,
+          sourceSha256: "sha256:" + sha(readFileSync(join(compDir, f))),
           source: f,
-          layout: { x: a.x ?? 0, y: a.y ?? 0 },
+          layout: { x: a.x ?? screens.length * (960 + COL_GAP), y: a.y ?? 0 },
         },
       },
     });
@@ -309,6 +352,7 @@ export function buildComponentsBundle(project, { out } = {}) {
     generatedAt: new Date().toISOString(),
     contentHash,
     kind: "components",
+    layout: Object.keys(dims).length ? "canvas" : "grid",
     flow: {
       slug: "components",
       title: "Components",
