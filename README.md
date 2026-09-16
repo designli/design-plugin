@@ -72,6 +72,10 @@ The workflows are the guides in `guides/*.md` (harness-neutral; the skills only 
 
 Tests: `node --test "server/test/*.test.mjs"`.
 
+## Errors and the run log
+
+Every failure is a typed error with a code (`STALE_LOCAL`, `PORTAL_TOKEN`, `UNREACHABLE`, `FORBIDDEN`, `BUNDLE`, `VALIDATION`, …), a message and `details` with the fix; the server answers `isError` with `{ error: { code, message, details, run } }`, the CLIs print `{ ok: false, error, code, run }` and exit non-zero. Every tool call or CLI invocation is a **run**: its id travels in the `x-designli-run` header and tags every line of the run log at `~/.config/designli-design/logs/<date>.log` (JSON lines, 0600, seven days kept, tokens redacted on write): tool calls, HTTP requests with status and duration, errors. `DESIGNLI_DEBUG=1` mirrors the log to stderr; the `diagnose` tool (CLI: `portal.mjs diagnose [--lines N] [--run ID]`) returns the last lines for a bug report. Reads (GET) are retried once on a network drop or a 429; writes never are.
+
 ## Guarantees
 
 - A release is a complete snapshot: changed flows get versions, unchanged ones are referenced by their current version. Identical content is reused, never duplicated.

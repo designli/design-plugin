@@ -155,10 +155,10 @@ async function readSecretFromStdin() {
       if (!w.ok) return fail(w.error, { status: w.status });
       return out({ ok: true, projects: w.projects });
     }
-    log("cli", { cmd, project });
-    const ctx = P.context(project, { url: opt("--url"), projectId: opt("--project-id") });
     if (cmd === "diagnose")
       return out({ ok: true, ...tail(Number(opt("--lines")) || 100, { run: opt("--run") }) });
+    log("cli", { cmd, project });
+    const ctx = P.context(project, { url: opt("--url"), projectId: opt("--project-id") });
     if (cmd === "status") return out({ ok: true, ...(await P.overview(ctx)) });
     if (cmd === "publish")
       return out({
