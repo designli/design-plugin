@@ -167,6 +167,11 @@ test("scan → propose → write → gaps on a plain HTML prototype", () => {
 test("the bundle names screens by id, inlines includes, rewrites links and infers transitions", () => {
   const dir = scratch();
   const flow = proposeFlows(dir).flows[0];
+  // a Loading state on both steps, so the grid has a state more steps use than Validation
+  for (const f of ["email-loading.html", "done-loading.html"])
+    writeFileSync(join(dir, "design", "flows", "signup", f), page("Loading", "<p>…</p>"));
+  flow.steps[0].states.Loading = "email-loading.html";
+  flow.steps[1].states.Loading = "done-loading.html";
   flow.steps[0].states.Submitting = "n/a: instant";
   flow.steps[0].states.Error = "n/a: no server";
   flow.steps[1].states.Default = "n/a: success is the view";
@@ -176,7 +181,9 @@ test("the bundle names screens by id, inlines includes, rewrites links and infer
   assert.deepEqual(b.entries.map((e) => e.path).sort(), [
     "screens/01-Email-Default-Mobile.html",
     "screens/01-Email-Default.html",
+    "screens/01-Email-Loading.html",
     "screens/01-Email-Validation.html",
+    "screens/02-Done-Loading.html",
     "screens/02-Done-Success.html",
   ]);
   const m = b.manifest;
@@ -205,6 +212,11 @@ test("the bundle names screens by id, inlines includes, rewrites links and infer
   assert.equal(L("01-Email-Validation", "desktop").y, 0);
   assert.ok(L("01-Email-Validation", "desktop").x > 1440 + 60 + 390);
   assert.ok(L("02-Done-Success", "desktop").y >= 900 + 160);
+  // columns by use: Loading (two steps) sits left of Validation (one step); Success, used once and
+  // later in the vocabulary, sits right of Validation
+  assert.ok(L("01-Email-Loading", "desktop").x < L("01-Email-Validation", "desktop").x);
+  assert.equal(L("01-Email-Loading", "desktop").x, L("02-Done-Loading", "desktop").x);
+  assert.ok(L("02-Done-Success", "desktop").x > L("01-Email-Validation", "desktop").x);
   assert.match(first.devices.desktop.sourceSha256, /^sha256:[0-9a-f]{64}$/);
   const c = buildComponentsBundle(dir);
   assert.equal(c.ok, true);

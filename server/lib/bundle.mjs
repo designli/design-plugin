@@ -62,9 +62,25 @@ const DEVICE_GAP = 60;
  * vocabulary order, the mobile artboard to the right of the desktop one. Deterministic; only
  * layout.x/y change, never the content. The portal re-flows rows by measured heights.
  */
+export function orderStates(screens) {
+  const users = new Map();
+  for (const s of screens)
+    if (s.state) users.set(s.state, (users.get(s.state) || new Set()).add(s.step ?? s.id));
+  const rank = (st) => {
+    const i = STATE_VOCAB.indexOf(st);
+    return i < 0 ? STATE_VOCAB.length : i;
+  };
+  return [...users.keys()].sort(
+    (a, b) =>
+      (a === "Default" ? -1 : b === "Default" ? 1 : 0) ||
+      users.get(b).size - users.get(a).size ||
+      rank(a) - rank(b) ||
+      a.localeCompare(b),
+  );
+}
 export function gridLayout(screens, steps) {
-  const cols = STATE_VOCAB.filter((st) => screens.some((s) => s.state === st));
-  for (const s of screens) if (s.state && !cols.includes(s.state)) cols.push(s.state);
+  // columns by use: Default first, then the states most steps have, ties in vocabulary order
+  const cols = orderStates(screens);
   const rows = [
     ...(screens.some((s) => s.id === "Main") ? ["Main"] : []),
     ...steps.map((st) => st.n),
