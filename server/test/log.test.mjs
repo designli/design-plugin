@@ -27,6 +27,7 @@ test("log lines carry the run id, never a token, and tail filters by run", async
   assert.deepEqual(tail(10, { run: b }).lines.length, 1);
   assert.equal(tail(10).lines.length, 2);
   assert.equal(redact("Authorization: Bearer abc.def"), "Authorization: Bearer …");
+  assert.equal(redact("poll ddev_0123456789abcdef pending"), "poll ddev_… pending");
 });
 
 test("a failed tool call answers with its run id and diagnose returns that run's lines", async () => {

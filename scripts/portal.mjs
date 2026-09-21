@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Client for the Designli design portal. JSON on stdout; never echoes secrets.
 //   node portal.mjs login-check [--url U]
-//   node portal.mjs login --url U               token from DESIGNLI_PORTAL_TOKEN or stdin (echo off); stored 0600 in ~/.config/designli-design
+//   node portal.mjs login --url U               approve a link in the browser (tty), or token from DESIGNLI_PORTAL_TOKEN / stdin; stored 0600 in ~/.config/designli-design
 //   node portal.mjs projects [--create ID --name N]
 //   node portal.mjs status                      the portal side: flows, versions, open feedback, last release
 //   node portal.mjs publish [--note "..."] [--flows a,b] [--dry-run] [--force]
@@ -27,6 +27,9 @@ import {
   whoami,
   readLibrary,
   DEFAULT_PORTAL,
+  deviceStart,
+  deviceWait,
+  deviceLabel,
 } from "../server/lib/setup.mjs";
 import * as P from "../server/lib/portal.mjs";
 import { setRun, log, tail } from "../server/lib/log.mjs";
@@ -103,14 +106,33 @@ async function readSecretFromStdin() {
         DEFAULT_PORTAL,
     );
     if (cmd === "login") {
+      if (!urlAllowed(url))
+        return fail("refusing to send a token over plain http; use https (localhost is allowed)");
+      if (!process.env.DESIGNLI_PORTAL_TOKEN && process.stdin.isTTY) {
+        // browser approval: nothing typed
+        const start = await deviceStart(url, {
+          projectId: readLibrary(project)?.publish?.portal?.projectId || null,
+          label: deviceLabel(project),
+        });
+        if (!start.ok && !start.unsupported)
+          return fail(`could not start the sign-in: ${start.error}`);
+        if (start.ok) {
+          console.error(`Approve the sign-in at ${start.verificationUrlComplete} (code ${start.userCode})`);
+          const until = Date.now() + start.expiresIn * 1000;
+          let r = { status: "pending" };
+          while (r.status === "pending" && Date.now() < until)
+            r = await deviceWait(url, start.deviceCode, { interval: start.interval, waitSeconds: 30 });
+          if (r.status !== "approved") return fail(`sign-in ${r.status}${r.error ? ": " + r.error : ""}`);
+          return out({ ok: true, url, tokenSource: "credentials", user: r.me.user, scope: r.me.scope });
+        }
+        console.error(`${url} does not offer browser sign-in; paste the token (echo off)`);
+      }
       const t = process.env.DESIGNLI_PORTAL_TOKEN || (await readSecretFromStdin());
       if (!t)
         return fail(
           "login needs the token in DESIGNLI_PORTAL_TOKEN or on stdin (e.g. `pbpaste | node portal.mjs login --url U`)",
         );
       if (!looksLikeToken(t)) return fail("that does not look like a dpat_ token");
-      if (!urlAllowed(url))
-        return fail("refusing to send a token over plain http; use https (localhost is allowed)");
       const w = await whoami(url, t);
       if (!w.ok) return out({ ok: false, url, status: w.status, error: w.error });
       storeToken(url, t);
@@ -124,7 +146,7 @@ async function readSecretFromStdin() {
           url,
           tokenSource: null,
           error:
-            "no token: set DESIGNLI_PORTAL_TOKEN or run `portal.mjs login --url <url>` (token on stdin)",
+            "no token: run `portal.mjs login --url <url>` (approve in the browser) or set DESIGNLI_PORTAL_TOKEN",
         });
       const w = await whoami(url, token);
       if (!w.ok)

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Guided setup: connects a product repository to the Designli portal and says what to do next.
-//   node setup.mjs                      interactive (asks; token typed with the echo off)
+//   node setup.mjs                      interactive: sign in by approving a link in the browser
+//   node setup.mjs --paste              interactive, but the token is typed with the echo off
 //   node setup.mjs --yes --url U --project P --harness claude|generic|none [--token-stdin] [--no-store] [--target portal|local]
-// The token is read from DESIGNLI_PORTAL_TOKEN, from --token-stdin, or typed; never from argv, never written into the repo.
+// The token comes from the browser approval, DESIGNLI_PORTAL_TOKEN, --token-stdin, or is typed; never from argv, never written into the repo.
 import { createInterface } from "node:readline";
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -15,6 +16,9 @@ import {
   tokenFor,
   storeToken,
   whoami,
+  deviceStart,
+  deviceWait,
+  deviceLabel,
   readLibrary,
   writePublish,
   mcpServers,
@@ -136,11 +140,50 @@ if (target === "portal") {
     }
   }
   if (!token) {
+    if (!tty) die("no usable token; set DESIGNLI_PORTAL_TOKEN or pass --token-stdin");
+    if (!has("--paste")) {
+      // device sign-in: approve in the browser, nothing typed
+      const start = await deviceStart(url, {
+        projectId: opt("--project") || lib?.publish?.portal?.projectId || null,
+        label: deviceLabel(project),
+      });
+      if (start.ok) {
+        say("");
+        say("Sign in by approving this request in your browser (you must be signed in to the portal):");
+        say(`  ${start.verificationUrlComplete}`);
+        say(`  the page must show the code ${start.userCode}`);
+        process.stdout.write("  waiting for the approval");
+        const until = Date.now() + start.expiresIn * 1000;
+        let r = { status: "pending" };
+        while (r.status === "pending" && Date.now() < until) {
+          r = await deviceWait(url, start.deviceCode, {
+            interval: start.interval,
+            waitSeconds: 30,
+            store: !has("--no-store"),
+          });
+          process.stdout.write(".");
+        }
+        say("");
+        if (r.status === "approved") {
+          me = r.me;
+          token = r.token ?? "stored";
+          say(`  hello ${me.user.name} (${me.user.role})`);
+          if (r.credentialsFile) say(`  stored in ${r.credentialsFile}`);
+          else say("  not stored; export DESIGNLI_PORTAL_TOKEN before running the agent");
+        } else if (r.status === "denied") die("the sign-in was denied on the portal");
+        else if (r.status === "error") die(r.error);
+        else die("the sign-in request expired before it was approved; run setup again");
+      } else if (start.unsupported) {
+        say(`  ${url} does not offer browser sign-in yet; paste a token instead.`);
+      } else die(`could not start the sign-in: ${start.error}`);
+    }
+  }
+  if (!me) {
     say("");
     say("You need a personal access token for the portal:");
     say(`  1. sign in at ${url}, open Account, choose "New token"`);
     say(
-      "  2. scope it: this project only, the permissions the workflow needs (view, comment, push, suggest_copy), an expiry (90 days is a good default)",
+      "  2. scope it: this project only, the permissions the workflow needs (view, comment, push, suggest_copy, resolve, manage_flows), an expiry (90 days is a good default)",
     );
     say(
       "  3. paste it below (input is hidden) or set DESIGNLI_PORTAL_TOKEN in the shell that starts your agent",
@@ -162,7 +205,7 @@ if (target === "portal") {
       say(`  hello ${w.user.name} (${w.user.role})`);
     }
     if (!me) die("no valid token");
-    if (!has("--no-store")) {
+    if (!has("--no-store") && looksLikeToken(token)) {
       const store =
         yes ||
         (await ask("Store it in your credentials file (0600, outside the repo)? y/n", "y")) === "y";

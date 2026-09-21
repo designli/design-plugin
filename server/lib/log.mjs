@@ -26,6 +26,7 @@ export const runId = () => current || setRun();
 export const redact = (s) =>
   String(s)
     .replace(/dpat_[A-Za-z0-9_-]{4,}/g, "dpat_…")
+    .replace(/ddev_[A-Za-z0-9_-]{4,}/g, "ddev_…")
     .replace(/(Bearer\s+)[^\s"']+/gi, "$1…");
 const day = () => new Date().toISOString().slice(0, 10);
 let swept = false;

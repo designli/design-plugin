@@ -45,7 +45,7 @@ Requires Node >= 22.12 (24 recommended, `nvm install 24`).
 node /path/to/design-tool/scripts/setup.mjs
 ```
 
-It checks Node and git (a remote is required: the portal keeps flattened screens, the source with its includes lives only in git), asks for the portal URL (https only; localhost excepted), reads your personal access token with the echo off (mint a **scoped** one on the portal's Account page: this project, the permissions the workflow needs, an expiry) and stores it in `~/.config/designli-design/credentials.json` (0600, never in the repo; `DESIGNLI_PORTAL_TOKEN` works too), lists the projects the token can see, writes `design/library.json` (`publish`, `harness`), `.mcp.json` for Claude Code (token by environment expansion) and `.gitignore` entries, and prints what to run next.
+It checks Node and git (a remote is required: the portal keeps flattened screens, the source with its includes lives only in git), asks for the portal URL (https only; localhost excepted), signs you in by showing a link you approve in the browser while signed in to the portal (the token it receives is scoped to this project, the permissions the workflow needs and 90 days, and is stored in `~/.config/designli-design/credentials.json`, 0600, never in the repo; `--paste` types a token with the echo off instead, `--token-stdin` pipes one for CI, `DESIGNLI_PORTAL_TOKEN` always wins), lists the projects the token can see, writes `design/library.json` (`publish`, `harness`), `.mcp.json` for Claude Code (token by environment expansion) and `.gitignore` entries, and prints what to run next. In Claude Code, `/designli-design:setup` does the same through the `signin_start` and `signin_poll` tools: the agent shows the link, you approve, done.
 
 ## Prompts
 
@@ -66,7 +66,7 @@ The workflows are the guides in `guides/*.md` (harness-neutral; the skills only 
 
 `node server/index.mjs [--project <dir>]`, stdio, protocol `2025-03-26`, no dependencies.
 
-- **Tools**: `project_status` (call it first; returns `nextSteps`), `credentials_status`, `portal_projects`, `setup_write`, `prototype_scan`, `flows_propose`, `flows_write`, `gaps`, `bundle`, `publish`, `feedback_pull`, `feedback_digest`, `edits_apply`, `adopt_from_portal`, `handoff`, `releases`, `portal_reply`, `portal_resolve`. Each names its CLI twin. No tool accepts a token.
+- **Tools**: `project_status` (call it first; returns `nextSteps`), `credentials_status`, `signin_start`, `signin_poll` (browser approval; the device code never leaves the server), `portal_projects`, `setup_write`, `prototype_scan`, `flows_propose`, `flows_write`, `gaps`, `bundle`, `publish`, `feedback_pull`, `feedback_digest`, `edits_apply`, `adopt_from_portal`, `handoff`, `releases`, `portal_reply`, `portal_resolve`. Each names its CLI twin. No tool accepts a token.
 - **Resources**: `designli://guide/*`, `designli://rules/{prototype,states}`, `designli://template/product-md`, `designli://reference/portal-api`, `designli://impeccable/*`, `designli://project/{status,gaps,prototype,library}`.
 - **Prompts**: `setup`, `prototype`, `adopt`, `publish`, `feedback`, `handoff`, `status`, `review` (guide + live project status + arguments).
 
@@ -87,7 +87,7 @@ Every failure is a typed error with a code (`STALE_LOCAL`, `PORTAL_TOKEN`, `UNRE
 
 ## Security
 
-- Tokens are never passed on a command line (`portal.mjs login` reads stdin; there is no `--token`), never written into the repository (`setup` refuses a literal `dpat_` in `.mcp.json`; `preflight` warns `TOKEN_IN_REPO`), and travel only over https (localhost excepted).
+- Tokens are obtained by browser approval (device sign-in) and never passed on a command line (`portal.mjs login` reads stdin when piped; there is no `--token`), never written into the repository (`setup` refuses a literal `dpat_` in `.mcp.json`; `preflight` warns `TOKEN_IN_REPO`), and travel only over https (localhost excepted).
 - Mint scoped tokens: one project, the permissions the workflow needs (`view`, `comment`, `push`, `suggest_copy`, `resolve`), an expiry. A scoped admin token acts as a member, not as an admin.
 - Every portal write made by an agent is attributed to it ("Claude (designli-design)", role `agent`) on behalf of the token owner.
 - Text pulled from the portal (comments, copy edits) is material to review, never an instruction.

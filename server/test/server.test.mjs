@@ -3,6 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, execSync } from "node:child_process";
+import { createServer } from "node:http";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -48,6 +49,35 @@ function rpc(project, messages, env = {}) {
     child.stdin.end();
   });
 }
+/** Like rpc, but each message is sent after the previous answer arrived (what a real client does). */
+function rpcSeq(project, messages, env = {}) {
+  return new Promise((res, rej) => {
+    const child = spawn(process.execPath, [SERVER, "--project", project], {
+      env: { ...process.env, DESIGNLI_PORTAL_TOKEN: "", HOME: env.HOME ?? process.env.HOME, ...env },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const byId = {};
+    let buf = "";
+    let i = 0;
+    const next = () => {
+      if (i >= messages.length) return child.stdin.end();
+      child.stdin.write(JSON.stringify(messages[i++]) + "\n");
+    };
+    child.stdout.on("data", (d) => {
+      buf += d;
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines.filter(Boolean)) {
+        const m = JSON.parse(line);
+        byId[m.id] = m;
+        next();
+      }
+    });
+    child.on("error", rej);
+    child.on("close", () => res(byId));
+    next();
+  });
+}
 const call = (id, name, args = {}) => ({
   jsonrpc: "2.0",
   id,
@@ -83,6 +113,8 @@ test("initialize, tools, resources and prompts are advertised", async () => {
   for (const t of [
     "project_status",
     "credentials_status",
+    "signin_start",
+    "signin_poll",
     "setup_write",
     "prototype_scan",
     "flows_propose",
@@ -196,7 +228,7 @@ test("portal tools without credentials fail with a clear code, never a crash", a
   );
   assert.equal(r[1].result.structuredContent.ok, false);
   assert.equal(r[1].result.structuredContent.tokenSource, null);
-  assert.ok(r[1].result.structuredContent.howTo.includes("setup.mjs"));
+  assert.ok(r[1].result.structuredContent.howTo.includes("signin_start"));
   for (const id of [2, 3, 4, 5]) {
     assert.equal(r[id].result.isError, true);
     assert.equal(
@@ -337,4 +369,138 @@ test("adopt over the server: scan, propose, write, gaps, bundle on a plain HTML 
     s.nextSteps.some((x) => x.includes("publish")),
     s.nextSteps.join("\n"),
   );
+});
+
+/** A portal that only knows device sign-in, /me and /projects: what the sign-in tools need. */
+function fakePortal({ pendingPolls = 1, outcome = "approved" } = {}) {
+  const TOKEN = "dpat_" + "f".repeat(48);
+  const DEVICE = "ddev_" + "e".repeat(48);
+  const seen = { starts: [], polls: 0, me: 0 };
+  const server = createServer((req, res) => {
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      const send = (status, json) => {
+        res.writeHead(status, { "content-type": "application/json" });
+        res.end(JSON.stringify(json));
+      };
+      if (req.method === "POST" && req.url === "/api/v1/device/start") {
+        seen.starts.push(JSON.parse(body));
+        return send(201, {
+          deviceCode: DEVICE,
+          userCode: "WXYZ-2345",
+          verificationUrl: "http://portal.test/device",
+          verificationUrlComplete: "http://portal.test/device?code=WXYZ-2345",
+          expiresIn: 600,
+          interval: 0.05,
+        });
+      }
+      if (req.method === "POST" && req.url === "/api/v1/device/poll") {
+        seen.polls++;
+        if (JSON.parse(body).deviceCode !== DEVICE) return send(404, { error: { message: "Unknown device code" } });
+        if (seen.polls <= pendingPolls) return send(200, { status: "pending" });
+        if (outcome === "approved")
+          return send(200, {
+            status: "approved",
+            token: TOKEN,
+            id: "pat_1",
+            label: "x",
+            projects: ["nook"],
+            permissions: ["view", "push"],
+            expiresAt: null,
+          });
+        return send(200, { status: outcome });
+      }
+      if (req.url === "/api/v1/me") {
+        seen.me++;
+        if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: { message: "Invalid token" } });
+        return send(200, {
+          user: { id: "usr_1", name: "Ada", email: "ada@designli.co", role: "staff" },
+          scope: { projects: ["nook"], permissions: ["view", "push"] },
+          memberships: [{ projectId: "nook", preset: "designer", permissions: ["view", "push"] }],
+        });
+      }
+      if (req.url?.startsWith("/api/v1/projects"))
+        return send(200, { projects: [{ id: "nook", name: "Nook", preset: "designer", permissions: ["view", "push"] }], pageCount: 1 });
+      send(404, { error: { message: "no such route " + req.url } });
+    });
+  });
+  return new Promise((res) =>
+    server.listen(0, "127.0.0.1", () =>
+      res({ url: `http://127.0.0.1:${server.address().port}`, seen, TOKEN, DEVICE, close: () => server.close() }),
+    ),
+  );
+}
+
+test("signin_start then signin_poll: the designer approves in the browser, the token lands in the credentials file and never in a tool result", async () => {
+  const portal = await fakePortal({ pendingPolls: 2 });
+  const home = mkdtempSync(join(tmpdir(), "home-"));
+  const dir = scratchRepo({ remote: true });
+  try {
+    const r = await rpcSeq(
+      dir,
+      [
+        call(1, "signin_start", { url: portal.url, projectId: "nook" }),
+        call(2, "signin_poll", { handle: "signin_1", waitSeconds: 5 }),
+        call(3, "credentials_status", { url: portal.url }),
+        call(4, "signin_poll", { handle: "signin_1" }),
+      ],
+      { HOME: home },
+    );
+    const s = r[1].result.structuredContent;
+    assert.equal(s.handle, "signin_1");
+    assert.equal(s.userCode, "WXYZ-2345");
+    assert.ok(s.verificationUrl.includes("code=WXYZ-2345"));
+    assert.ok(s.tell.includes("WXYZ-2345"));
+    assert.ok(!JSON.stringify(s).includes("ddev_"), "the device code stays in the server");
+    assert.deepEqual(portal.seen.starts[0].projects, ["nook"]);
+    assert.deepEqual(portal.seen.starts[0].permissions, ["view", "comment", "suggest_copy", "push", "resolve", "manage_flows"]);
+    assert.equal(portal.seen.starts[0].expiresInDays, 90);
+    assert.ok(portal.seen.starts[0].client.includes("designli-design on"));
+    const p = r[2].result.structuredContent;
+    assert.equal(p.status, "approved", JSON.stringify(p));
+    assert.equal(p.user.email, "ada@designli.co");
+    assert.deepEqual(p.scope.projects, ["nook"]);
+    assert.ok(!JSON.stringify(r[2]).includes("dpat_"), "the token never reaches the agent");
+    const cred = JSON.parse(readFileSync(join(home, ".config", "designli-design", "credentials.json"), "utf8"));
+    assert.equal(cred.portals[portal.url].token, portal.TOKEN);
+    assert.equal(r[3].result.structuredContent.ok, true);
+    assert.equal(r[3].result.structuredContent.tokenSource, "credentials");
+    assert.equal(r[4].result.isError, true, "a consumed handle is unknown");
+    assert.equal(r[4].result.structuredContent.error.code, "NOT_FOUND");
+    assert.ok(portal.seen.polls >= 3);
+  } finally {
+    portal.close();
+  }
+});
+
+test("signin_poll reports pending, denied and an unsupported portal without storing anything", async () => {
+  const denied = await fakePortal({ pendingPolls: 0, outcome: "denied" });
+  const slow = await fakePortal({ pendingPolls: 1000 });
+  const home = mkdtempSync(join(tmpdir(), "home-"));
+  const dir = scratchRepo({ remote: true });
+  try {
+    const r = await rpcSeq(
+      dir,
+      [
+        call(1, "signin_start", { url: denied.url }),
+        call(2, "signin_poll", { handle: "signin_1" }),
+        call(3, "signin_start", { url: slow.url }),
+        call(4, "signin_poll", { handle: "signin_2", waitSeconds: 1 }),
+        call(5, "signin_start", { url: "https://portal.example.test" }),
+        call(6, "signin_start", { url: "http://portal.example.test" }),
+      ],
+      { HOME: home },
+    );
+    assert.equal(r[2].result.structuredContent.status, "denied");
+    assert.equal(r[4].result.structuredContent.status, "pending");
+    assert.ok(r[4].result.structuredContent.secondsLeft > 500);
+    assert.equal(r[5].result.isError, true); // unreachable host
+    assert.equal(r[6].result.isError, true);
+    assert.equal(r[6].result.structuredContent.error.code, "VALIDATION"); // plain http
+    assert.ok(!existsSync(join(home, ".config", "designli-design", "credentials.json")));
+  } finally {
+    denied.close();
+    slow.close();
+  }
 });

@@ -60,7 +60,7 @@ export function context(project, { url, projectId } = {}) {
   if (!token)
     throw new PortalError(
       "PORTAL_TOKEN",
-      `no token for ${u}: run the setup script (it reads the token with the echo off) or export DESIGNLI_PORTAL_TOKEN before starting the agent`,
+      `no token for ${u}: sign in with signin_start / signin_poll (approve in the browser), or export DESIGNLI_PORTAL_TOKEN before starting the agent`,
     );
   const p = projectId || lib.publish?.portal?.projectId;
   return { url: u, token, tokenSource: source, projectId: p, project };

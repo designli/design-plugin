@@ -1,6 +1,6 @@
 # setup: connect this repository to the Designli portal
 
-Run this once per repository, before `adopt`. It is a conversation with the designer (or with the developer setting the repo up); every step has a default. The `designli-design` MCP server's `project_status`, `credentials_status`, `portal_projects` and `setup_write` tools do the work; the same steps are available as the interactive CLI `node <plugin>/scripts/setup.mjs`, which is the better route when a token has to be pasted (it reads it with the echo off).
+Run this once per repository, before `adopt`. It is a conversation with the designer (or with the developer setting the repo up); every step has a default. The `designli-design` MCP server's `project_status`, `credentials_status`, `signin_start`, `signin_poll`, `portal_projects` and `setup_write` tools do the work; the same steps exist as the interactive CLI `node <plugin>/scripts/setup.mjs`.
 
 Never ask for the token in chat, never write it into a file inside the repository, never print it back.
 
@@ -16,7 +16,9 @@ Default: `DESIGNLI_PORTAL_URL`, else the URL already in `library.json`, else `ht
 
 If `credentials_status` reports a valid token for that URL (it calls the portal's `/me`), show who it belongs to and its scope (projects, permissions, expiry) and move on.
 
-Otherwise explain, in two sentences, how to get one: sign in to the portal, open **Account**, "New token", and pick the narrowest scope that does the job (this project only; `view`, `comment`, `push`, `suggest_copy`; an expiry of 90 days is a good default). Then have the designer run `node <plugin>/scripts/setup.mjs` in a terminal (it asks for the token with the input hidden and stores it in `~/.config/designli-design/credentials.json`, readable only by them) or `export DESIGNLI_PORTAL_TOKEN=…` in the shell that starts the agent. Wait for them; then call `credentials_status` again.
+Otherwise sign in through the browser, nothing typed: call `signin_start` (with the project id if Step 4 is already known; it scopes the token to that project, the permissions the workflow needs, 90 days). Show the designer the link and the code it returns, in plain words: "Open this link, check the page shows the code WXYZ-2345, and approve. I wait." Then call `signin_poll` with the handle; call it again while it answers `pending` (each call waits up to 30 seconds; the request lasts ten minutes). On `approved` the token is already stored in the designer's credentials file: show who it belongs to and its scope and move on. On `denied`, stop and ask what they would prefer. On `expired`, offer to start again.
+
+If the portal does not offer browser sign-in (`UNSUPPORTED`), fall back to the old route: the designer mints a token on **Account** and runs `node <plugin>/scripts/setup.mjs --paste` in a terminal (it reads the token with the echo off), or exports `DESIGNLI_PORTAL_TOKEN` in the shell that starts the agent. Wait for them; then call `credentials_status` again.
 
 ## Step 4: project
 
@@ -46,7 +48,7 @@ In Claude Code the prompts are `/designli-design:<name>`; on any MCP client they
 
 ## Security rules you follow
 
-- The token lives in the environment or in the user's credentials file, nowhere else. Refuse to echo it, commit it or put it in a config file.
+- The token lives in the environment or in the user's credentials file, nowhere else. It arrives there through the browser approval; refuse to receive it in chat, echo it, commit it or put it in a config file.
 - `https` only, except `localhost`.
-- Recommend a scoped token (one project, the permissions the workflow needs, an expiry); an unscoped token is for admins doing admin work.
+- Keep the scope narrow: the browser sign-in asks for one project, the permissions the workflow needs and 90 days; widen only when the designer asks and says why. An unscoped token is for admins doing admin work.
 - If `.mcp.json` already contains a literal `dpat_` value, say so and ask the designer to revoke that token on Account and replace it with the environment variable.

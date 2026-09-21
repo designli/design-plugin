@@ -2,7 +2,8 @@
 // and HTTP helpers: nothing here prints, asks or exits; the token is never written to a repo file.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { homedir } from "node:os";
+import { homedir, hostname } from "node:os";
+import { basename } from "node:path";
 
 export const PLUGIN_ROOT = resolve(import.meta.dirname, "..", "..");
 export const PLUGIN_VERSION = JSON.parse(
@@ -80,6 +81,83 @@ export async function portalGet(url, token, path) {
     json,
     error: res.ok ? null : json?.error?.message || text.slice(0, 200),
   };
+}
+// ---- device sign-in: the token is approved in the browser, never typed ----
+/** What the workflow needs: publish, pull feedback, answer threads, waive states. */
+export const DEVICE_PERMISSIONS = ["view", "comment", "suggest_copy", "push", "resolve", "manage_flows"];
+export const DEVICE_EXPIRY_DAYS = 90;
+/** "acme-proto (designli-design on gabriel-mbp)": what the approval page shows. */
+export const deviceLabel = (project) =>
+  `${basename(project)} (designli-design on ${hostname().replace(/\.local$/, "")})`.slice(0, 60);
+async function devicePost(url, path, body) {
+  let res;
+  try {
+    res = await fetch(url + "/api/v1/device" + path, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-designli-client": `designli-design/${PLUGIN_VERSION}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    return { status: 0, json: null, error: `cannot reach ${url}: ${e.message}` };
+  }
+  const text = await res.text();
+  let json = null;
+  try {
+    json = JSON.parse(text);
+  } catch {}
+  return {
+    status: res.status,
+    json,
+    error: res.ok ? null : json?.error?.message || text.slice(0, 200),
+  };
+}
+/**
+ * Opens a sign-in request. Returns { ok, deviceCode, userCode, verificationUrl,
+ * verificationUrlComplete, expiresIn, interval } or { ok: false, status, error, unsupported }
+ * (unsupported: the portal predates device sign-in).
+ */
+export async function deviceStart(url, { projectId, permissions, expiresInDays, label } = {}) {
+  const r = await devicePost(url, "/start", {
+    label: label || "designli-design",
+    projects: projectId ? [projectId] : null,
+    permissions: permissions ?? DEVICE_PERMISSIONS,
+    expiresInDays: expiresInDays === undefined ? DEVICE_EXPIRY_DAYS : expiresInDays,
+    client: label || "designli-design",
+  });
+  if (r.status !== 201)
+    return { ok: false, status: r.status, error: r.error, unsupported: r.status === 404 };
+  return { ok: true, ...r.json };
+}
+/** One poll: { status: "pending" | "denied" | "expired" | "gone" | "approved", token? } or { status: "error", error }. */
+export async function devicePoll(url, deviceCode) {
+  const r = await devicePost(url, "/poll", { deviceCode });
+  // the request itself is gone (answered already, or never existed); any other failure is reported
+  if (r.status === 404 && /device code/i.test(r.error || "")) return { status: "gone" };
+  if (r.status !== 200) return { status: "error", error: r.error };
+  return r.json;
+}
+/**
+ * Polls until the request is answered or `waitSeconds` pass. On approval the token is stored and
+ * verified; the result never carries it: { status: "approved", credentialsFile, me } | { status }.
+ */
+export async function deviceWait(url, deviceCode, { interval = 5, waitSeconds = 30, store = true } = {}) {
+  const until = Date.now() + waitSeconds * 1000;
+  for (;;) {
+    const r = await devicePoll(url, deviceCode);
+    if (r.status === "approved") {
+      const me = await whoami(url, r.token);
+      if (!me.ok) return { status: "error", error: `the new token was refused: ${me.error}` };
+      const credentialsFile = store ? storeToken(url, r.token) : null;
+      return { status: "approved", credentialsFile, me, ...(store ? {} : { token: r.token }) };
+    }
+    if (r.status !== "pending") return r;
+    if (Date.now() + interval * 1000 > until) return { status: "pending" };
+    await new Promise((res) => setTimeout(res, interval * 1000));
+  }
 }
 /** Identity, scope and the projects the token can see. */
 export async function whoami(url, token) {
