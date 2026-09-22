@@ -154,15 +154,25 @@ const dcParts = (src) => ({
     "",
   ),
 });
-/** A plain component file: its <head> styles/links are hoisted, its <body> (or all of it) inlined. */
+/**
+ * A plain component file: its <head> styles, links and external scripts (a pinned Tailwind or
+ * font loader) are hoisted, its <body> (or all of it) inlined.
+ */
 const htmlParts = (src) => {
   const head = (src.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i) || [, ""])[1];
   const body = (src.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i) || [])[1];
-  const helmet = [...head.matchAll(/<(?:style\b[\s\S]*?<\/style|link\b[^>]*)>/gi)]
+  const helmet = [
+    ...head.matchAll(
+      /<(?:style\b[\s\S]*?<\/style|link\b[^>]*|script\b[^>]*\bsrc\s*=[^>]*>\s*<\/script)>/gi,
+    ),
+  ]
     .map((m) => m[0])
     .join("\n");
   return { helmet, body: body ?? src.replace(/<!doctype[^>]*>/i, "") };
 };
+/** The hoistable head part and the body of a component file, whatever its flavour. */
+export const componentParts = (file) =>
+  isDc(file) ? dcParts(readFileSync(file, "utf8")) : htmlParts(readFileSync(file, "utf8"));
 /** Resolves an include name to a file: `<name>.html`, then `<name>.dc.html`, in each directory. */
 export function componentFile(name, dirs) {
   for (const d of dirs.filter(Boolean))

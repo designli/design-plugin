@@ -387,3 +387,62 @@ test("plugin.json and marketplace.json carry the same version", () => {
   assert.equal(market.plugins[0].version, plugin.version);
 });
 
+test("component sheets render inside a host screen's head; unused ones fall back to Styles or warn", () => {
+  const dir = scratch();
+  writeFlows(dir, { flows: [proposeFlows(dir).flows[0]] });
+  // an include nobody imports, before and after a shared Styles include exists
+  writeFileSync(join(dir, "design", "components", "Card.html"), `<div class="card">Card</div>\n`);
+  let b = buildComponentsBundle(dir);
+  assert.equal(b.ok, true, b.errors.join("; "));
+  const sheet = (id) => readFileSync(join(dir, "design", "components", "bundle", "screens", `${id}.html`), "utf8");
+  const nav = sheet("CmpNavbar");
+  assert.ok(nav.includes("<title>Navbar</title>"), "titled by the component");
+  assert.ok(nav.includes("<style>body{font-family:sans-serif}</style>"), "the host screen's styles come along");
+  assert.ok(nav.includes('data-imported-component="Navbar"') || nav.includes("<nav>"), "the fragment is the body");
+  assert.ok(!nav.includes("<h1>"), "nothing of the host's body leaks in");
+  assert.equal(b.manifest.screens.find((s) => s.id === "CmpNavbar").devices.desktop.w, 1440, "sized to the host device");
+  assert.equal(b.manifest.devices.desktop.w, 1440);
+  assert.ok(!sheet("CmpCard").includes("font-family:sans-serif"), "no host, no borrowed styles");
+  assert.ok(b.warnings.some((w) => w.startsWith("CmpCard:") && w.includes("without the screens' styles")), b.warnings.join("; "));
+  writeFileSync(join(dir, "design", "components", "Styles.html"), `<style>.card{border:1px solid}</style>\n`);
+  b = buildComponentsBundle(dir);
+  assert.ok(sheet("CmpCard").includes(".card{border:1px solid}"), "the Styles include dresses an unused component");
+  assert.ok(b.warnings.some((w) => w.startsWith("CmpCard:") && w.includes("uses the Styles include")));
+  assert.ok(!b.warnings.some((w) => w.startsWith("CmpStyles:")), "the Styles include itself is not reported");
+});
+
+test("an include's external script is hoisted into the host's head", () => {
+  const dir = scratch();
+  writeFileSync(
+    join(dir, "design", "components", "Navbar.html"),
+    `<!doctype html><html><head><script src="https://cdn.tailwindcss.com/3.4.1"></script><style>nav{display:flex}</style></head><body><nav>Home</nav></body></html>\n`,
+  );
+  const html = flatten(join(dir, "design", "flows", "signup", "email.html"), {
+    componentDirs: [join(dir, "design", "components")],
+    project: dir,
+  }).html;
+  const head = html.match(/<head[\s\S]*?<\/head>/i)[0];
+  assert.ok(head.includes('<script src="https://cdn.tailwindcss.com/3.4.1"></script>'));
+  assert.ok(head.includes("nav{display:flex}"));
+});
+
+test("a flow's devices come from its files: mobile variants make it a two-device flow, none keeps it desktop", () => {
+  const dir = scratch();
+  mkdirSync(join(dir, "design", "flows", "cancel"), { recursive: true });
+  writeFileSync(join(dir, "design", "flows", "cancel", "find.html"), page("Find your pass", "<form><input></form>"));
+  const proposed = proposeFlows(dir).flows;
+  const signup = proposed.find((f) => f.slug === "signup");
+  const cancel = proposed.find((f) => f.slug === "cancel");
+  assert.deepEqual(signup.devices, ["desktop", "mobile"]);
+  assert.deepEqual(cancel.devices, ["desktop"]);
+  writeFlows(dir, { flows: proposed });
+  assert.ok(buildFlowBundle(dir, "signup").manifest.devices.mobile, "the manifest lists mobile, so the portal enables the toggle");
+  assert.equal(buildFlowBundle(dir, "cancel").manifest.devices.mobile, undefined);
+  // a flow.json written by an older adopt without devices still infers mobile from its states
+  const fj = join(dir, "design", "flows", "signup", "flow.json");
+  const flow = JSON.parse(readFileSync(fj, "utf8"));
+  delete flow.devices;
+  writeFileSync(fj, JSON.stringify(flow));
+  assert.ok(buildFlowBundle(dir, "signup").manifest.devices.mobile);
+});
+

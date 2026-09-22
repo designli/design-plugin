@@ -22,8 +22,10 @@ import {
   readPrototype,
   readProduct,
   scanFile,
+  componentParts,
+  componentFile,
 } from "./proto.mjs";
-import { readFlow, writeFlow, resolveStates, resolveFlowDir } from "./flows.mjs";
+import { readFlow, writeFlow, resolveStates, resolveFlowDir, scanPrototype } from "./flows.mjs";
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 export function contentHashOf(entries) {
@@ -236,7 +238,8 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
     ? JSON.parse(readFileSync(join(compDir, "bundle", "manifest.json"), "utf8")).contentHash
     : null;
   const devices = { desktop: proto.devices.desktop };
-  if (r.devices.includes("mobile")) devices.mobile = proto.devices.mobile;
+  if (r.devices.includes("mobile") || [...screens.values()].some((s) => s.devices.mobile))
+    devices.mobile = proto.devices.mobile;
   const contentHash = contentHashOf(entries);
   const manifest = {
     schema: 1,
@@ -304,7 +307,33 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
   };
 }
 
-/** Bundles the includes as the project's components library (one screen per include). */
+/**
+ * A component sheet: the include rendered exactly as it looks inside a screen. The sheet borrows
+ * the <head> (fonts, Tailwind, styles, a hoisted Styles include) and the <body> attributes of a
+ * screen that imports the component; an unused component gets the shared Styles include when one
+ * exists, and is reported otherwise.
+ */
+function componentSheet({ name, flat, host, stylesFile, compDir, project }) {
+  const title = `<title>${name}</title>`;
+  let headInner = `<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">`;
+  let bodyTag = "<body>";
+  let bodyPrefix = "";
+  if (host) {
+    const h = flatten(host, { componentDirs: [compDir], project }).html;
+    const head = h.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i);
+    if (head) headInner = head[1].replace(/<title>[\s\S]*?<\/title>/i, "").trim();
+    const bt = h.match(/<body\b[^>]*>/i);
+    if (bt) bodyTag = bt[0];
+  } else if (stylesFile) {
+    const parts = componentParts(stylesFile);
+    if (parts.helmet) headInner += "\n" + parts.helmet;
+    if (parts.body.trim())
+      bodyPrefix = `<!-- begin Styles --><div data-imported-component="Styles">${parts.body}</div><!-- end Styles -->\n`;
+  }
+  return `<!doctype html>\n<html lang="en">\n<head>\n${title}\n${headInner}\n</head>\n${bodyTag}\n${bodyPrefix}${flat.html}\n</body>\n</html>\n`;
+}
+
+/** Bundles the includes as the project's components library (one sheet per include). */
 export function buildComponentsBundle(project, { out } = {}) {
   const proto = readPrototype(project);
   const compDir = resolve(project, proto.components);
@@ -324,6 +353,16 @@ export function buildComponentsBundle(project, { out } = {}) {
   const entries = [];
   const screens = [];
   const errors = [];
+  const warnings = [];
+  // which screens import each component, so a sheet can render in a real screen's head
+  const scan = scanPrototype(project);
+  const hostsOf = (name) => {
+    const used = new Set((scan.components.find((c) => c.name === name) || {}).usedBy || []);
+    const s = scan.screens.filter((x) => used.has(x.file));
+    return s.find((x) => x.device !== "mobile") || s[0] || null;
+  };
+  const stylesFile = componentFile("Styles", [compDir]);
+  let widest = 0;
   for (const f of sources) {
     const name = f.replace(/\.dc\.html$/, "").replace(/\.html$/, "");
     const id = componentId(name);
@@ -334,11 +373,29 @@ export function buildComponentsBundle(project, { out } = {}) {
       errors.push(`${f}: ${e.message}`);
       continue;
     }
-    const html = wrapFragment(flat.html, name);
+    const host = hostsOf(name);
+    const hostFile = host ? resolve(project, host.file) : null;
+    if (!host && name !== "Styles")
+      warnings.push(
+        stylesFile
+          ? `${id}: no screen imports ${name}; its sheet uses the Styles include`
+          : `${id}: no screen imports ${name}; its sheet renders without the screens' styles`,
+      );
+    const html = componentSheet({
+      name,
+      flat,
+      host: hostFile,
+      stylesFile: name === "Styles" ? null : stylesFile,
+      compDir,
+      project,
+    });
     writeFileSync(join(outDir, "screens", `${id}.html`), html);
     const digest = sha(html);
     entries.push({ path: `screens/${id}.html`, sha256: digest });
     const a = dims[name] || {};
+    const frame = proto.devices[host?.device === "mobile" ? "mobile" : "desktop"] || proto.devices.desktop;
+    const w = a.w || frame.w || 960;
+    widest = Math.max(widest, w);
     screens.push({
       id,
       kind: "state",
@@ -351,12 +408,12 @@ export function buildComponentsBundle(project, { out } = {}) {
       devices: {
         desktop: {
           file: `screens/${id}.html`,
-          w: a.w || 960,
+          w,
           h: a.h || 720,
           sha256: "sha256:" + digest,
           sourceSha256: "sha256:" + sha(readFileSync(join(compDir, f))),
           source: f,
-          layout: { x: a.x ?? screens.length * (960 + COL_GAP), y: a.y ?? 0 },
+          layout: { x: a.x ?? screens.length * (w + COL_GAP), y: a.y ?? 0 },
         },
       },
     });
@@ -376,7 +433,7 @@ export function buildComponentsBundle(project, { out } = {}) {
       order: null,
       next: [],
     },
-    devices: { desktop: { w: 960, h: 720 } },
+    devices: { desktop: { w: widest || 960, h: 720 } },
     defaultDevice: "desktop",
     entryPoints: [],
     steps: [],
@@ -398,7 +455,7 @@ export function buildComponentsBundle(project, { out } = {}) {
     contentHash,
     screens: screens.length,
     errors,
-    warnings: [],
+    warnings,
   };
 }
 /** Whether the bundle on disk is older than any source (a cheap "needs rebuild"). */

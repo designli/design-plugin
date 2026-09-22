@@ -66,12 +66,18 @@ const waiverReason = (v) =>
   String(v)
     .replace(/^n\/a:?\s*/i, "")
     .trim();
-/** The devices a flow designs: prototype.json devices ∩ what the flow says (default desktop only). */
+/**
+ * The devices a flow designs: what the flow says, else what its files show (a state with a mobile
+ * file makes the flow a two-device flow), else desktop only.
+ */
 export function flowDevices(flow) {
   if (Array.isArray(flow.devices) && flow.devices.length) return flow.devices;
   if (flow.device === "both") return ["desktop", "mobile"];
   if (flow.device === "mobile") return ["mobile"];
-  return ["desktop"];
+  const anyMobile = (flow.steps || []).some((st) =>
+    Object.values(st.states || {}).some((v) => v && typeof v === "object" && v.mobile),
+  );
+  return anyMobile ? ["desktop", "mobile"] : ["desktop"];
 }
 /**
  * Resolves every declared state of a flow to files. Returns steps with
@@ -596,8 +602,10 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       .slice(0, 1)
       .map((st) => ({ from: "?", to: `${st.n}-${st.id}` }));
     order++;
+    const devices = files.some((f) => f.device === "mobile") ? ["desktop", "mobile"] : ["desktop"];
     const flowOut = {
       slug,
+      devices,
       title: existingFlow?.flow.title || pascal(slug).replace(/([a-z])([A-Z])/g, "$1 $2"),
       goal: existingFlow?.flow.goal || "",
       order: existingFlow?.flow.order ?? order,

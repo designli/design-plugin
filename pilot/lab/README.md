@@ -56,6 +56,7 @@ In a fresh clone of the bare remote with `design/flows/*/flow.json` deleted: `/d
 - [ ] adopt: questions asked (count) / questions the scan could have answered / wrong guesses (kinds, states, entry points)
 - [ ] publish 1: release 1, both flows, components pushed, client URL; gaps listed on the portal match the repo's `gaps`
 - [ ] canvas: one row per step, one column per state, mobile beside desktop, no overlap, name strips readable (a plain-HTML prototype has no canvas.json; the grid comes from the bundler and the portal re-flows rows by measured height)
+- [ ] components: each sheet styled like the screens (fonts, colours), sized to the screen width; the mobile toggle enabled on a flow with `-m` files and disabled on a desktop-only flow
 - [ ] feedback: digest order (agent first), edits applied (screen, sibling, include once with `screensUsing`), `needsManual`, waiver and order in `flow.json`; one edit declined with `edits_dismiss` shows as a thread on the screen
 - [ ] releases: a round that changed only an include reads "N screens changed only through Cmp…", not a list of every screen
 - [ ] publish 2: release diff names the changed screens; edits marked applied; replies and resolves on the threads
