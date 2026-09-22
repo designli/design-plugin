@@ -486,3 +486,13 @@ test("an include that imports another include is flattened all the way down", ()
   assert.deepEqual(r.includes.sort(), ["Logo", "Navbar"]);
 });
 
+test("a link into another flow's folder becomes a journey connector (next)", () => {
+  const dir = scratch();
+  mkdirSync(join(dir, "design", "flows", "billing"), { recursive: true });
+  writeFileSync(join(dir, "design", "flows", "billing", "plan.html"), page("Pick a plan", `<p><a href="../signup/email.html">Create an account first</a></p>`));
+  const flows = proposeFlows(dir).flows;
+  const billing = flows.find((f) => f.slug === "billing");
+  assert.deepEqual(billing.next, [{ flow: "signup", on: "Create an account first" }]);
+  assert.deepEqual(flows.find((f) => f.slug === "signup").next, []);
+});
+

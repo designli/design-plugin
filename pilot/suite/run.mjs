@@ -152,7 +152,7 @@ await timed("adopt", async () => {
   const prop = await tool(c, "flows_propose", {});
   obs.adopt = {
     scan: { screens: scan.out?.screens?.length ?? null, components: (scan.out?.components ?? []).map((x) => ({ name: x.name, usedBy: x.usedBy.length })) },
-    proposed: (prop.out?.flows ?? []).map((f) => ({ slug: f.slug, devices: f.devices, title: f.title, entry: f.entryPoints?.map((e) => e.to) ?? [], steps: f.steps.map((s) => ({ n: s.n, id: s.id, kind: s.kind, states: Object.keys(s.states) })), transitions: f.transitions })),
+    proposed: (prop.out?.flows ?? []).map((f) => ({ slug: f.slug, devices: f.devices, title: f.title, entry: f.entryPoints?.map((e) => e.to) ?? [], steps: f.steps.map((s) => ({ n: s.n, id: s.id, kind: s.kind, states: Object.keys(s.states) })), transitions: f.transitions, next: f.next ?? [] })),
     questions: (prop.out?.questions ?? []).map((q) => ({ flow: q.flow, field: q.field })),
     writes: [],
   };

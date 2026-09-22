@@ -62,6 +62,10 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     add("adopt", "deviceDetection", ratio(devOk, flows.length), 1, { items: devItems });
     add("adopt", "entryRecall", ratio(entryOk, flows.length), 1);
     add("adopt", "transitionRecall", ratio(trOk, trN), 0.9, { items: trItems });
+    // links into other flows become journey connectors
+    const cross = flows.flatMap((f) => f.crossFlow.map((c) => ({ ...c, slug: f.slug })));
+    const crossOk = cross.filter((c) => (proposed(c.slug)?.next ?? []).some((n) => n.flow === c.to));
+    if (cross.length) add("adopt", "journeyLinksRecall", ratio(crossOk.length, cross.length), 1, { items: cross.filter((c) => !crossOk.includes(c)).map((c) => `${c.slug} → ${c.to} (${c.label})`) });
     const q = obs.adopt?.questions ?? [];
     add("adopt", "questionsPerFlow", ratio(q.length, flows.length), 6, { op: "<=", unit: "q" });
     // avoidable: a title (from the folder), an entry point the proposal already got right, a kind the proposal already got right

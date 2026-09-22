@@ -1,7 +1,7 @@
 // Flow declarations (design/flows/<slug>/flow.json): reading, resolving states to files, gaps,
 // scanning a prototype folder and proposing declarations for what is not declared yet.
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
-import { join, resolve, relative, basename } from "node:path";
+import { join, resolve, relative, basename, dirname } from "node:path";
 import {
   STATE_VOCAB,
   STEP_KINDS,
@@ -619,6 +619,21 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       .filter((st) => !targets.has(`${st.n}-${st.id}`))
       .slice(0, 1)
       .map((st) => ({ from: "?", to: `${st.n}-${st.id}` }));
+    // links into another flow's folder are the journey's connectors ("Buy tickets" → buy-tickets)
+    const slugOfDir = (d) => {
+      const ex = existing.find((f) => relative(project, f.dir) === d);
+      return ex?.slug ?? (byDir.has(d) ? kebab(basename(d)) : null);
+    };
+    const next = [];
+    for (const f of files)
+      for (const l of f.links) {
+        const targetDir = dirname(l.file);
+        if (targetDir === dir || !l.exists) continue;
+        const target = slugOfDir(targetDir);
+        if (!target || target === slug) continue;
+        const on = l.label || "?";
+        if (!next.some((n) => n.flow === target && n.on === on)) next.push({ flow: target, on });
+      }
     order++;
     const devices = ["desktop", "mobile"].filter((d) => files.some((f) => f.device === d));
     const flowOut = {
@@ -627,7 +642,7 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       title: existingFlow?.flow.title || pascal(slug).replace(/([a-z])([A-Z])/g, "$1 $2"),
       goal: existingFlow?.flow.goal || "",
       order: existingFlow?.flow.order ?? order,
-      next: existingFlow?.flow.next || [],
+      next: existingFlow?.flow.next?.length ? existingFlow.flow.next : next,
       entryPoints: existingFlow?.flow.entryPoints?.length
         ? existingFlow.flow.entryPoints
         : entryPoints,
