@@ -1,0 +1,832 @@
+{
+  "product": {
+    "name": "Marquee",
+    "summary": "Tickets for live events: fans find a show, pick seats and pay in a minute; organizers publish events and get paid out weekly.",
+    "audience": "Fans buying tickets on their phone; organizers on a laptop."
+  },
+  "flows": [
+    {
+      "slug": "sign-up",
+      "title": "Sign up",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Email",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Details",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error",
+            "Custom-Locked"
+          ],
+          "missing": [],
+          "custom": [
+            "Custom-Locked"
+          ],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Welcome",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Email",
+      "transitions": [
+        {
+          "from": "01-Email-Default",
+          "on": "Continue",
+          "to": "02-Details-Default"
+        },
+        {
+          "from": "02-Details-Default",
+          "on": "Continue",
+          "to": "03-Welcome-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [],
+      "files": 22
+    },
+    {
+      "slug": "find-an-event",
+      "title": "Find an event",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Search",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Results",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Event",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "04",
+          "id": "Dates",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Search",
+      "transitions": [
+        {
+          "from": "01-Search-Default",
+          "on": "Continue",
+          "to": "02-Results-Default"
+        },
+        {
+          "from": "02-Results-Default",
+          "on": "Continue",
+          "to": "03-Event-Default"
+        },
+        {
+          "from": "03-Event-Default",
+          "on": "Continue",
+          "to": "04-Dates-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Event",
+          "to": "buy-tickets",
+          "label": "Buy tickets"
+        }
+      ],
+      "gaps": [],
+      "files": 24
+    },
+    {
+      "slug": "buy-tickets",
+      "title": "Buy tickets",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Tickets",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Seats",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Payment",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error",
+            "Custom-Declined"
+          ],
+          "missing": [],
+          "custom": [
+            "Custom-Declined"
+          ],
+          "weird": false
+        },
+        {
+          "n": "04",
+          "id": "Review",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "05",
+          "id": "Done",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Tickets",
+      "transitions": [
+        {
+          "from": "01-Tickets-Default",
+          "on": "Continue",
+          "to": "02-Seats-Default"
+        },
+        {
+          "from": "02-Seats-Default",
+          "on": "Continue",
+          "to": "03-Payment-Default"
+        },
+        {
+          "from": "03-Payment-Default",
+          "on": "Pay COP 180.000",
+          "to": "04-Review-Default"
+        },
+        {
+          "from": "04-Review-Default",
+          "on": "Confirm and pay",
+          "to": "05-Done-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [],
+      "files": 34
+    },
+    {
+      "slug": "transfer-a-ticket",
+      "title": "Transfer a ticket",
+      "devices": [
+        "mobile"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Recipient",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Confirm",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Sent",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Recipient",
+      "transitions": [
+        {
+          "from": "01-Recipient-Default",
+          "on": "Continue",
+          "to": "02-Confirm-Default"
+        },
+        {
+          "from": "02-Confirm-Default",
+          "on": "Confirm and pay",
+          "to": "03-Sent-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [],
+      "files": 10
+    },
+    {
+      "slug": "request-a-refund",
+      "title": "Request a refund",
+      "devices": [
+        "desktop"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Order",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Reason",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting"
+          ],
+          "missing": [
+            "Error"
+          ],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Result",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Order",
+      "transitions": [
+        {
+          "from": "01-Order-Default",
+          "on": "Continue",
+          "to": "02-Reason-Default"
+        },
+        {
+          "from": "02-Reason-Default",
+          "on": "Continue",
+          "to": "03-Result-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [
+        {
+          "kind": "state-missing",
+          "where": "02 Error"
+        }
+      ],
+      "files": 9
+    },
+    {
+      "slug": "check-in-scan",
+      "title": "Check-in scan",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Scan",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Próximo Evento",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": true
+        }
+      ],
+      "entry": "01-Scan",
+      "transitions": [
+        {
+          "from": "01-Scan-Default",
+          "on": "Continue",
+          "to": "02-PrximoEvento-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [],
+      "files": 8
+    },
+    {
+      "slug": "create-an-event",
+      "title": "Create an event",
+      "devices": [
+        "desktop"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Basics",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Schedule",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Venue",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error",
+            "Selected"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "04",
+          "id": "Tickets",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "05",
+          "id": "Media",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "06",
+          "id": "Publish",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Basics",
+      "transitions": [
+        {
+          "from": "01-Basics-Default",
+          "on": "Continue",
+          "to": "02-Schedule-Default"
+        },
+        {
+          "from": "02-Schedule-Default",
+          "on": "Continue",
+          "to": "03-Venue-Default"
+        },
+        {
+          "from": "03-Venue-Default",
+          "on": "Continue",
+          "to": "04-Tickets-Default"
+        },
+        {
+          "from": "04-Tickets-Default",
+          "on": "Continue",
+          "to": "05-Media-Default"
+        },
+        {
+          "from": "05-Media-Default",
+          "on": "Continue",
+          "to": "06-Publish-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [],
+      "files": 24
+    },
+    {
+      "slug": "payouts",
+      "title": "Payouts",
+      "devices": [
+        "desktop"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Overview",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Bank",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Schedule",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "04",
+          "id": "History",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Overview",
+      "transitions": [
+        {
+          "from": "01-Overview-Default",
+          "on": "Continue",
+          "to": "02-Bank-Default"
+        },
+        {
+          "from": "02-Bank-Default",
+          "on": "Continue",
+          "to": "03-Schedule-Default"
+        },
+        {
+          "from": "03-Schedule-Default",
+          "on": "Continue",
+          "to": "04-History-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "04-History",
+          "to": "create-an-event",
+          "label": "Create another event"
+        }
+      ],
+      "gaps": [],
+      "files": 15
+    },
+    {
+      "slug": "account-settings",
+      "title": "Account settings",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Profile",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Security",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "03",
+          "id": "Danger",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Profile",
+      "transitions": [
+        {
+          "from": "01-Profile-Default",
+          "on": "Continue",
+          "to": "02-Security-Default"
+        },
+        {
+          "from": "02-Security-Default",
+          "on": "Continue",
+          "to": "03-Danger-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [
+        {
+          "kind": "broken-link",
+          "where": "02 04-nope-default.html"
+        },
+        {
+          "kind": "broken-include",
+          "where": "02 Nope"
+        }
+      ],
+      "files": 24
+    },
+    {
+      "slug": "notifications",
+      "title": "Notifications",
+      "devices": [
+        "desktop"
+      ],
+      "steps": [
+        {
+          "n": "01",
+          "id": "Details",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        },
+        {
+          "n": "02",
+          "id": "Channels",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false
+        }
+      ],
+      "entry": "01-Details",
+      "transitions": [
+        {
+          "from": "01-Details-Default",
+          "on": "Continue",
+          "to": "02-Channels-Default"
+        }
+      ],
+      "crossFlow": [],
+      "gaps": [],
+      "files": 7
+    }
+  ],
+  "components": {
+    "files": [
+      "Styles",
+      "Logo",
+      "Header",
+      "Footer",
+      "Sidebar",
+      "Buttons"
+    ],
+    "nested": {
+      "Header": [
+        "Logo"
+      ]
+    },
+    "unused": [
+      "Buttons"
+    ],
+    "stylesInHead": true
+  },
+  "edits": {
+    "include": {
+      "text": "Help centre",
+      "component": "Header",
+      "screensUsing": 177
+    },
+    "screen": {
+      "flow": "sign-up",
+      "step": "01",
+      "text": "Email address",
+      "filesTouched": 8,
+      "note": "every state of the step, both devices"
+    },
+    "mobileOnly": {
+      "flow": "transfer-a-ticket",
+      "text": "Confirm and pay",
+      "filesTouched": 2,
+      "note": "Default and Error states carry the button, mobile only; the applied text is HTML-escaped"
+    }
+  },
+  "stress": null
+}

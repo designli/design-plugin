@@ -289,7 +289,15 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
     content: contents.get(e.path),
   }));
   const bytes = files.reduce((n, f) => n + Buffer.byteLength(f.content), 0);
-  if (bytes > 10 * 1024 * 1024)
+  if (files.length > 400)
+    errors.push(
+      `${files.length} files; the portal accepts 400 per flow: split the flow or drop states that do not apply`,
+    );
+  if (bytes > 20 * 1024 * 1024)
+    errors.push(
+      `bundle is ${(bytes / 1048576).toFixed(1)} MB; the portal refuses above 20 MB: trim inline assets or link them by URL`,
+    );
+  else if (bytes > 10 * 1024 * 1024)
     warnings.push(`bundle is ${(bytes / 1048576).toFixed(1)} MB; the portal refuses above 20 MB`);
   return {
     ok: errors.length === 0,

@@ -2,7 +2,7 @@
 //   node --test "server/test/*.test.mjs"
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -17,6 +17,8 @@ import { buildFlowBundle, buildComponentsBundle } from "../lib/bundle.mjs";
 import { editsApply, digest, mergeStructure } from "../lib/portal.mjs";
 import { flatten, readProduct } from "../lib/proto.mjs";
 import { compareVersions, updateAdvice, PLUGIN_VERSION, PLUGIN_ROOT } from "../lib/setup.mjs";
+import { generateAll } from "../../pilot/suite/gen.mjs";
+import { createHash } from "node:crypto";
 
 const page = (title, body, extra = "") => `<!doctype html>
 <html lang="en">
@@ -444,5 +446,43 @@ test("a flow's devices come from its files: mobile variants make it a two-device
   delete flow.devices;
   writeFileSync(fj, JSON.stringify(flow));
   assert.ok(buildFlowBundle(dir, "signup").manifest.devices.mobile);
+});
+
+test("the suite's corpus is deterministic and its answer key matches the files", () => {
+  const hashOf = (dir) => {
+    const h = createHash("sha256");
+    const walk = (d) => {
+      for (const e of readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        const p = join(d, e.name);
+        if (e.isDirectory()) walk(p);
+        else h.update(e.name).update(readFileSync(p));
+      }
+    };
+    walk(dir);
+    return h.digest("hex");
+  };
+  const a = mkdtempSync(join(tmpdir(), "mq-")), b = mkdtempSync(join(tmpdir(), "mq-"));
+  const key = generateAll(a, {});
+  generateAll(b, {});
+  assert.equal(hashOf(join(a, "design")), hashOf(join(b, "design")), "two generations differ");
+  assert.equal(key.flows.length, 10);
+  for (const f of key.flows) {
+    const files = readdirSync(join(a, "design", "flows", f.slug)).filter((x) => x.endsWith(".html") && x !== "Main.html");
+    assert.equal(files.length, f.files, `${f.slug}: ${files.length} files on disk, ${f.files} in the key`);
+    const states = f.steps.reduce((n, s) => n + s.states.length, 0) * f.devices.length;
+    assert.equal(f.files, states, `${f.slug}: files vs states × devices`);
+  }
+  assert.ok(existsSync(join(a, "design", "components", "Styles.html")));
+  assert.ok(existsSync(join(a, "answer-key.json")));
+});
+
+test("an include that imports another include is flattened all the way down", () => {
+  const dir = scratch();
+  writeFileSync(join(dir, "design", "components", "Logo.html"), `<span class="logo">Acme</span>\n`);
+  writeFileSync(join(dir, "design", "components", "Navbar.html"), `<nav><dc-import name="Logo"></dc-import><a href="#">Home</a></nav>\n`);
+  const r = flatten(join(dir, "design", "flows", "signup", "email.html"), { componentDirs: [join(dir, "design", "components")], project: dir });
+  assert.ok(!/<dc-import/.test(r.html), "no import tag left");
+  assert.ok(r.html.includes('<span class="logo">Acme</span>'), "the nested include is inlined");
+  assert.deepEqual(r.includes.sort(), ["Logo", "Navbar"]);
 });
 

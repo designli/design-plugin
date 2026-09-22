@@ -1,0 +1,579 @@
+{
+  "tier": "tier1",
+  "portal": "http://localhost:8787",
+  "plugin": "0.2.1",
+  "portalVersion": "0.1.0",
+  "stamp": "2026-09-22T22-20-37-tier1-localhost",
+  "summary": {
+    "passed": 58,
+    "total": 60,
+    "timings": {
+      "signin": 47,
+      "project": 122,
+      "setup": 349,
+      "adopt": 525,
+      "publish1": 1987,
+      "portal1": 123,
+      "lostRepo": 1029,
+      "stress": 775,
+      "clientRound": 259,
+      "feedback": 780,
+      "publish2": 2539,
+      "handoff": 773,
+      "concurrency": 633,
+      "reliability": 292,
+      "ui": 39137
+    }
+  },
+  "metrics": {
+    "adopt": {
+      "kindAccuracy": {
+        "value": 1,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "stateCoverage": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "deviceDetection": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "entryRecall": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "transitionRecall": {
+        "value": 0.96,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [
+          "check-in-scan: 01-Scan-Default → 02-PrximoEvento-Default (Continue)"
+        ],
+        "unit": ""
+      },
+      "questionsPerFlow": {
+        "value": 6.6,
+        "target": 6,
+        "op": "<=",
+        "pass": false,
+        "items": [],
+        "unit": "q"
+      },
+      "avoidableQuestions": {
+        "value": 55,
+        "target": 0,
+        "op": "<=",
+        "pass": false,
+        "items": [],
+        "unit": "q"
+      },
+      "flowsWritten": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "oddNamesHandled": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [
+          "check-in-scan 02: \"Próximo Evento\" → ProximoEvento"
+        ],
+        "unit": ""
+      }
+    },
+    "gaps": {
+      "plantedRecall": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "precision": {
+        "value": 1,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "publish": {
+      "flowsPushed": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "brokenFlowIsolated": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "skipped and reported: account-settings"
+        ],
+        "unit": ""
+      },
+      "secondsPerFlow": {
+        "value": 0.1,
+        "target": 10,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": "s"
+      },
+      "http429": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "mobileFlags": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "screensMatch": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "boardOverlaps": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "componentSheets": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "sheetsStyled": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "nestedIncludesInlined": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "caching": {
+        "value": 3,
+        "target": 3,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "limitsRefused": {
+        "value": 2,
+        "target": 2,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "limitsExplained": {
+        "value": 2,
+        "target": 2,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "feedback": {
+      "editsLanded": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "includeEditedOnce": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "digestAgentFirst": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "dismissReplyResolve": {
+        "value": 3,
+        "target": 3,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "supersedeReported": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "safety": {
+      "scopeEnforced": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "staleRefused": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "forceWorks": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "tokensLeaked": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "mcpJsonSafe": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "release": {
+      "diffSourceRows": {
+        "value": 11,
+        "target": 11,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "payouts 01-Overview-Default desktop",
+          "sign-up 01-Email-Default desktop",
+          "sign-up 01-Email-Default mobile",
+          "sign-up 01-Email-Error desktop",
+          "sign-up 01-Email-Error mobile",
+          "sign-up 01-Email-Submitting desktop",
+          "sign-up 01-Email-Submitting mobile",
+          "sign-up 01-Email-Validation desktop",
+          "sign-up 01-Email-Validation mobile",
+          "transfer-a-ticket 02-Confirm-Default mobile",
+          "transfer-a-ticket 02-Confirm-Error mobile"
+        ],
+        "unit": ""
+      },
+      "diffIncludeRows": {
+        "value": 166,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "includeOnlyRows": {
+        "value": 166,
+        "target": 100,
+        "op": ">=",
+        "pass": true,
+        "items": [
+          "10 flows changed, 166 rows via include"
+        ],
+        "unit": ""
+      },
+      "staleAfterOwnReply": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "reliability": {
+      "concurrentPublishClean": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "A INTERNAL, B ok, new versions 1"
+        ],
+        "unit": ""
+      },
+      "updateNoticeCorrect": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "no notice"
+        ],
+        "unit": ""
+      },
+      "diagnoseByRunId": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "expiredHandleClear": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "failuresWithRunId": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "unexpectedErrors": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "apiCalls": {
+        "value": 70,
+        "target": 0,
+        "op": "rec",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "handoff": {
+      "created": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "stepsInSpec": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "transitionsInSpec": {
+        "value": 0.96,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "copyInSpec": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "waiverInSpec": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "devAgentReads": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "roundTrip": {
+      "unchangedAfterRebuild": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "filesIdentical": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "ui": {
+      "consoleErrors": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "boardsRendered": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "noUnescapedScript": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "mobileToggleState": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "reloadRequests": {
+        "value": 8,
+        "target": 0,
+        "op": "rec",
+        "pass": true,
+        "items": [
+          "flow.buy-tickets: 0×304 2×200",
+          "flow.transfer-a-ticket: 0×304 2×200",
+          "flow.create-an-event: 0×304 2×200",
+          "flow.account-settings: 0×304 2×200"
+        ],
+        "unit": ""
+      },
+      "clientSeesNoStaffControls": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "{\"adminLink\":false,\"sendToAgent\":false,\"skipped\":null,\"account\":{\"created\":201,\"accepted\":200,\"signedIn\":true}}"
+        ],
+        "unit": ""
+      },
+      "docsServed": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "deviceBadCodeExplained": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "componentSheetsShown": {
+        "value": 6,
+        "target": 6,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    }
+  },
+  "previous": "2026-09-22T22-16-36-tier1-localhost",
+  "markdown": "# Scorecard 2026-09-22T22-20-37-tier1-localhost\n\ntier1 · portal http://localhost:8787 (0.1.0) · plugin 0.2.1 · 58/60 pass · vs 2026-09-22T22-16-36-tier1-localhost\n\n| Area | Metric | Value | Target | Result | Δ |\n| --- | --- | --- | --- | --- | --- |\n| adopt | kindAccuracy | 1 | >= 0.9 | pass | 0 |\n| adopt | stateCoverage | 1 | >= 1 | pass | 0 |\n| adopt | deviceDetection | 1 | >= 1 | pass | 0 |\n| adopt | entryRecall | 1 | >= 1 | pass | 0 |\n| adopt | transitionRecall | 0.96 | >= 0.9 | pass | 0 |\n| adopt | questionsPerFlow | 6.6q | <= 6q | FAIL | 0 |\n| adopt | avoidableQuestions | 55q | <= 0q | FAIL | 0 |\n| adopt | flowsWritten | 1 | >= 1 | pass | 0 |\n| adopt | oddNamesHandled | 1 | >= 1 | pass | 0 |\n| gaps | plantedRecall | 1 | >= 1 | pass | 0 |\n| gaps | precision | 1 | >= 0.9 | pass | 0 |\n| publish | flowsPushed | 1 | >= 1 | pass | 0 |\n| publish | brokenFlowIsolated | 1 | == 1 | pass | 0 |\n| publish | secondsPerFlow | 0.1s | <= 10s | pass | -0.1 |\n| publish | http429 | 0 | <= 0 | pass | 0 |\n| publish | mobileFlags | 1 | >= 1 | pass | 0 |\n| publish | screensMatch | 1 | >= 1 | pass | 0 |\n| publish | boardOverlaps | 0 | <= 0 | pass | 0 |\n| publish | componentSheets | 1 | >= 1 | pass | 0 |\n| publish | sheetsStyled | 1 | >= 1 | pass | 0 |\n| publish | nestedIncludesInlined | 1 | == 1 | pass |  |\n| publish | caching | 3 | == 3 | pass | 0 |\n| publish | limitsRefused | 2 | == 2 | pass | 0 |\n| publish | limitsExplained | 2 | == 2 | pass | 0 |\n| feedback | editsLanded | 1 | >= 1 | pass | 0 |\n| feedback | includeEditedOnce | 1 | == 1 | pass | 0 |\n| feedback | digestAgentFirst | 1 | == 1 | pass | 0 |\n| feedback | dismissReplyResolve | 3 | == 3 | pass | 0 |\n| feedback | supersedeReported | 1 | == 1 | pass | 0 |\n| safety | scopeEnforced | 1 | >= 1 | pass | 0 |\n| safety | staleRefused | 1 | == 1 | pass | 0 |\n| safety | forceWorks | 1 | == 1 | pass | 0 |\n| safety | tokensLeaked | 0 | <= 0 | pass | 0 |\n| safety | mcpJsonSafe | 1 | == 1 | pass | 0 |\n| release | diffSourceRows | 11 | == 11 | pass | -2 |\n| release | diffIncludeRows | 166 | >= 1 | pass | +2 |\n| release | includeOnlyRows | 166 | >= 100 | pass | +2 |\n| release | staleAfterOwnReply | 0 | <= 0 | pass | 0 |\n| reliability | concurrentPublishClean | 1 | == 1 | pass | 0 |\n| reliability | updateNoticeCorrect | 1 | == 1 | pass | 0 |\n| reliability | diagnoseByRunId | 1 | == 1 | pass | 0 |\n| reliability | expiredHandleClear | 1 | == 1 | pass | 0 |\n| reliability | failuresWithRunId | 1 | >= 1 | pass | 0 |\n| reliability | unexpectedErrors | 0 | <= 0 | pass | 0 |\n| reliability | apiCalls | 70 | recorded |  | +1 |\n| handoff | created | 1 | >= 1 | pass | 0 |\n| handoff | stepsInSpec | 1 | >= 1 | pass | 0 |\n| handoff | transitionsInSpec | 0.96 | >= 0.9 | pass | 0 |\n| handoff | copyInSpec | 1 | >= 1 | pass | 0 |\n| handoff | waiverInSpec | 1 | == 1 | pass | 0 |\n| handoff | devAgentReads | 1 | >= 1 | pass | 0 |\n| roundTrip | unchangedAfterRebuild | 1 | >= 1 | pass | 0 |\n| roundTrip | filesIdentical | 0 | <= 0 | pass | 0 |\n| ui | consoleErrors | 0 | <= 0 | pass | 0 |\n| ui | boardsRendered | 1 | >= 1 | pass | 0 |\n| ui | noUnescapedScript | 1 | == 1 | pass | 0 |\n| ui | mobileToggleState | 1 | >= 1 | pass | 0 |\n| ui | reloadRequests | 8 | recorded |  | 0 |\n| ui | clientSeesNoStaffControls | 1 | == 1 | pass | 0 |\n| ui | docsServed | 1 | == 1 | pass | 0 |\n| ui | deviceBadCodeExplained | 1 | == 1 | pass | 0 |\n| ui | componentSheetsShown | 6 | >= 6 | pass | 0 |\n\n## Failing items\n\nnone\n\n## Timings (s)\n\nsignin 0 · project 0.1 · setup 0.3 · adopt 0.5 · publish1 2 · portal1 0.1 · lostRepo 1 · stress 0.8 · clientRound 0.3 · feedback 0.8 · publish2 2.5 · handoff 0.8 · concurrency 0.6 · reliability 0.3 · ui 39.1\n"
+}

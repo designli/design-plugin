@@ -4,3 +4,6 @@ node_modules/
 # pilot scratch output (seeded canvases, extracts)
 pilot/**/*.html
 pilot/**/extract-*/
+pilot/suite/results/*/.home/
+pilot/suite/results/*/.secrets/
+pilot/suite/results/*/transcript-*.jsonl

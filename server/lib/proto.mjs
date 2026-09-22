@@ -55,7 +55,7 @@ export function mobileSibling(file) {
   return null;
 }
 /** A screen is never megabytes; a seeded canvas or an export is, and is not a source. */
-export const MAX_SOURCE_BYTES = 1024 * 1024;
+export const MAX_SOURCE_BYTES = 4 * 1024 * 1024;
 export const isSourceFile = (path) => {
   try {
     const st = statSync(path);
@@ -209,12 +209,21 @@ export function flatten(file, { componentDirs = [], linkMap = new Map(), project
     return `<!-- begin ${name} --><div data-imported-component="${name}">${c.body}</div><!-- end ${name} -->`;
   };
   const IMPORT_RE = /<dc-import\b([^>]*?)(?:\/>|>\s*<\/dc-import>)/g;
+  // an include may import another (Header → Logo): resolve until nothing is left, a few levels deep
+  const inlineAll = (text) => {
+    for (let depth = 0; depth < 6 && IMPORT_RE.test(text); depth++) {
+      IMPORT_RE.lastIndex = 0;
+      text = text.replace(IMPORT_RE, inline);
+    }
+    IMPORT_RE.lastIndex = 0;
+    return text;
+  };
   const rel = project ? relative(project, file) : basename(file);
   if (isDc(file)) {
     const p = dcParts(src);
     if (!p.body) throw new Error(`${basename(file)}: no <x-dc> root`);
     heads.push(p.helmet);
-    let body = p.body.replace(IMPORT_RE, inline);
+    let body = inlineAll(p.body);
     // interactive artboards: render the static (Default) variant from data-flat
     const scriptTag = (body.match(/<script[^>]*data-dc-script[^>]*>/) ||
       src.match(/<script[^>]*data-dc-script[^>]*>/) || [""])[0];
@@ -274,7 +283,7 @@ ${body}
     return { html, includes, missing };
   }
   // plain document
-  let html = src.replace(IMPORT_RE, inline);
+  let html = inlineAll(src);
   if (heads.length) {
     const block = heads.join("\n") + "\n";
     html = /<\/head>/i.test(html)

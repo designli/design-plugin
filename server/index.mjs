@@ -27,7 +27,7 @@ import {
   CRED_FILE,
 } from "./lib/setup.mjs";
 import { preflight, nextSteps, gitInfo } from "./lib/status.mjs";
-import { scanPrototype, proposeFlows, writeFlows, gapsOf } from "./lib/flows.mjs";
+import { scanPrototype, proposeFlows, writeFlows, gapsOf, resolveFlowDir } from "./lib/flows.mjs";
 import { buildFlowBundle, buildComponentsBundle } from "./lib/bundle.mjs";
 import * as P from "./lib/portal.mjs";
 import { setRun, log, tail, LOG_DIR } from "./lib/log.mjs";
@@ -505,7 +505,11 @@ const TOOLS = [
       },
       required: ["flow", "id", "reason"],
     },
-    run: wrap((a) => P.editsDismiss(ctx(), a.flow, a.id, a.reason)),
+    run: wrap(async (a) => {
+      const r = await P.editsDismiss(ctx(), a.flow, a.id, a.reason);
+      await P.pullFlow(ctx(), resolveFlowDir(PROJECT, a.flow), { status: "all" }).catch(() => null);
+      return r;
+    }),
   },
   {
     name: "adopt_from_portal",
@@ -561,7 +565,11 @@ const TOOLS = [
       properties: { flow: str(), thread: str(), text: str() },
       required: ["flow", "thread", "text"],
     },
-    run: wrap((a) => P.reply(ctx(), a.flow, a.thread, a.text)),
+    run: wrap(async (a) => {
+      const r = await P.reply(ctx(), a.flow, a.thread, a.text);
+      await P.pullFlow(ctx(), resolveFlowDir(PROJECT, a.flow), { status: "all" }).catch(() => null);
+      return r;
+    }),
   },
   {
     name: "portal_resolve",
@@ -572,7 +580,11 @@ const TOOLS = [
       properties: { flow: str(), thread: str(), reopen: bool() },
       required: ["flow", "thread"],
     },
-    run: wrap((a) => P.resolveThread(ctx(), a.flow, a.thread, !!a.reopen)),
+    run: wrap(async (a) => {
+      const r = await P.resolveThread(ctx(), a.flow, a.thread, !!a.reopen);
+      await P.pullFlow(ctx(), resolveFlowDir(PROJECT, a.flow), { status: "all" }).catch(() => null);
+      return r;
+    }),
   },
 ];
 

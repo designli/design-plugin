@@ -578,15 +578,18 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       },
     );
   const errors = plan.filter((e) => e.status === "error");
-  if (errors.length)
+  if (errors.length === plan.length)
     throw new PortalError(
       "BUNDLE",
       `cannot bundle ${errors.map((e) => `${e.flow}: ${e.errors.join("; ")}`).join(" | ")}`,
       { flows: errors },
     );
+  // a flow that cannot be bundled is skipped and reported; the others still ship
+  const skipped = errors.map((e) => ({ flow: e.flow, errors: e.errors }));
   const pushed = [];
   const unchangedFlows = [];
   for (const e of plan) {
+    if (e.status === "error") continue;
     const r = await pushFlow(ctx, e.flow, { force, note });
     (r.reused ? unchangedFlows : pushed).push({
       flow: r.flow,
@@ -607,7 +610,7 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
   const rel = expect(
     await call(ctx, "POST", `/projects/${p}/releases`, {
       note: note || null,
-      flows: all.map((f) => f.slug),
+      flows: plan.filter((e) => e.status !== "error").map((e) => e.flow),
       product: readProduct(ctx.project),
     }),
     "release",
@@ -618,6 +621,9 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
     release: { number: rel.number, url: rel.url, note: rel.note, flows: rel.flows },
     pushed,
     unchanged: unchangedFlows,
+    ...(skipped.length
+      ? { skipped, warnings: skipped.map((x) => `${x.flow} was not published: ${x.errors.join("; ")}`) }
+      : {}),
     components,
     gaps: plan.reduce((n, e) => n + e.gaps, 0),
     clientUrl: clientUrl(ctx),
@@ -776,6 +782,17 @@ export function editsApply(project, flowRef) {
         const h3 = applyEditToFile(other, e);
         r.files.push({ ...h3, file: relative(project, other), sibling: true });
       }
+      // the same label in the step's other states (Validation, Error…) changes with it
+      const done = new Set([main, other].filter(Boolean));
+      for (const [id, o] of idx)
+        if (id !== e.screen.id && o.step === s.step && o.stepId === s.stepId)
+          for (const f of Object.values(o.files || {}))
+            if (f && !done.has(f)) {
+              done.add(f);
+              const h4 = applyEditToFile(f, e);
+              if (h4.result === "applied")
+                r.files.push({ ...h4, file: relative(project, f), sibling: "state" });
+            }
     }
     r.result = hit.result;
     if (hit.result === "applied")
@@ -898,7 +915,11 @@ export async function adoptFromPortal(ctx) {
     mkdirSync(dir, { recursive: true });
     const cur = readFlow(dir) || { schema: 2, slug: f.id, status: "draft", reviews: [] };
     const byId = new Map((m.screens || []).map((s) => [s.id, s]));
-    const devices = Object.keys(m.devices || { desktop: {} });
+    // the devices the flow really has screens for, in canonical order (the manifest always lists desktop)
+    const devices = ["desktop", "mobile"].filter((d) =>
+      (m.screens || []).some((sc) => sc.kind === "state" && sc.devices?.[d]),
+    );
+    if (!devices.length) devices.push("desktop");
     const steps = [];
     for (const st of m.steps || []) {
       const states = {};

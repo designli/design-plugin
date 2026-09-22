@@ -20,6 +20,7 @@ import {
   componentId,
   readPrototype,
   readProduct,
+  MAX_SOURCE_BYTES,
 } from "./proto.mjs";
 
 export const flowsDir = (project) => join(project, "design", "flows");
@@ -215,6 +216,16 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
   const every = listFlows(project);
   const flows = every.filter((f) => !only || f.slug === only || f.dir === resolve(project, only));
   const slugs = new Set(every.map((f) => f.slug));
+  for (const sk of scanPrototype(project).skipped) {
+    const owner = every.find((f) => resolve(project, sk.file).startsWith(f.dir + "/"));
+    if (only && owner?.slug !== only) continue;
+    push({
+      flow: owner?.slug ?? null,
+      kind: "too-large",
+      where: sk.file,
+      proposal: `${(sk.bytes / 1048576).toFixed(1)} MB; screens above ${MAX_SOURCE_BYTES / 1048576} MB are not scanned or bundled: trim the inline asset or link it by URL`,
+    });
+  }
   for (const { slug, dir, flow } of flows) {
     const r = resolveStates(flow, dir);
     if (!Number.isInteger(flow.order))
@@ -355,6 +366,8 @@ const kebab = (s) =>
     .toLowerCase();
 const pascal = (s) =>
   String(s)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // "Próximo" → "Proximo", not "PrXimo"
     .split(/[^A-Za-z0-9]+/)
     .filter(Boolean)
     .map((w) => w[0].toUpperCase() + w.slice(1))
@@ -397,6 +410,7 @@ export function scanPrototype(project, { dir } = {}) {
     for (const k of resolveStates(f.flow, f.dir).usedFiles.keys()) declaredFiles.add(k);
   // screen candidates: every source under root (recursively, skipping components, bundle, dot dirs)
   const screens = [];
+  const skipped = []; // sources above MAX_SOURCE_BYTES: reported, never silently ignored
   const walk = (d, depth) => {
     if (depth > 4 || !existsSync(d)) return;
     for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -405,6 +419,8 @@ export function scanPrototype(project, { dir } = {}) {
         if (/^\.|^bundle$|^node_modules$|^directions$|^png$/.test(e.name) || p === compDir)
           continue;
         walk(p, depth + 1);
+      } else if (isSource(e.name) && !isSourceFile(p) && statSync(p).isFile()) {
+        skipped.push({ file: relative(project, p), bytes: statSync(p).size });
       } else if (
         isSource(e.name) &&
         isSourceFile(p) &&
@@ -427,6 +443,7 @@ export function scanPrototype(project, { dir } = {}) {
           includes: s.includes,
           dataComponents: s.dataComponents,
           hasForm: s.hasForm,
+          hasChoice: s.hasChoice,
           hasTable: s.hasTable,
           declared: declaredFiles.has(p),
         });
@@ -453,6 +470,7 @@ export function scanPrototype(project, { dir } = {}) {
     },
     product: readProduct(project),
     screens,
+    skipped,
     components,
     flows: flows.map(({ slug, flow, dir }) => {
       const r = resolveStates(flow, dir);
@@ -602,7 +620,7 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       .slice(0, 1)
       .map((st) => ({ from: "?", to: `${st.n}-${st.id}` }));
     order++;
-    const devices = files.some((f) => f.device === "mobile") ? ["desktop", "mobile"] : ["desktop"];
+    const devices = ["desktop", "mobile"].filter((d) => files.some((f) => f.device === d));
     const flowOut = {
       slug,
       devices,
