@@ -197,12 +197,14 @@ export function preflight(project, { require: req = [], hashes = false } = {}) {
   return { ok: blockers.length === 0, blockers, warnings, info };
 }
 /** What to do next, in the harness's own words. */
-export function nextSteps({ status, portal, harness }) {
+export function nextSteps({ status, portal, harness, plugin = null }) {
   const prompt = (name, args = "") =>
     harness === "claude"
       ? `/designli-design:${name}${args ? " " + args : ""}`
       : `the \`${name}\` prompt of the designli-design MCP server${args ? " with " + args : ""}`;
   const steps = [];
+  if (plugin?.message) steps.push(plugin.message);
+  if (plugin?.updateRequired) return steps;
   const i = status.info;
   const local = i.flows || [];
   const remote = portal?.flows || [];

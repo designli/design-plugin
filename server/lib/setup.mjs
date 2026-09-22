@@ -59,6 +59,9 @@ export function forgetToken(url) {
   return false;
 }
 
+/** Answer-header listener set by portal.mjs so every call, even these thin ones, feeds portalMeta. */
+export const headerListeners = [];
+const noteHeaders = (h) => headerListeners.forEach((f) => f(h));
 export async function portalGet(url, token, path) {
   let res;
   try {
@@ -71,6 +74,7 @@ export async function portalGet(url, token, path) {
   } catch (e) {
     return { status: 0, json: null, error: `cannot reach ${url}: ${e.message}` };
   }
+  noteHeaders(res.headers);
   const text = await res.text();
   let json = null;
   try {
@@ -81,6 +85,46 @@ export async function portalGet(url, token, path) {
     json,
     error: res.ok ? null : json?.error?.message || text.slice(0, 200),
   };
+}
+// ---- plugin version: the portal says what is current; the update itself is Claude Code's job ----
+export const UPDATE_COMMANDS = [
+  "/plugin marketplace update designli-tools",
+  "/plugin update designli-design@designli-tools",
+];
+/** Numeric, segment by segment ("0.10.0" > "0.9.1"); a prerelease sorts before the bare version. */
+export function compareVersions(a, b) {
+  const parse = (v) => {
+    const m = String(v ?? "")
+      .trim()
+      .replace(/^v/, "")
+      .match(/^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?/);
+    return m ? { nums: m[1].split(".").map(Number), pre: m[2] ?? null } : null;
+  };
+  const x = parse(a),
+    y = parse(b);
+  if (!x || !y) return 0;
+  const n = Math.max(x.nums.length, y.nums.length);
+  for (let i = 0; i < n; i++) {
+    const d = (x.nums[i] ?? 0) - (y.nums[i] ?? 0);
+    if (d) return d < 0 ? -1 : 1;
+  }
+  if (x.pre && !y.pre) return -1;
+  if (!x.pre && y.pre) return 1;
+  if (x.pre && y.pre) return x.pre < y.pre ? -1 : x.pre > y.pre ? 1 : 0;
+  return 0;
+}
+/** What to tell the designer about this plugin's version, given what the portal reported. */
+export function updateAdvice({ latest = null, minimum = null } = {}) {
+  const version = PLUGIN_VERSION;
+  const updateAvailable = !!latest && compareVersions(version, latest) < 0;
+  const updateRequired = !!minimum && compareVersions(version, minimum) < 0;
+  const commands = UPDATE_COMMANDS;
+  const message = updateRequired
+    ? `This plugin (${version}) is older than the portal supports (${minimum}). Update before anything else: in Claude Code run ${commands.join(" then ")}, then restart Claude Code.`
+    : updateAvailable
+      ? `A newer plugin is available (${latest}; you run ${version}): in Claude Code run ${commands.join(" then ")}, then restart Claude Code.`
+      : null;
+  return { version, latest, minimum, updateAvailable, updateRequired, commands, message };
 }
 // ---- device sign-in: the token is approved in the browser, never typed ----
 /** What the workflow needs: publish, pull feedback, answer threads, waive states. */
@@ -104,6 +148,7 @@ async function devicePost(url, path, body) {
   } catch (e) {
     return { status: 0, json: null, error: `cannot reach ${url}: ${e.message}` };
   }
+  noteHeaders(res.headers);
   const text = await res.text();
   let json = null;
   try {

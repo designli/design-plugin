@@ -372,7 +372,7 @@ test("adopt over the server: scan, propose, write, gaps, bundle on a plain HTML 
 });
 
 /** A portal that only knows device sign-in, /me and /projects: what the sign-in tools need. */
-function fakePortal({ pendingPolls = 1, outcome = "approved" } = {}) {
+function fakePortal({ pendingPolls = 1, outcome = "approved", pluginLatest = null, pluginMin = null, refuse = false } = {}) {
   const TOKEN = "dpat_" + "f".repeat(48);
   const DEVICE = "ddev_" + "e".repeat(48);
   const seen = { starts: [], polls: 0, me: 0 };
@@ -381,9 +381,20 @@ function fakePortal({ pendingPolls = 1, outcome = "approved" } = {}) {
     req.on("data", (d) => (body += d));
     req.on("end", () => {
       const send = (status, json) => {
-        res.writeHead(status, { "content-type": "application/json" });
+        const h = { "content-type": "application/json" };
+        if (pluginLatest) h["x-designli-plugin-latest"] = pluginLatest;
+        if (pluginMin) h["x-designli-plugin-min"] = pluginMin;
+        res.writeHead(status, h);
         res.end(JSON.stringify(json));
       };
+      if (refuse)
+        return send(426, {
+          error: {
+            code: "PLUGIN_OUTDATED",
+            message: "This plugin is older than the portal supports. In Claude Code run /plugin marketplace update designli-tools then /plugin update designli-design@designli-tools and restart.",
+            details: { commands: ["/plugin marketplace update designli-tools", "/plugin update designli-design@designli-tools"] },
+          },
+        });
       if (req.method === "POST" && req.url === "/api/v1/device/start") {
         seen.starts.push(JSON.parse(body));
         return send(201, {
@@ -420,6 +431,8 @@ function fakePortal({ pendingPolls = 1, outcome = "approved" } = {}) {
           memberships: [{ projectId: "nook", preset: "designer", permissions: ["view", "push"] }],
         });
       }
+      if (req.url === "/api/v1/projects/nook") return send(200, { id: "nook", name: "Nook" });
+      if (req.url === "/api/v1/projects/nook/flows") return send(200, { flows: [] });
       if (req.url?.startsWith("/api/v1/projects"))
         return send(200, { projects: [{ id: "nook", name: "Nook", preset: "designer", permissions: ["view", "push"] }], pageCount: 1 });
       send(404, { error: { message: "no such route " + req.url } });
@@ -502,5 +515,67 @@ test("signin_poll reports pending, denied and an unsupported portal without stor
   } finally {
     denied.close();
     slow.close();
+  }
+});
+
+/** A repo connected to a portal, with a token in a throwaway HOME. */
+function connectedRepo(portal) {
+  const home = mkdtempSync(join(tmpdir(), "home-"));
+  const dir = scratchRepo({ remote: true });
+  mkdirSync(join(dir, "design"), { recursive: true });
+  writeFileSync(
+    join(dir, "design", "library.json"),
+    JSON.stringify({ publish: { target: "portal", portal: { url: portal.url, projectId: "nook" } }, harness: "claude" }),
+  );
+  mkdirSync(join(home, ".config", "designli-design"), { recursive: true, mode: 0o700 });
+  writeFileSync(
+    join(home, ".config", "designli-design", "credentials.json"),
+    JSON.stringify({ portals: { [portal.url]: { token: portal.TOKEN, savedAt: new Date().toISOString() } } }),
+    { mode: 0o600 },
+  );
+  return { home, dir };
+}
+
+test("project_status says when a newer plugin exists, with the Claude Code commands, and nothing when the portal is silent", async () => {
+  const quiet = await fakePortal();
+  const newer = await fakePortal({ pluginLatest: "99.0.0" });
+  try {
+    const a = connectedRepo(quiet);
+    const r1 = await rpc(a.dir, [call(1, "project_status")], { HOME: a.home });
+    const s1 = r1[1].result.structuredContent;
+    assert.equal(s1.plugin.latest, null);
+    assert.equal(s1.plugin.updateAvailable, false);
+    assert.ok(!s1.nextSteps.some((x) => x.includes("/plugin ")));
+    const b = connectedRepo(newer);
+    const r2 = await rpc(b.dir, [call(1, "project_status")], { HOME: b.home });
+    const s2 = r2[1].result.structuredContent;
+    assert.equal(s2.plugin.latest, "99.0.0");
+    assert.equal(s2.plugin.updateAvailable, true);
+    assert.equal(s2.plugin.updateRequired, false);
+    assert.equal(s2.ok, true, "an available update is advice, not a blocker");
+    assert.ok(s2.nextSteps[0].includes("/plugin marketplace update designli-tools"), s2.nextSteps[0]);
+    assert.ok(s2.nextSteps[0].includes("restart Claude Code"));
+  } finally {
+    quiet.close();
+    newer.close();
+  }
+});
+
+test("a portal that refuses the plugin version blocks project_status and every portal tool with PLUGIN_OUTDATED", async () => {
+  const portal = await fakePortal({ pluginLatest: "99.0.0", pluginMin: "99.0.0", refuse: true });
+  try {
+    const { home, dir } = connectedRepo(portal);
+    const r = await rpc(dir, [call(1, "project_status"), call(2, "releases")], { HOME: home });
+    const s = r[1].result.structuredContent;
+    assert.equal(s.ok, false);
+    assert.equal(s.blockers[0].code, "PLUGIN_OUTDATED");
+    assert.ok(s.blockers[0].fix.includes("/plugin update designli-design@designli-tools"));
+    assert.equal(s.plugin.updateRequired, true);
+    assert.ok(s.nextSteps[0].startsWith("This plugin"));
+    assert.equal(r[2].result.isError, true);
+    assert.equal(r[2].result.structuredContent.error.code, "PLUGIN_OUTDATED");
+    assert.ok(r[2].result.structuredContent.error.message.includes("/plugin marketplace update designli-tools"));
+  } finally {
+    portal.close();
   }
 });

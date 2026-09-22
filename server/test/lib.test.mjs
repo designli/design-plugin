@@ -16,6 +16,7 @@ import {
 import { buildFlowBundle, buildComponentsBundle } from "../lib/bundle.mjs";
 import { editsApply, digest, mergeStructure } from "../lib/portal.mjs";
 import { flatten, readProduct } from "../lib/proto.mjs";
+import { compareVersions, updateAdvice, PLUGIN_VERSION, PLUGIN_ROOT } from "../lib/setup.mjs";
 
 const page = (title, body, extra = "") => `<!doctype html>
 <html lang="en">
@@ -360,3 +361,29 @@ test("flatten keeps .dc.html output on the previous flattener's template", () =>
   assert.ok(!r.html.includes("hint-size"));
   assert.ok(existsSync(dir));
 });
+
+test("compareVersions orders numerically with prereleases first; updateAdvice speaks only when needed", () => {
+  assert.equal(compareVersions("0.1.0", "0.2.0"), -1);
+  assert.equal(compareVersions("0.10.0", "0.9.1"), 1);
+  assert.equal(compareVersions("1.0.0-beta", "1.0.0"), -1);
+  assert.equal(compareVersions("v1.2", "1.2.0"), 0);
+  assert.equal(compareVersions("garbage", "1.0.0"), 0);
+  assert.equal(updateAdvice({}).message, null);
+  assert.equal(updateAdvice({ latest: PLUGIN_VERSION }).updateAvailable, false);
+  const newer = updateAdvice({ latest: "99.0.0" });
+  assert.equal(newer.updateAvailable, true);
+  assert.equal(newer.updateRequired, false);
+  assert.ok(newer.message.includes("/plugin marketplace update designli-tools"));
+  assert.ok(newer.message.includes("/plugin update designli-design@designli-tools"));
+  const required = updateAdvice({ latest: "99.0.0", minimum: "99.0.0" });
+  assert.equal(required.updateRequired, true);
+  assert.ok(required.message.startsWith("This plugin"));
+});
+
+test("plugin.json and marketplace.json carry the same version", () => {
+  const plugin = JSON.parse(readFileSync(join(PLUGIN_ROOT, ".claude-plugin", "plugin.json"), "utf8"));
+  const market = JSON.parse(readFileSync(join(PLUGIN_ROOT, ".claude-plugin", "marketplace.json"), "utf8"));
+  assert.equal(plugin.version, PLUGIN_VERSION);
+  assert.equal(market.plugins[0].version, plugin.version);
+});
+

@@ -4,7 +4,7 @@ Tool: `project_status` (CLI: `scripts/preflight.mjs --hashes`, `scripts/portal.m
 
 Call `project_status` and render one screen in plain words:
 
-1. **Connection**: portal URL, project, token source (env or credentials file), git remote. Blockers first, each with its fix.
+1. **Connection**: portal URL, project, token source (env or credentials file), git remote. Blockers first, each with its fix. If `plugin.message` is set, it is the very first line of the screen: the two Claude Code commands and "restart Claude Code"; say it once, never run anything for it. A `PLUGIN_OUTDATED` blocker means nothing else works until the designer updates.
 2. **Flows**: per flow, its order in the journey, steps and screens, devices, published version, whether it has unpublished changes (or was never published), the last pull time. From the portal side: open threads, pending copy edits, missing states as the portal counts them.
 3. **Gaps**: the total by kind (missing states, unassigned files, broken links or includes, no entry points, no order, no product). Point at `gaps` for the list.
 4. **Last release**: number, note, when.

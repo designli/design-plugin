@@ -30,6 +30,7 @@ import {
   deviceStart,
   deviceWait,
   deviceLabel,
+  updateAdvice,
 } from "../server/lib/setup.mjs";
 import * as P from "../server/lib/portal.mjs";
 import { setRun, log, tail } from "../server/lib/log.mjs";
@@ -181,7 +182,12 @@ async function readSecretFromStdin() {
       return out({ ok: true, ...tail(Number(opt("--lines")) || 100, { run: opt("--run") }) });
     log("cli", { cmd, project });
     const ctx = P.context(project, { url: opt("--url"), projectId: opt("--project-id") });
-    if (cmd === "status") return out({ ok: true, ...(await P.overview(ctx)) });
+    if (cmd === "status") {
+      const overview = await P.overview(ctx);
+      const plugin = updateAdvice(P.getPortalMeta());
+      if (plugin.message) console.error(plugin.message);
+      return out({ ok: true, plugin, ...overview });
+    }
     if (cmd === "publish")
       return out({
         ok: true,

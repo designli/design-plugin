@@ -85,6 +85,12 @@ Every failure is a typed error with a code (`STALE_LOCAL`, `PORTAL_TOKEN`, `UNRE
 - Screens are named by their id (`NN-StepId-State[-Mobile].html`) in every bundle whatever the source files are called, so comments and edits address stable ids across releases.
 - One HTTP contract: this server and the portal's MCP server read and write the same data with the same scoped token.
 
+## Releasing the plugin
+
+The plugin never updates itself; Claude Code does, from this repository, when a designer runs `/plugin marketplace update designli-tools` then `/plugin update designli-design@designli-tools` (or has auto-update on for the marketplace). The portal tells every plugin which version is current, and `project_status` turns that into a one-line notice with those commands; below the portal's minimum version, its API answers `426 PLUGIN_OUTDATED` and the plugin stops until updated.
+
+To release: bump `version` in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (they must match; a test checks it), run the tests, commit, tag `v<version>`, push both; then open a design-infra pull request setting `PLUGIN_LATEST_VERSION` on the portal service (and `PLUGIN_MIN_VERSION` only when the portal API contract changed and older plugins must stop). Claude Code only notices an update when the version string changes.
+
 ## Security
 
 - Tokens are obtained by browser approval (device sign-in) and never passed on a command line (`portal.mjs login` reads stdin when piped; there is no `--token`), never written into the repository (`setup` refuses a literal `dpat_` in `.mcp.json`; `preflight` warns `TOKEN_IN_REPO`), and travel only over https (localhost excepted).

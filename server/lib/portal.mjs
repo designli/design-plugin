@@ -4,7 +4,9 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, resolve, relative, dirname } from "node:path";
 import { gzipSync } from "node:zlib";
-import { PLUGIN_VERSION, DEFAULT_PORTAL, normalizeUrl, tokenFor, readLibrary } from "./setup.mjs";
+import { PLUGIN_VERSION, DEFAULT_PORTAL, normalizeUrl, tokenFor, readLibrary,
+  headerListeners,
+} from "./setup.mjs";
 import {
   scanFile,
   componentFile,
@@ -47,6 +49,16 @@ const codeOf = (status, json) =>
             ? "RATE_LIMITED"
             : "PORTAL");
 
+/** What the portal last said about the plugin (from the X-Designli-Plugin-* answer headers). */
+const portalMeta = { latest: null, minimum: null };
+export const getPortalMeta = () => ({ ...portalMeta });
+headerListeners.push((h) => notePortalMeta(h));
+export function notePortalMeta(headers) {
+  const latest = headers.get("x-designli-plugin-latest");
+  const minimum = headers.get("x-designli-plugin-min");
+  if (latest) portalMeta.latest = latest;
+  if (minimum) portalMeta.minimum = minimum;
+}
 /** Resolves url, token and project id from the environment, the repo and explicit overrides. */
 export function context(project, { url, projectId } = {}) {
   const lib = readLibrary(project) || {};
@@ -110,6 +122,7 @@ export async function call(ctx, method, path, body, headers = {}, gzip = false) 
       }
       throw new PortalError("UNREACHABLE", `cannot reach ${ctx.url}: ${e.message}`);
     }
+    notePortalMeta(res.headers);
     const text = await res.text();
     let json = null;
     try {
@@ -124,6 +137,12 @@ export async function call(ctx, method, path, body, headers = {}, gzip = false) 
       ...(res.ok ? {} : { error: json?.error?.code || text.slice(0, 120) }),
       ...(attempt > 1 ? { attempt } : {}),
     });
+    if (res.status === 426)
+      throw new PortalError(
+        "PLUGIN_OUTDATED",
+        json?.error?.message || "the portal no longer accepts this plugin version; update it",
+        json?.error?.details ?? null,
+      );
     if (res.status === 429 && retriable && attempt === 1) {
       await sleep(Math.min(Number(res.headers.get("retry-after")) || 2, 10) * 1000);
       continue;
