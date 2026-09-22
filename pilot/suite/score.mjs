@@ -216,7 +216,16 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
   // ---- reliability ----
   {
     const r = obs.reliability ?? {};
-    const shouldNotice = Boolean(obs.meta.portalPluginLatest && obs.meta.portalPluginLatest !== obs.meta.plugin);
+    // a notice is due only when the portal announces something newer than this plugin
+    const cmp = (a, b) => {
+      const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+        if (d) return d < 0 ? -1 : 1;
+      }
+      return 0;
+    };
+    const shouldNotice = Boolean(obs.meta.portalPluginLatest && cmp(obs.meta.plugin, obs.meta.portalPluginLatest) < 0);
     add("reliability", "updateNoticeCorrect", shouldNotice === Boolean(r.status?.pluginNotice) ? 1 : 0, 1, { op: "==", items: [r.status?.pluginNotice ?? "no notice"] });
     if (r.diagnose && tier === "tier1") add("reliability", "diagnoseByRunId", r.diagnose.failedWithRun && (r.diagnose.linesForRun ?? 0) > 0 ? 1 : 0, 1, { op: "==" });
     if (r.expiredHandle && tier === "tier1") add("reliability", "expiredHandleClear", r.expiredHandle.code === "NOT_FOUND" ? 1 : 0, 1, { op: "==" });
