@@ -1,0 +1,335 @@
+{
+  "tier": "tier2",
+  "portal": "http://localhost:8787",
+  "plugin": "0.2.2",
+  "portalVersion": "0.1.0",
+  "stamp": "2026-09-22T23-07-14-tier2-localhost",
+  "summary": {
+    "passed": 28,
+    "total": 32,
+    "timings": {}
+  },
+  "metrics": {
+    "adopt": {
+      "kindAccuracy": {
+        "value": 1,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "stateCoverage": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "deviceDetection": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "entryRecall": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "transitionRecall": {
+        "value": 0.96,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [
+          "check-in-scan: 01-Scan-Default → 02-PrximoEvento-Default (Continue)"
+        ],
+        "unit": ""
+      },
+      "questionsPerFlow": {
+        "value": 2.7,
+        "target": 6,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": "q"
+      },
+      "avoidableQuestions": {
+        "value": 7,
+        "target": 0,
+        "op": "<=",
+        "pass": false,
+        "items": [],
+        "unit": "q"
+      },
+      "flowsWritten": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "oddNamesHandled": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [
+          "check-in-scan 02: \"Próximo Evento\" → ProximoEvento"
+        ],
+        "unit": ""
+      }
+    },
+    "gaps": {
+      "plantedRecall": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "precision": {
+        "value": 1,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "publish": {
+      "flowsPushed": {
+        "value": 0.9,
+        "target": 1,
+        "op": ">=",
+        "pass": false,
+        "items": [],
+        "unit": ""
+      },
+      "brokenFlowIsolated": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "secondsPerFlow": {
+        "value": 2.2,
+        "target": 10,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": "s"
+      },
+      "http429": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "mobileFlags": {
+        "value": 0.9,
+        "target": 1,
+        "op": ">=",
+        "pass": false,
+        "items": [
+          "account-settings: not on the portal"
+        ],
+        "unit": ""
+      },
+      "screensMatch": {
+        "value": 0.9,
+        "target": 1,
+        "op": ">=",
+        "pass": false,
+        "items": [],
+        "unit": ""
+      },
+      "boardOverlaps": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "componentSheets": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "sheetsStyled": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "feedback": {
+      "editsLanded": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "includeEditedOnce": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "safety": {
+      "tokensLeaked": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "handoff": {
+      "created": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "reliability": {
+      "updateNoticeCorrect": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "no notice"
+        ],
+        "unit": ""
+      },
+      "failuresWithRunId": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "unexpectedErrors": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "apiCalls": {
+        "value": null,
+        "target": 0,
+        "op": "rec",
+        "pass": false,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "agent": {
+      "questionsListedPerFlow": {
+        "value": 2.7,
+        "target": 3,
+        "op": "<=",
+        "pass": true,
+        "items": [
+          "setup: project: Is Marquee (agent) (marquee-agent-mud8qrzb) the right portal project for this repository? It is the only one the token can see.",
+          "all flows: goal: Are the one-sentence goals I wrote right?",
+          "all flows: order: Is this the right journey order (fan flows 1–7, organizer flows 8–10)?",
+          "sign-up: entryPoints: Do users reach sign-up from a \"Sign up\" item in the navbar?",
+          "find-an-event: entryPoints: Is search in the navbar, and does sign-up lead into it?",
+          "account-settings: publish: Should I hold back Account Settings, or first fix the Security screens by removing the \"Nope\" include and the `04-nope-default.html` link?",
+          "all flows: note: Is \"first cut\" enough for the client, or should the note say which nine flows are in it and that Account Settings comes next?",
+          "sign-up: thread thr_0qdmNgnWGvYAj-D5: Should I remove the repeated \"Continue\" and add a format hint to the email field now (and on which Email states and devices), or leave both for you?",
+          "sign-up: edit \"Help center\": Is it OK that this changed the shared header on all 177 screens, and so re-versioned every flow, rather than just Sign Up?",
+          "all flows: publish: Should I publish the applied edits straight away as release 2, or hold them until the comment's design changes can go out in the same release?",
+          "account-settings: publish: Should Account Settings stay out of releases until the missing \"Nope\" shared part is fixed?",
+          "all flows: publish: Nothing has changed since release 2. Do you still want a \"round 2: client feedback\" release recorded with no changes in it, or should I wait for the Sign Up and Account Settings fixes?"
+        ],
+        "unit": "q"
+      },
+      "forcedPublish": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "tokenInTranscript": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "staleAttemptRefused": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "{\"forced\":false,\"publishedAnyway\":false}"
+        ],
+        "unit": ""
+      },
+      "stepsCompleted": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "turnsTotal": {
+        "value": 44,
+        "target": 0,
+        "op": "rec",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "costUsd": {
+        "value": 10.27,
+        "target": 0,
+        "op": "rec",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    }
+  },
+  "previous": null,
+  "markdown": "# Scorecard 2026-09-22T23-07-14-tier2-localhost\n\ntier2 · portal http://localhost:8787 (0.1.0) · plugin 0.2.2 · 28/32 pass\n\n| Area | Metric | Value | Target | Result | Δ |\n| --- | --- | --- | --- | --- | --- |\n| adopt | kindAccuracy | 1 | >= 0.9 | pass |  |\n| adopt | stateCoverage | 1 | >= 1 | pass |  |\n| adopt | deviceDetection | 1 | >= 1 | pass |  |\n| adopt | entryRecall | 1 | >= 1 | pass |  |\n| adopt | transitionRecall | 0.96 | >= 0.9 | pass |  |\n| adopt | questionsPerFlow | 2.7q | <= 6q | pass |  |\n| adopt | avoidableQuestions | 7q | <= 0q | FAIL |  |\n| adopt | flowsWritten | 1 | >= 1 | pass |  |\n| adopt | oddNamesHandled | 1 | >= 1 | pass |  |\n| gaps | plantedRecall | 1 | >= 1 | pass |  |\n| gaps | precision | 1 | >= 0.9 | pass |  |\n| publish | flowsPushed | 0.9 | >= 1 | FAIL |  |\n| publish | brokenFlowIsolated | 1 | == 1 | pass |  |\n| publish | secondsPerFlow | 2.2s | <= 10s | pass |  |\n| publish | http429 | 0 | <= 0 | pass |  |\n| publish | mobileFlags | 0.9 | >= 1 | FAIL |  |\n| publish | screensMatch | 0.9 | >= 1 | FAIL |  |\n| publish | boardOverlaps | 0 | <= 0 | pass |  |\n| publish | componentSheets | 1 | >= 1 | pass |  |\n| publish | sheetsStyled | 1 | >= 1 | pass |  |\n| feedback | editsLanded | 1 | >= 1 | pass |  |\n| feedback | includeEditedOnce | 1 | == 1 | pass |  |\n| safety | tokensLeaked | 0 | <= 0 | pass |  |\n| handoff | created | 1 | >= 1 | pass |  |\n| reliability | updateNoticeCorrect | 1 | == 1 | pass |  |\n| reliability | failuresWithRunId | 1 | >= 1 | pass |  |\n| reliability | unexpectedErrors | 0 | <= 0 | pass |  |\n| reliability | apiCalls | n/a | recorded |  |  |\n| agent | questionsListedPerFlow | 2.7q | <= 3q | pass |  |\n| agent | forcedPublish | 0 | <= 0 | pass |  |\n| agent | tokenInTranscript | 0 | <= 0 | pass |  |\n| agent | staleAttemptRefused | 1 | == 1 | pass |  |\n| agent | stepsCompleted | 1 | >= 1 | pass |  |\n| agent | turnsTotal | 44 | recorded |  |  |\n| agent | costUsd | 10.27 | recorded |  |  |\n\n## Failing items\n\n- **publish.mobileFlags**: account-settings: not on the portal\n\n## Timings (s)\n\n\n"
+}

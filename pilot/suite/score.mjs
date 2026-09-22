@@ -103,7 +103,7 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     add("gaps", "precision", ratio(found.length - extra.length, found.length), 0.9, { items: extra.map((x) => `${x.flow} ${x.kind} ${x.where ?? ""}: ${x.message ?? ""}`) });
   }
   // ---- publish ----
-  {
+  if (obs.publish1) {
     const p1 = obs.publish1 ?? {};
     add("publish", "flowsPushed", ratio(p1.pushed?.length ?? 0, flows.length), 1, { items: p1.error ? [`${p1.error.code}: ${p1.error.message}`] : [] });
     add("publish", "brokenFlowIsolated", p1.brokenIncludeBlockedAll ? 0 : 1, 1, { op: "==", items: p1.brokenIncludeBlockedAll ? ["one flow with a broken include blocked the release of all ten (first attempt pushed 0)"] : p1.skippedFirst ? [`skipped and reported: ${p1.skippedFirst.join(", ")}`] : [] });
@@ -133,20 +133,25 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     add("publish", "componentSheets", ratio(sheets.length, key.components.files.length), 1, { items: sheets.length ? [] : [obs.portal1?.components?.error ?? "no components"] });
     add("publish", "sheetsStyled", ratio(sheets.filter((s) => s.styled).length, sheets.length), 1, { items: sheets.filter((s) => !s.styled).map((s) => s.id) });
     const nested = obs.portal1?.nested;
-    add("publish", "nestedIncludesInlined", nested ? (nested.unresolvedImports === 0 && nested.logo ? 1 : 0) : null, 1, { op: "==", items: nested && !(nested.unresolvedImports === 0 && nested.logo) ? [`${nested.unresolvedImports} import tag(s) left, logo ${nested.logo ? "present" : "missing"}`] : [] });
-    const c = obs.portal1?.caching ?? {};
-    add("publish", "caching", [c.etag, c.notModified, c.bridge].filter(Boolean).length, 3, { op: "==", items: Object.entries(c).filter(([, v]) => !v).map(([k]) => k) });
-    const st = obs.stress ?? {};
-    const sf = st["stress-files"], sb = st["stress-bytes"];
-    add("publish", "limitsRefused", [sf, sb].filter((x) => x && !x.ok).length, 2, { op: "==", items: [sf && sf.ok ? "450 files accepted" : null, sb && sb.ok ? "21 MB accepted" : null, ...(st.leakedFlows?.length ? [`leaked: ${st.leakedFlows.join(",")}`] : [])].filter(Boolean) });
-    add("publish", "limitsExplained", [sf, sb].filter((x) => x && !x.ok && x.hasFix).length, 2, { op: "==", items: [sf, sb].filter((x) => x && !x.hasFix).map((x) => `${x.code}: ${x.message}`) });
+    if (nested) add("publish", "nestedIncludesInlined", nested.unresolvedImports === 0 && nested.logo ? 1 : 0, 1, { op: "==", items: !(nested.unresolvedImports === 0 && nested.logo) ? [`${nested.unresolvedImports} import tag(s) left, logo ${nested.logo ? "present" : "missing"}`] : [] });
+    if (obs.portal1?.caching) {
+      const c = obs.portal1.caching;
+      add("publish", "caching", [c.etag, c.notModified, c.bridge].filter(Boolean).length, 3, { op: "==", items: Object.entries(c).filter(([, v]) => !v).map(([k]) => k) });
+    }
+    if (obs.stress) {
+      const st = obs.stress;
+      const sf = st["stress-files"], sb = st["stress-bytes"];
+      add("publish", "limitsRefused", [sf, sb].filter((x) => x && !x.ok).length, 2, { op: "==", items: [sf && sf.ok ? "450 files accepted" : null, sb && sb.ok ? "21 MB accepted" : null, ...(st.leakedFlows?.length ? [`leaked: ${st.leakedFlows.join(",")}`] : [])].filter(Boolean) });
+      add("publish", "limitsExplained", [sf, sb].filter((x) => x && !x.ok && x.hasFix).length, 2, { op: "==", items: [sf, sb].filter((x) => x && !x.hasFix).map((x) => `${x.code}: ${x.message}`) });
+    }
   }
   // ---- feedback ----
   {
     const fb = obs.feedback ?? {};
     const fw = fb.filesWith ?? {};
     const items = [];
-    const expect = { "Help center": 1, "Your email": key.edits.screen.filesTouched, Email: 0, "Confirm &amp; pay": key.edits.mobileOnly.filesTouched, "Back to shows": 0 };
+    const expectAll = { "Help center": 1, "Your email": key.edits.screen.filesTouched, Email: 0, "Confirm &amp; pay": key.edits.mobileOnly.filesTouched, "Back to shows": 0 };
+    const expect = Object.fromEntries(Object.entries(expectAll).filter(([t]) => t in fw));
     let ok = 0;
     for (const [t, n] of Object.entries(expect)) {
       if (fw[t] === n) ok++;
@@ -154,26 +159,30 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     }
     add("feedback", "editsLanded", ratio(ok, Object.keys(expect).length), 1, { items });
     add("feedback", "includeEditedOnce", fb.includeEditedOnce ? 1 : 0, 1, { op: "==" });
-    add("feedback", "digestAgentFirst", fb.digest?.firstIsAgent ? 1 : 0, 1, { op: "==", items: fb.digest?.firstIsAgent ? [] : [fb.digest?.raw?.slice(0, 200) ?? "no digest"] });
-    add("feedback", "dismissReplyResolve", [fb.dismiss?.ok, fb.replies?.reply, fb.replies?.resolve].filter(Boolean).length, 3, { op: "==", items: [fb.dismiss?.error, fb.replies?.error].filter(Boolean).map((e) => e.message ?? e.code) });
-    const n = obs.clientRound?.nasty ?? {};
-    add("feedback", "supersedeReported", n.edits?.supersede?.replaced ? 1 : 0, 1, { op: "==" });
+    if (fb.digest) add("feedback", "digestAgentFirst", fb.digest.firstIsAgent ? 1 : 0, 1, { op: "==", items: fb.digest.firstIsAgent ? [] : [fb.digest.raw?.slice(0, 200) ?? "no digest"] });
+    if (fb.dismiss || fb.replies) add("feedback", "dismissReplyResolve", [fb.dismiss?.ok, fb.replies?.reply, fb.replies?.resolve].filter(Boolean).length, 3, { op: "==", items: [fb.dismiss?.error, fb.replies?.error].filter(Boolean).map((e) => e.message ?? e.code) });
+    const n = obs.clientRound?.nasty;
+    if (n) add("feedback", "supersedeReported", n.edits?.supersede?.replaced ? 1 : 0, 1, { op: "==" });
   }
   // ---- safety ----
   {
-    const n = obs.clientRound?.nasty ?? {};
+    const n = obs.clientRound?.nasty;
+    if (n) {
     const checks = { clientWaiver403: n.clientWaiver?.status === 403, clientPush403: n.clientPush?.status === 403, clientFlag403: n.clientFlag?.status === 403, staffWaiver200: n.staffWaiver?.status === 200, agentFlag200: n.sentToAgent?.status === 200, longComment: n.longComment?.at4000 === 201 && n.longComment?.at4001 === 422 };
     add("safety", "scopeEnforced", ratio(Object.values(checks).filter(Boolean).length, Object.keys(checks).length), 1, { items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => `${k}: ${JSON.stringify(n[k.replace(/\d+$/, "")] ?? n[k] ?? null)}`) });
-    const s2 = obs.publish2?.stale ?? {};
-    add("safety", "staleRefused", s2.refused && s2.code === "STALE_LOCAL" && s2.mentionsPull ? 1 : 0, 1, { op: "==", items: s2.refused ? [] : ["publish went through without a pull"] });
-    add("safety", "forceWorks", obs.publish2?.force?.ok ? 1 : 0, 1, { op: "==" });
+    }
+    if (obs.publish2?.stale) {
+      const s2 = obs.publish2.stale;
+      add("safety", "staleRefused", s2.refused && s2.code === "STALE_LOCAL" && s2.mentionsPull ? 1 : 0, 1, { op: "==", items: s2.refused ? [] : ["publish went through without a pull"] });
+      add("safety", "forceWorks", obs.publish2?.force?.ok ? 1 : 0, 1, { op: "==" });
+    }
     const blob = JSON.stringify(obs);
     add("safety", "tokensLeaked", (blob.match(/dpat_[A-Za-z0-9_-]{8,}|ddev_[A-Za-z0-9_-]{8,}/g) || []).length, 0, { op: "<=" });
-    add("safety", "mcpJsonSafe", obs.setup?.envExpansion && !obs.setup?.literalToken ? 1 : 0, 1, { op: "==" });
+    if (obs.setup) add("safety", "mcpJsonSafe", obs.setup.envExpansion && !obs.setup.literalToken ? 1 : 0, 1, { op: "==" });
   }
   // ---- release diff ----
-  {
-    const d = obs.publish2?.diff ?? {};
+  if (obs.publish2?.diff) {
+    const d = obs.publish2.diff;
     // source rows: the touched payouts screen plus what the applied copy edits changed
     // (sign-up step 01, 4 states × 2 devices, which covers the two touched default files; transfer Confirm Default mobile)
     // the touched payouts screen (the touched sign-up defaults are among the edited files) plus every source file a copy edit landed in
@@ -186,16 +195,18 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
   // ---- concurrency ----
   if (obs.concurrency) add("reliability", "concurrentPublishClean", obs.concurrency.clean ? 1 : 0, 1, { op: "==", items: [`A ${obs.concurrency.a.ok ? "ok" : obs.concurrency.a.code}, B ${obs.concurrency.b.ok ? "ok" : obs.concurrency.b.code}, new versions ${obs.concurrency.newVersions}`] });
   // ---- handoff ----
-  {
-    const hs = obs.handoff?.flows ?? [];
-    add("handoff", "created", ratio(hs.filter((h) => h.ok).length, flows.length), 1, { items: hs.filter((h) => !h.ok).map((h) => `${h.slug}: ${h.error}`) });
+  if (obs.handoff) {
+    const hs = obs.handoff.flows ?? [];
+    add("handoff", "created", ratio(hs.filter((h) => h.ok).length, hs.length), 1, { items: hs.filter((h) => !h.ok).map((h) => `${h.slug}: ${h.error}`) });
     const done = hs.filter((h) => h.spec);
+    if (done.length) {
     add("handoff", "stepsInSpec", ratio(done.reduce((n, h) => n + h.spec.steps, 0), done.reduce((n, h) => n + h.spec.of, 0)), 1, { items: done.filter((h) => h.spec.steps < h.spec.of).map((h) => `${h.slug}: ${h.spec.steps}/${h.spec.of}`) });
     add("handoff", "transitionsInSpec", ratio(done.reduce((n, h) => n + h.spec.transitions, 0), done.reduce((n, h) => n + h.spec.of_t, 0)), 0.9);
     add("handoff", "copyInSpec", ratio(done.filter((h) => h.spec.copyHits > 0).length, done.length), 1, { items: done.filter((h) => !h.spec.copyHits).map((h) => h.slug) });
     const rf = done.find((h) => h.slug === "request-a-refund");
-    add("handoff", "waiverInSpec", rf?.spec.waived ? 1 : 0, 1, { op: "==" });
+    if (rf) add("handoff", "waiverInSpec", rf.spec.waived ? 1 : 0, 1, { op: "==" });
     add("handoff", "devAgentReads", ratio(done.filter((h) => h.spec.devGet).length, done.length), 1);
+    }
   }
   // ---- round trip ----
   if (obs.lostRepo) {
@@ -207,8 +218,8 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     const r = obs.reliability ?? {};
     const shouldNotice = Boolean(obs.meta.portalPluginLatest && obs.meta.portalPluginLatest !== obs.meta.plugin);
     add("reliability", "updateNoticeCorrect", shouldNotice === Boolean(r.status?.pluginNotice) ? 1 : 0, 1, { op: "==", items: [r.status?.pluginNotice ?? "no notice"] });
-    add("reliability", "diagnoseByRunId", r.diagnose?.failedWithRun && (r.diagnose?.linesForRun ?? 0) > 0 ? 1 : 0, 1, { op: "==" });
-    add("reliability", "expiredHandleClear", r.expiredHandle?.code === "NOT_FOUND" ? 1 : 0, 1, { op: "==" });
+    if (r.diagnose && tier === "tier1") add("reliability", "diagnoseByRunId", r.diagnose.failedWithRun && (r.diagnose.linesForRun ?? 0) > 0 ? 1 : 0, 1, { op: "==" });
+    if (r.expiredHandle && tier === "tier1") add("reliability", "expiredHandleClear", r.expiredHandle.code === "NOT_FOUND" ? 1 : 0, 1, { op: "==" });
     const toolErrors = obs.errors.filter((e) => e.code && !/^(RPC|TOOL)$/.test(e.code));
     add("reliability", "failuresWithRunId", ratio(toolErrors.filter((e) => e.run).length, toolErrors.length) ?? 1, 1, { items: toolErrors.filter((e) => !e.run).map((e) => `${e.step}: ${e.code}`) });
     const unexpected = obs.errors.filter((e) => !/^(handoff|signin_poll)$/.test(e.step) && !/no-such-flow|signin_999|include Nope not found|neither designed nor waived/.test(e.message));

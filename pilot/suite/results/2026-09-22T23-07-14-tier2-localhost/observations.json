@@ -1,0 +1,1528 @@
+{
+  "meta": {
+    "portal": "http://localhost:8787",
+    "project": "marquee-agent-mud8qrzb",
+    "repo": "/var/folders/tt/snk012t91qnggwq4mjfxy5m40000gn/T/marquee-agent-2026-09-22T23-07-14",
+    "tier": "tier2",
+    "startedAt": "2026-09-22T23:07:14.763Z",
+    "plugin": "0.2.2",
+    "model": null,
+    "portalVersion": "0.1.0",
+    "portalPluginLatest": null,
+    "finishedAt": "2026-09-22T23:11:07.543Z"
+  },
+  "errors": [],
+  "timings": {},
+  "agent": {
+    "steps": [
+      {
+        "name": "setup",
+        "code": 0,
+        "ms": 20557,
+        "turns": 8,
+        "costUsd": 0.28650640000000005,
+        "tools": [
+          "Read",
+          "ToolSearch",
+          "project_status",
+          "credentials_status",
+          "portal_projects",
+          "setup_write",
+          "Bash"
+        ],
+        "forced": false,
+        "tokenInText": false,
+        "questions": [
+          "setup: project: Is Marquee (agent) (marquee-agent-mud8qrzb) the right portal project for this repository? It is the only one the token can see."
+        ],
+        "resultTail": "ep:** \"Adopt the prototype: /designli-design:adopt scans the HTML under design/, proposes flows, steps and states, and asks only for what it cannot infer. Building screens? Load /designli-design:prototype first: one file per screen state, includes for shared parts, links for transitions.\"\n\nThe Stripe connector needs authorizing in an interactive session, and the Jira connector failed to connect. Neither affects this setup.\n\nQUESTIONS I WOULD HAVE ASKED\nsetup: project: Is Marquee (agent) (marquee-agent-mud8qrzb) the right portal project for this repository? It is the only one the token can see.",
+        "stderr": ""
+      },
+      {
+        "name": "adopt",
+        "code": 0,
+        "ms": 107346,
+        "turns": 11,
+        "costUsd": 1.1653152,
+        "tools": [
+          "Read",
+          "ToolSearch",
+          "flows_propose",
+          "Bash",
+          "Read",
+          "Grep",
+          "flows_write",
+          "flows_write",
+          "gaps",
+          "Grep"
+        ],
+        "forced": false,
+        "tokenInText": false,
+        "questions": [
+          "all flows: goal: Are the one-sentence goals I wrote right?",
+          "all flows: order: Is this the right journey order (fan flows 1\u20137, organizer flows 8\u201310)?",
+          "sign-up: entryPoints: Do users reach sign-up from a \"Sign up\" item in the navbar?",
+          "find-an-event: entryPoints: Is search in the navbar, and does sign-up lead into it?",
+          "transfer-a-ticket: entryPoints: Do fans start a transfer from their purchased tickets (a \"my tickets\" area)?",
+          "request-a-refund: entryPoints: Do fans start a refund from their order history (a \"my orders\" area)?",
+          "request-a-refund: steps.02.states: Should the Reason step get an Error screen, or is there a reason to waive it?",
+          "account-settings: entryPoints: Is Account Settings opened from an account menu in the navbar?",
+          "account-settings: steps.02 links/includes: What should the Security screens link to instead of `04-nope-default.html`, and should the \"Nope\" include be removed?",
+          "notifications: goal/entryPoints: Is this a user's own notification preferences (under Account Settings), or organizers messaging attendees?",
+          "check-in-scan: title/audience: Is check-in done by organizer door staff, reached from the organizer's event? Should \"Pr\u00f3ximo Evento\" be renamed to English like the other steps?",
+          "create-an-event: entryPoints: Do organizers start it from a \"New event\" action on their dashboard?",
+          "payouts: entryPoints: Do organizers reach Payouts from their dashboard?",
+          "buy-tickets: steps: Are the very long screen titles intentional test copy that should stay for the client?"
+        ],
+        "resultTail": "tifications: goal/entryPoints: Is this a user's own notification preferences (under Account Settings), or organizers messaging attendees?\n- check-in-scan: title/audience: Is check-in done by organizer door staff, reached from the organizer's event? Should \"Pr\u00f3ximo Evento\" be renamed to English like the other steps?\n- create-an-event: entryPoints: Do organizers start it from a \"New event\" action on their dashboard?\n- payouts: entryPoints: Do organizers reach Payouts from their dashboard?\n- buy-tickets: steps: Are the very long screen titles intentional test copy that should stay for the client?",
+        "stderr": ""
+      },
+      {
+        "name": "publish1",
+        "code": 0,
+        "ms": 21721,
+        "turns": 6,
+        "costUsd": 1.375369,
+        "tools": [
+          "Read",
+          "ToolSearch",
+          "project_status",
+          "publish",
+          "publish"
+        ],
+        "forced": false,
+        "tokenInText": false,
+        "questions": [
+          "account-settings: publish: Should I hold back Account Settings, or first fix the Security screens by removing the \"Nope\" include and the `04-nope-default.html` link?",
+          "all flows: note: Is \"first cut\" enough for the client, or should the note say which nine flows are in it and that Account Settings comes next?"
+        ],
+        "resultTail": "e client:** http://localhost:8787/projects/marquee-agent-mud8qrzb\n\nNothing is committed yet. The flow files, `design/prototype.json`, `design/library.json` and `.mcp.json` are still uncommitted in git. Commit them so the source matches what's on the portal.\n\nQUESTIONS I WOULD HAVE ASKED\n- account-settings: publish: Should I hold back Account Settings, or first fix the Security screens by removing the \"Nope\" include and the `04-nope-default.html` link?\n- all flows: note: Is \"first cut\" enough for the client, or should the note say which nine flows are in it and that Account Settings comes next?",
+        "stderr": ""
+      },
+      {
+        "name": "feedback",
+        "code": 0,
+        "ms": 34970,
+        "turns": 9,
+        "costUsd": 1.6659370000000002,
+        "tools": [
+          "Read",
+          "ToolSearch",
+          "feedback_pull",
+          "edits_apply",
+          "feedback_digest",
+          "publish",
+          "portal_reply",
+          "portal_reply"
+        ],
+        "forced": false,
+        "tokenInText": false,
+        "questions": [
+          "sign-up: thread thr_0qdmNgnWGvYAj-D5: Should I remove the repeated \"Continue\" and add a format hint to the email field now (and on which Email states and devices), or leave both for you?",
+          "sign-up: edit \"Help center\": Is it OK that this changed the shared header on all 177 screens, and so re-versioned every flow, rather than just Sign Up?",
+          "all flows: publish: Should I publish the applied edits straight away as release 2, or hold them until the comment's design changes can go out in the same release?",
+          "account-settings: publish: Should Account Settings stay out of releases until the missing \"Nope\" shared part is fixed?"
+        ],
+        "resultTail": "nWGvYAj-D5: Should I remove the repeated \"Continue\" and add a format hint to the email field now (and on which Email states and devices), or leave both for you?\n- sign-up: edit \"Help center\": Is it OK that this changed the shared header on all 177 screens, and so re-versioned every flow, rather than just Sign Up?\n- all flows: publish: Should I publish the applied edits straight away as release 2, or hold them until the comment's design changes can go out in the same release?\n- account-settings: publish: Should Account Settings stay out of releases until the missing \"Nope\" shared part is fixed?",
+        "stderr": ""
+      },
+      {
+        "name": "publish2",
+        "code": 0,
+        "ms": 17102,
+        "turns": 3,
+        "costUsd": 1.8220974,
+        "tools": [
+          "project_status",
+          "publish"
+        ],
+        "forced": false,
+        "tokenInText": false,
+        "questions": [
+          "all flows: publish: Nothing has changed since release 2. Do you still want a \"round 2: client feedback\" release recorded with no changes in it, or should I wait for the Sign Up and Account Settings fixes?",
+          "sign-up: thread thr_0qdmNgnWGvYAj-D5: Should I make the Email step changes now (one \"Continue\" label and a format hint on the email field) so they go out in round 2?",
+          "account-settings: Security includes: Should I remove the \"Nope\" include and the `04-nope-default.html` link from the Security screens so Account Settings can go out in round 2?"
+        ],
+        "resultTail": " portal changed.\n\nQUESTIONS I WOULD HAVE ASKED\n- all flows: publish: Nothing has changed since release 2. Do you still want a \"round 2: client feedback\" release recorded with no changes in it, or should I wait for the Sign Up and Account Settings fixes?\n- sign-up: thread thr_0qdmNgnWGvYAj-D5: Should I make the Email step changes now (one \"Continue\" label and a format hint on the email field) so they go out in round 2?\n- account-settings: Security includes: Should I remove the \"Nope\" include and the `04-nope-default.html` link from the Security screens so Account Settings can go out in round 2?",
+        "stderr": ""
+      },
+      {
+        "name": "stale",
+        "code": 0,
+        "ms": 13221,
+        "turns": 2,
+        "costUsd": 1.9005420000000002,
+        "tools": [
+          "publish"
+        ],
+        "forced": false,
+        "tokenInText": false,
+        "questions": [
+          "sign-up: publish: Should I force \"round 3\" past the unpulled Sign Up feedback, or pull it first and then publish?"
+        ],
+        "resultTail": "t (recommended):** I bring in the new Sign Up feedback, apply any copy edits, then publish \"round 3\". If nothing else has changed, Sign Up would be the only flow updated.\n2. **Force it:** say \"force publish round 3\" and I'll publish without pulling. This ignores the unpulled Sign Up feedback in this release. The feedback isn't deleted and can still be pulled later.\n\nEither way, Account Settings stays out until its missing \"Nope\" shared part is fixed.\n\nQUESTIONS I WOULD HAVE ASKED\n- sign-up: publish: Should I force \"round 3\" past the unpulled Sign Up feedback, or pull it first and then publish?",
+        "stderr": ""
+      },
+      {
+        "name": "handoff",
+        "code": 0,
+        "ms": 15932,
+        "turns": 5,
+        "costUsd": 2.052207,
+        "tools": [
+          "Read",
+          "ToolSearch",
+          "gaps",
+          "handoff"
+        ],
+        "forced": false,
+        "tokenInText": false,
+        "questions": [
+          "buy-tickets: components: Besides Styles, Header, Footer and Logo, should the spec name other shared parts or design-system components this flow relies on (for example Buttons)?",
+          "buy-tickets: steps: The five screen titles are long test titles (\"\u2026a very long screen title to see how the portal wraps names\u2026\") and are now copied word for word into the spec. Should they be replaced before developers read it?"
+        ],
+        "resultTail": " Buy Tickets, so it doesn't affect this handoff.\n- **What developers need:** their agent only needs the portal connection and a token that can view this project.\n\nQUESTIONS I WOULD HAVE ASKED\n- buy-tickets: components: Besides Styles, Header, Footer and Logo, should the spec name other shared parts or design-system components this flow relies on (for example Buttons)?\n- buy-tickets: steps: The five screen titles are long test titles (\"\u2026a very long screen title to see how the portal wraps names\u2026\") and are now copied word for word into the spec. Should they be replaced before developers read it?",
+        "stderr": ""
+      }
+    ],
+    "staleAttempt": {
+      "forced": false,
+      "publishedAnyway": false
+    },
+    "totals": {
+      "turns": 44,
+      "costUsd": 10.27,
+      "questions": 27,
+      "forced": false,
+      "tokenLeaked": false
+    }
+  },
+  "clientRound": {
+    "posted": true
+  },
+  "adopt": {
+    "proposed": [
+      {
+        "slug": "sign-up",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "entry": [
+          "01-Email"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Email",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Details",
+            "kind": "form",
+            "states": [
+              "Custom-Locked",
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Welcome",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Email-Default",
+            "on": "Continue",
+            "to": "02-Details-Default"
+          },
+          {
+            "from": "01-Email-Error",
+            "on": "Continue",
+            "to": "02-Details-Default"
+          },
+          {
+            "from": "01-Email-Validation",
+            "on": "Continue",
+            "to": "02-Details-Default"
+          },
+          {
+            "from": "02-Details-Custom-Locked",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          },
+          {
+            "from": "02-Details-Default",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          },
+          {
+            "from": "02-Details-Error",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          },
+          {
+            "from": "02-Details-Validation",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          }
+        ]
+      },
+      {
+        "slug": "find-an-event",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "entry": [
+          "01-Search",
+          "01-Search"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Search",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Results",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Event",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "Dates",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Search-Default",
+            "on": "Continue",
+            "to": "02-Results-Default"
+          },
+          {
+            "from": "01-Search-Error",
+            "on": "Continue",
+            "to": "02-Results-Default"
+          },
+          {
+            "from": "01-Search-Validation",
+            "on": "Continue",
+            "to": "02-Results-Default"
+          },
+          {
+            "from": "02-Results-Default",
+            "on": "Continue",
+            "to": "03-Event-Default"
+          },
+          {
+            "from": "02-Results-Empty",
+            "on": "Continue",
+            "to": "03-Event-Default"
+          },
+          {
+            "from": "02-Results-Error",
+            "on": "Continue",
+            "to": "03-Event-Default"
+          },
+          {
+            "from": "02-Results-Loading",
+            "on": "Continue",
+            "to": "03-Event-Default"
+          },
+          {
+            "from": "03-Event-Default",
+            "on": "Continue",
+            "to": "04-Dates-Default"
+          }
+        ]
+      },
+      {
+        "slug": "buy-tickets",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "entry": [
+          "01-Tickets"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Tickets",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Seats",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Payment",
+            "kind": "form",
+            "states": [
+              "Custom-Declined",
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "Review",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          },
+          {
+            "n": "05",
+            "id": "Done",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Tickets-Default",
+            "on": "Continue",
+            "to": "02-Seats-Default"
+          },
+          {
+            "from": "01-Tickets-Error",
+            "on": "Continue",
+            "to": "02-Seats-Default"
+          },
+          {
+            "from": "01-Tickets-Loading",
+            "on": "Continue",
+            "to": "02-Seats-Default"
+          },
+          {
+            "from": "02-Seats-Default",
+            "on": "Continue",
+            "to": "03-Payment-Default"
+          },
+          {
+            "from": "02-Seats-Error",
+            "on": "Continue",
+            "to": "03-Payment-Default"
+          },
+          {
+            "from": "02-Seats-Loading",
+            "on": "Continue",
+            "to": "03-Payment-Default"
+          },
+          {
+            "from": "03-Payment-Custom-Declined",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Default",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Error",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Validation",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "04-Review-Default",
+            "on": "Confirm and pay",
+            "to": "05-Done-Default"
+          },
+          {
+            "from": "04-Review-Error",
+            "on": "Confirm and pay",
+            "to": "05-Done-Default"
+          }
+        ]
+      },
+      {
+        "slug": "transfer-a-ticket",
+        "devices": [
+          "mobile"
+        ],
+        "entry": [
+          "01-Recipient"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Recipient",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Confirm",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Sent",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Recipient-Default",
+            "on": "Continue",
+            "to": "02-Confirm-Default"
+          },
+          {
+            "from": "01-Recipient-Error",
+            "on": "Continue",
+            "to": "02-Confirm-Default"
+          },
+          {
+            "from": "01-Recipient-Validation",
+            "on": "Continue",
+            "to": "02-Confirm-Default"
+          },
+          {
+            "from": "02-Confirm-Default",
+            "on": "Confirm and pay",
+            "to": "03-Sent-Default"
+          },
+          {
+            "from": "02-Confirm-Error",
+            "on": "Confirm and pay",
+            "to": "03-Sent-Default"
+          }
+        ]
+      },
+      {
+        "slug": "request-a-refund",
+        "devices": [
+          "desktop"
+        ],
+        "entry": [
+          "01-Order"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Order",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Reason",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Result",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Order-Default",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "01-Order-Empty",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "01-Order-Error",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "01-Order-Loading",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "02-Reason-Default",
+            "on": "Continue",
+            "to": "03-Result-Default"
+          },
+          {
+            "from": "02-Reason-Validation",
+            "on": "Continue",
+            "to": "03-Result-Default"
+          }
+        ]
+      },
+      {
+        "slug": "check-in-scan",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "entry": [
+          "01-Scan"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Scan",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "ProximoEvento",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Scan-Default",
+            "on": "Continue",
+            "to": "02-ProximoEvento-Default"
+          },
+          {
+            "from": "01-Scan-Error",
+            "on": "Continue",
+            "to": "02-ProximoEvento-Default"
+          },
+          {
+            "from": "01-Scan-Loading",
+            "on": "Continue",
+            "to": "02-ProximoEvento-Default"
+          }
+        ]
+      },
+      {
+        "slug": "create-an-event",
+        "devices": [
+          "desktop"
+        ],
+        "entry": [
+          "01-Basics"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Basics",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Schedule",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Venue",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading",
+              "Selected"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "Tickets",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "05",
+            "id": "Media",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "06",
+            "id": "Publish",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Basics-Default",
+            "on": "Continue",
+            "to": "02-Schedule-Default"
+          },
+          {
+            "from": "01-Basics-Error",
+            "on": "Continue",
+            "to": "02-Schedule-Default"
+          },
+          {
+            "from": "01-Basics-Validation",
+            "on": "Continue",
+            "to": "02-Schedule-Default"
+          },
+          {
+            "from": "02-Schedule-Default",
+            "on": "Continue",
+            "to": "03-Venue-Default"
+          },
+          {
+            "from": "02-Schedule-Error",
+            "on": "Continue",
+            "to": "03-Venue-Default"
+          },
+          {
+            "from": "02-Schedule-Validation",
+            "on": "Continue",
+            "to": "03-Venue-Default"
+          },
+          {
+            "from": "03-Venue-Default",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "03-Venue-Error",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "03-Venue-Loading",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "03-Venue-Selected",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "04-Tickets-Default",
+            "on": "Continue",
+            "to": "05-Media-Default"
+          },
+          {
+            "from": "04-Tickets-Error",
+            "on": "Continue",
+            "to": "05-Media-Default"
+          },
+          {
+            "from": "04-Tickets-Validation",
+            "on": "Continue",
+            "to": "05-Media-Default"
+          },
+          {
+            "from": "05-Media-Default",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          },
+          {
+            "from": "05-Media-Error",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          },
+          {
+            "from": "05-Media-Validation",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          }
+        ]
+      },
+      {
+        "slug": "payouts",
+        "devices": [
+          "desktop"
+        ],
+        "entry": [
+          "01-Overview"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Overview",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Bank",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Schedule",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "History",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Overview-Default",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "01-Overview-Empty",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "01-Overview-Error",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "01-Overview-Loading",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "02-Bank-Default",
+            "on": "Continue",
+            "to": "03-Schedule-Default"
+          },
+          {
+            "from": "02-Bank-Error",
+            "on": "Continue",
+            "to": "03-Schedule-Default"
+          },
+          {
+            "from": "02-Bank-Validation",
+            "on": "Continue",
+            "to": "03-Schedule-Default"
+          },
+          {
+            "from": "03-Schedule-Default",
+            "on": "Continue",
+            "to": "04-History-Default"
+          },
+          {
+            "from": "03-Schedule-Error",
+            "on": "Continue",
+            "to": "04-History-Default"
+          },
+          {
+            "from": "03-Schedule-Loading",
+            "on": "Continue",
+            "to": "04-History-Default"
+          }
+        ]
+      },
+      {
+        "slug": "account-settings",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "entry": [
+          "01-Profile"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Profile",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Security",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Danger",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Profile-Default",
+            "on": "Continue",
+            "to": "02-Security-Default"
+          },
+          {
+            "from": "01-Profile-Error",
+            "on": "Continue",
+            "to": "02-Security-Default"
+          },
+          {
+            "from": "01-Profile-Validation",
+            "on": "Continue",
+            "to": "02-Security-Default"
+          },
+          {
+            "from": "02-Security-Default",
+            "on": "Continue",
+            "to": "03-Danger-Default"
+          },
+          {
+            "from": "02-Security-Error",
+            "on": "Continue",
+            "to": "03-Danger-Default"
+          },
+          {
+            "from": "02-Security-Validation",
+            "on": "Continue",
+            "to": "03-Danger-Default"
+          }
+        ]
+      },
+      {
+        "slug": "notifications",
+        "devices": [
+          "desktop"
+        ],
+        "entry": [
+          "01-Details"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Details",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Channels",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Details-Default",
+            "on": "Continue",
+            "to": "02-Channels-Default"
+          },
+          {
+            "from": "01-Details-Error",
+            "on": "Continue",
+            "to": "02-Channels-Default"
+          },
+          {
+            "from": "01-Details-Validation",
+            "on": "Continue",
+            "to": "02-Channels-Default"
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "flow": "setup",
+        "field": "project",
+        "text": "setup: project: Is Marquee (agent) (marquee-agent-mud8qrzb) the right portal project for this repository? It is the only one the token can see."
+      },
+      {
+        "flow": "all flows",
+        "field": "goal",
+        "text": "all flows: goal: Are the one-sentence goals I wrote right?"
+      },
+      {
+        "flow": "all flows",
+        "field": "order",
+        "text": "all flows: order: Is this the right journey order (fan flows 1\u20137, organizer flows 8\u201310)?"
+      },
+      {
+        "flow": "sign-up",
+        "field": "entryPoints",
+        "text": "sign-up: entryPoints: Do users reach sign-up from a \"Sign up\" item in the navbar?"
+      },
+      {
+        "flow": "find-an-event",
+        "field": "entryPoints",
+        "text": "find-an-event: entryPoints: Is search in the navbar, and does sign-up lead into it?"
+      },
+      {
+        "flow": "transfer-a-ticket",
+        "field": "entryPoints",
+        "text": "transfer-a-ticket: entryPoints: Do fans start a transfer from their purchased tickets (a \"my tickets\" area)?"
+      },
+      {
+        "flow": "request-a-refund",
+        "field": "entryPoints",
+        "text": "request-a-refund: entryPoints: Do fans start a refund from their order history (a \"my orders\" area)?"
+      },
+      {
+        "flow": "request-a-refund",
+        "field": "steps.02.states",
+        "text": "request-a-refund: steps.02.states: Should the Reason step get an Error screen, or is there a reason to waive it?"
+      },
+      {
+        "flow": "account-settings",
+        "field": "entryPoints",
+        "text": "account-settings: entryPoints: Is Account Settings opened from an account menu in the navbar?"
+      },
+      {
+        "flow": "account-settings",
+        "field": "steps.02 links/includes",
+        "text": "account-settings: steps.02 links/includes: What should the Security screens link to instead of `04-nope-default.html`, and should the \"Nope\" include be removed?"
+      },
+      {
+        "flow": "notifications",
+        "field": "goal/entryPoints",
+        "text": "notifications: goal/entryPoints: Is this a user's own notification preferences (under Account Settings), or organizers messaging attendees?"
+      },
+      {
+        "flow": "check-in-scan",
+        "field": "title/audience",
+        "text": "check-in-scan: title/audience: Is check-in done by organizer door staff, reached from the organizer's event? Should \"Pr\u00f3ximo Evento\" be renamed to English like the other steps?"
+      },
+      {
+        "flow": "create-an-event",
+        "field": "entryPoints",
+        "text": "create-an-event: entryPoints: Do organizers start it from a \"New event\" action on their dashboard?"
+      },
+      {
+        "flow": "payouts",
+        "field": "entryPoints",
+        "text": "payouts: entryPoints: Do organizers reach Payouts from their dashboard?"
+      },
+      {
+        "flow": "buy-tickets",
+        "field": "steps",
+        "text": "buy-tickets: steps: Are the very long screen titles intentional test copy that should stay for the client?"
+      },
+      {
+        "flow": "account-settings",
+        "field": "publish",
+        "text": "account-settings: publish: Should I hold back Account Settings, or first fix the Security screens by removing the \"Nope\" include and the `04-nope-default.html` link?"
+      },
+      {
+        "flow": "all flows",
+        "field": "note",
+        "text": "all flows: note: Is \"first cut\" enough for the client, or should the note say which nine flows are in it and that Account Settings comes next?"
+      },
+      {
+        "flow": "sign-up",
+        "field": "thread thr_0qdmNgnWGvYAj-D5",
+        "text": "sign-up: thread thr_0qdmNgnWGvYAj-D5: Should I remove the repeated \"Continue\" and add a format hint to the email field now (and on which Email states and devices), or leave both for you?"
+      },
+      {
+        "flow": "sign-up",
+        "field": "edit \"Help center\"",
+        "text": "sign-up: edit \"Help center\": Is it OK that this changed the shared header on all 177 screens, and so re-versioned every flow, rather than just Sign Up?"
+      },
+      {
+        "flow": "all flows",
+        "field": "publish",
+        "text": "all flows: publish: Should I publish the applied edits straight away as release 2, or hold them until the comment's design changes can go out in the same release?"
+      },
+      {
+        "flow": "account-settings",
+        "field": "publish",
+        "text": "account-settings: publish: Should Account Settings stay out of releases until the missing \"Nope\" shared part is fixed?"
+      },
+      {
+        "flow": "all flows",
+        "field": "publish",
+        "text": "all flows: publish: Nothing has changed since release 2. Do you still want a \"round 2: client feedback\" release recorded with no changes in it, or should I wait for the Sign Up and Account Settings fixes?"
+      },
+      {
+        "flow": "sign-up",
+        "field": "thread thr_0qdmNgnWGvYAj-D5",
+        "text": "sign-up: thread thr_0qdmNgnWGvYAj-D5: Should I make the Email step changes now (one \"Continue\" label and a format hint on the email field) so they go out in round 2?"
+      },
+      {
+        "flow": "account-settings",
+        "field": "Security includes",
+        "text": "account-settings: Security includes: Should I remove the \"Nope\" include and the `04-nope-default.html` link from the Security screens so Account Settings can go out in round 2?"
+      },
+      {
+        "flow": "sign-up",
+        "field": "publish",
+        "text": "sign-up: publish: Should I force \"round 3\" past the unpulled Sign Up feedback, or pull it first and then publish?"
+      },
+      {
+        "flow": "buy-tickets",
+        "field": "components",
+        "text": "buy-tickets: components: Besides Styles, Header, Footer and Logo, should the spec name other shared parts or design-system components this flow relies on (for example Buttons)?"
+      },
+      {
+        "flow": "buy-tickets",
+        "field": "steps",
+        "text": "buy-tickets: steps: The five screen titles are long test titles (\"\u2026a very long screen title to see how the portal wraps names\u2026\") and are now copied word for word into the spec. Should they be replaced before developers read it?"
+      }
+    ],
+    "writes": [
+      {
+        "slug": "sign-up",
+        "ok": true
+      },
+      {
+        "slug": "find-an-event",
+        "ok": true
+      },
+      {
+        "slug": "buy-tickets",
+        "ok": true
+      },
+      {
+        "slug": "transfer-a-ticket",
+        "ok": true
+      },
+      {
+        "slug": "request-a-refund",
+        "ok": true
+      },
+      {
+        "slug": "check-in-scan",
+        "ok": true
+      },
+      {
+        "slug": "create-an-event",
+        "ok": true
+      },
+      {
+        "slug": "payouts",
+        "ok": true
+      },
+      {
+        "slug": "account-settings",
+        "ok": true
+      },
+      {
+        "slug": "notifications",
+        "ok": true
+      }
+    ],
+    "gaps": [
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-default-m.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-default-m.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-default.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-default.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-error-m.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-error-m.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-error.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-error.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-submitting-m.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-submitting-m.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-submitting.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-submitting.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-validation-m.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-validation-m.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-validation.html \u2192 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-validation.html \u2192 <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "request-a-refund",
+        "kind": "state-missing",
+        "where": "02 Error"
+      }
+    ]
+  },
+  "reliability": {
+    "status": {
+      "ok": true,
+      "pluginNotice": null
+    }
+  },
+  "publish1": {
+    "ok": true,
+    "pushed": [
+      "sign-up",
+      "find-an-event",
+      "buy-tickets",
+      "transfer-a-ticket",
+      "request-a-refund",
+      "notifications",
+      "create-an-event",
+      "check-in-scan",
+      "payouts"
+    ],
+    "ms": 21721,
+    "http429": 0
+  },
+  "portal1": {
+    "flows": [
+      {
+        "slug": "sign-up",
+        "version": 2,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 11,
+        "mobileScreens": 11,
+        "desktopScreens": 11,
+        "overlaps": 0
+      },
+      {
+        "slug": "find-an-event",
+        "version": 2,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 12,
+        "mobileScreens": 12,
+        "desktopScreens": 12,
+        "overlaps": 0
+      },
+      {
+        "slug": "buy-tickets",
+        "version": 2,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 18,
+        "mobileScreens": 17,
+        "desktopScreens": 18,
+        "overlaps": 0
+      },
+      {
+        "slug": "transfer-a-ticket",
+        "version": 2,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 10,
+        "mobileScreens": 10,
+        "desktopScreens": 0,
+        "overlaps": 0
+      },
+      {
+        "slug": "request-a-refund",
+        "version": 2,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 9,
+        "mobileScreens": 0,
+        "desktopScreens": 9,
+        "overlaps": 0
+      },
+      {
+        "slug": "notifications",
+        "version": 2,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 7,
+        "mobileScreens": 0,
+        "desktopScreens": 7,
+        "overlaps": 0
+      },
+      {
+        "slug": "create-an-event",
+        "version": 2,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 24,
+        "mobileScreens": 0,
+        "desktopScreens": 24,
+        "overlaps": 0
+      },
+      {
+        "slug": "check-in-scan",
+        "version": 2,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 4,
+        "mobileScreens": 4,
+        "desktopScreens": 4,
+        "overlaps": 0
+      },
+      {
+        "slug": "payouts",
+        "version": 2,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 15,
+        "mobileScreens": 0,
+        "desktopScreens": 15,
+        "overlaps": 0
+      }
+    ],
+    "components": {
+      "sheets": [
+        {
+          "id": "CmpButtons",
+          "styled": true
+        },
+        {
+          "id": "CmpFooter",
+          "styled": true
+        },
+        {
+          "id": "CmpHeader",
+          "styled": true
+        },
+        {
+          "id": "CmpLogo",
+          "styled": true
+        },
+        {
+          "id": "CmpSidebar",
+          "styled": true
+        },
+        {
+          "id": "CmpStyles",
+          "styled": true
+        }
+      ]
+    }
+  },
+  "feedback": {
+    "filesWith": {
+      "Help center": 1,
+      "Your email": 8
+    },
+    "includeEditedOnce": true
+  },
+  "handoff": {
+    "flows": [
+      {
+        "slug": "buy-tickets",
+        "ok": true
+      }
+    ]
+  }
+}

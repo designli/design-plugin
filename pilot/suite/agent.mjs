@@ -64,7 +64,7 @@ const SYSTEM = [
 let sessionId = null;
 async function step(name, prompt, { maxTurns = 80 } = {}) {
   say(`step ${name}`);
-  const args = ["-p", prompt, "--output-format", "stream-json", "--verbose", "--plugin-dir", PLUGIN_ROOT, "--permission-mode", "dontAsk", "--allowedTools", "mcp__designli-design__*,Bash(node *),Bash(git *),Bash(ls *),Bash(cat *),Read,Edit,Write,Glob,Grep,MultiEdit", "--append-system-prompt", SYSTEM, "--max-turns", String(maxTurns), "--settings", JSON.stringify({ enabledPlugins: { "designli-design@designli-tools": false } })];
+  const args = ["-p", prompt, "--output-format", "stream-json", "--verbose", "--plugin-dir", PLUGIN_ROOT, "--permission-mode", "dontAsk", "--allowedTools", "mcp__plugin_designli-design_designli-design__*,mcp__designli-design__*,Bash(node *),Bash(git *),Bash(ls *),Bash(cat *),Read,Edit,Write,Glob,Grep,MultiEdit", "--append-system-prompt", SYSTEM, "--max-turns", String(maxTurns), "--settings", JSON.stringify({ enabledPlugins: { "designli-design@designli-tools": false } })];
   if (sessionId) args.push("--resume", sessionId);
   if (MODEL) args.push("--model", MODEL);
   const t0 = Date.now();
@@ -90,7 +90,7 @@ async function step(name, prompt, { maxTurns = 80 } = {}) {
   sessionId = result.session_id ?? sessionId;
   const text = result.result ?? "";
   const questions = (text.split(/QUESTIONS I WOULD HAVE ASKED/i)[1] ?? "").split("\n").map((l) => l.replace(/^[-*\d.\s]+/, "").trim()).filter((l) => l && !/^none\b/i.test(l));
-  const entry = { name, code: r.code, ms: Date.now() - t0, turns: result.num_turns ?? null, costUsd: result.total_cost_usd ?? null, tools: tools.map((t) => t.name), forced: tools.some((t) => /publish/.test(t.name) && t.input?.force === true), tokenInText: /dpat_[A-Za-z0-9_-]{8,}/.test(r.out), questions, resultTail: text.slice(-600), stderr: r.err.slice(0, 300) };
+  const entry = { name, code: r.code, ms: Date.now() - t0, turns: result.num_turns ?? null, costUsd: result.total_cost_usd ?? null, tools: tools.map((t) => t.name.replace(/^mcp__plugin_designli-design_designli-design__/, "")), forced: tools.some((t) => /publish$/.test(t.name) && t.input?.force === true), tokenInText: /dpat_[A-Za-z0-9_-]{8,}/.test(r.out), questions, resultTail: text.slice(-600), stderr: r.err.slice(0, 300) };
   obs.agent.steps.push(entry);
   writeFileSync(join(RESULTS, `transcript-${name}.jsonl`), r.out.replace(/dpat_[A-Za-z0-9_-]{8,}/g, "dpat_…"));
   say(`  ${name}: exit ${r.code}, ${entry.turns} turns, $${entry.costUsd ?? "?"}, ${tools.length} tool calls, ${questions.length} questions listed`);
@@ -134,7 +134,8 @@ for (const k of key.flows) {
   }
   const f = JSON.parse(readFileSync(p, "utf8"));
   obs.adopt.writes.push({ slug: k.slug, ok: true });
-  obs.adopt.proposed.push({ slug: k.slug, devices: f.devices ?? ["desktop"], entry: (f.entryPoints ?? []).map((e) => e.to), steps: (f.steps ?? []).map((s) => ({ n: s.n, id: s.id, kind: s.kind, states: Object.keys(s.states ?? {}) })), transitions: f.transitions ?? [] });
+  const devicesOf = (flow) => flow.devices?.length ? flow.devices : ["desktop", "mobile"].filter((d) => (flow.steps ?? []).some((st) => Object.values(st.states ?? {}).some((v) => (typeof v === "string" && d === "desktop") || (v && typeof v === "object" && v[d]))));
+  obs.adopt.proposed.push({ slug: k.slug, devices: devicesOf(f), entry: (f.entryPoints ?? []).map((e) => e.to), steps: (f.steps ?? []).map((s) => ({ n: s.n, id: s.id, kind: s.kind, states: Object.keys(s.states ?? {}) })), transitions: f.transitions ?? [] });
 }
 for (const st of obs.agent.steps) for (const q of st.questions) obs.adopt.questions.push({ flow: q.split(":")[0].trim(), field: (q.split(":")[1] ?? "").trim() || "unknown", text: q });
 {
@@ -143,7 +144,7 @@ for (const st of obs.agent.steps) for (const q of st.questions) obs.adopt.questi
   const g = await c.call("gaps", {});
   obs.adopt.gaps = (g.out?.gaps ?? []).map((x) => ({ flow: x.flow, kind: x.kind, where: x.where }));
   const st = await c.call("project_status", {});
-  obs.reliability = { status: { ok: st.out?.ok ?? null, pluginNotice: st.out?.plugin?.message ?? null }, expiredHandle: { code: "NOT_FOUND" }, diagnose: { failedWithRun: true, linesForRun: 1 } };
+  obs.reliability = { status: { ok: st.out?.ok ?? null, pluginNotice: st.out?.plugin?.message ?? null } };
   await c.close();
 }
 // portal side, as in tier 1
