@@ -5,9 +5,11 @@
 //   node portal.mjs projects [--create ID --name N]
 //   node portal.mjs status                      the portal side: flows, versions, open feedback, last release
 //   node portal.mjs publish [--note "..."] [--flows a,b] [--dry-run] [--force]
+//   node portal.mjs archive --flow SLUG [--undo]      archives (or unarchives) a flow the repository no longer has
 //   node portal.mjs pull [--flows a,b] [--status open|resolved|all]
 //   node portal.mjs digest [--since last-publish|last-pull|<iso>] [--flows a,b]
 //   node portal.mjs edits apply --flow SLUG            node portal.mjs edits dismiss --flow SLUG --id ID --reason "..."
+//   node portal.mjs edits outdate --flow SLUG --id ID [--note "..."]
 //   node portal.mjs reply --flow SLUG --thread ID --text "..."     node portal.mjs resolve|reopen --flow SLUG --thread ID
 //   node portal.mjs handoff --flow SLUG --story "..." [--components A,B]
 //   node portal.mjs adopt                       rebuild flow.json files from the portal
@@ -65,7 +67,7 @@ if (!cmd || has("--help")) {
   console.log(
     readFileSync(new URL(import.meta.url), "utf8")
       .split("\n")
-      .slice(1, 19)
+      .slice(1, 20)
       .join("\n"),
   );
   process.exit(0);
@@ -198,6 +200,11 @@ async function readSecretFromStdin() {
           force: has("--force"),
         })),
       });
+    if (cmd === "archive")
+      return out({
+        ok: true,
+        ...(await P.flowsArchive(ctx, opt("--flow"), { undo: has("--undo") })),
+      });
     if (cmd === "pull")
       return out({
         ok: true,
@@ -215,6 +222,11 @@ async function readSecretFromStdin() {
       });
     if (cmd === "edits" && sub === "apply")
       return out({ ok: true, ...P.editsApply(project, opt("--flow")) });
+    if (cmd === "edits" && sub === "outdate")
+      return out({
+        ok: true,
+        ...(await P.editsOutdate(ctx, opt("--flow"), opt("--id"), opt("--note"))),
+      });
     if (cmd === "reply")
       return out({
         ok: true,

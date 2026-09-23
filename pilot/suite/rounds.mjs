@@ -117,6 +117,12 @@ export async function runRounds(ctx) {
     }
     const cw = await api.post(client, `${flowOf("request-a-refund")}/waivers`, { step: "02", state: "Error", reason: "client says so" });
     A.waivers = { posted: waived, list: waivedList, refusedForClient: cw.status === 403 };
+    // the too-large screen (reports/02/Default): the grid no longer lists it as missing, and it
+    // cannot be waived like an ordinary missing state
+    const reportsGrid = (await api.get(designer, `${flowOf("reports")}/states`)).json;
+    const reportsStep02 = reportsGrid?.steps?.find((s) => s.n === "02");
+    const tooLargeWaiver = await api.post(designer, `${flowOf("reports")}/waivers`, { step: "02", state: "Default", reason: "trying to waive a too-large state" });
+    A.tooLarge = { flow: "reports", step: "02", gridStatus: reportsStep02?.states?.Default?.status ?? null, waiverStatus: tooLargeWaiver.status };
     // structure edits from the portal side (a client cannot; staff can): step titles and an entry point
     const st1 = await api.put(designer, `${flowOf("sign-up")}/structure`, { waivers: {}, stepTitles: { "01": "Your email" }, entryPoints: [{ from: "Landing page", to: "01-Email" }] });
     const st2 = await api.put(designer, `${flowOf("wallet")}/structure`, { waivers: {}, stepTitles: { "01": "Your balance" } });
@@ -211,14 +217,25 @@ export async function runRounds(ctx) {
     writeFileSync(join(fdir(rf.to), "flow.json"), JSON.stringify(tj, null, 2) + "\n");
     commit("release 2 changes");
     const before = Object.fromEntries(flows.map((f) => [f.id, f.latestVersion]));
+    const dry = await c.call("publish", { dryRun: true });
+    r2.orphaningDry = dry.out?.orphaning ?? null;
     let p = await c.call("publish", { note: "Release 2: seat picking simplified, saved cards, ThreeDS rename, footer copy" });
     if (!p.ok && p.error?.code === "STALE_LOCAL") {
       await tool(c, "feedback_pull", {});
       p = await tool(c, "publish", { note: "Release 2: seat picking simplified, saved cards, ThreeDS rename, footer copy" });
     } else if (!p.ok) ctx.fail("release2 publish", p.error);
     r2.publish = { ok: p.ok, pushed: p.out?.pushed?.map((x) => x.flow) ?? [], unchanged: p.out?.unchanged?.length ?? null, skipped: p.out?.skipped?.map((x) => x.flow) ?? [], release: p.out?.release?.number ?? null, error: p.error ? `${p.error.code}: ${p.error.message?.slice(0, 200)}` : null };
+    r2.portalOnly = (p.out?.portalOnly ?? []).map((x) => x.flow);
+    r2.orphaning = p.out?.orphaning ?? [];
+    // the designer says yes to archiving every flow the repository no longer declares
+    const archived = [];
+    for (const slug of r2.portalOnly) {
+      const arch = await c.call("flows_archive", { flow: slug });
+      if (arch.ok) archived.push(slug);
+    }
+    r2.archived = { asked: r2.portalOnly, ok: archived.length };
     await c.close();
-    note(`release 2 published: ${r2.publish.pushed.length} pushed, ${r2.publish.unchanged} unchanged, skipped ${r2.publish.skipped.join(",") || "none"}${r2.publish.error ? "; error " + r2.publish.error : ""}`);
+    note(`release 2 published: ${r2.publish.pushed.length} pushed, ${r2.publish.unchanged} unchanged, skipped ${r2.publish.skipped.join(",") || "none"}${r2.publish.error ? "; error " + r2.publish.error : ""}; portalOnly ${r2.portalOnly.join(",") || "none"}, archived ${r2.archived.ok}/${r2.portalOnly.length}`);
     // what the portal says about it
     const det = r2.publish.release ? (await api.get(designer, `/projects/${PROJECT}/releases/${r2.publish.release}`)).json : null;
     const changes = det?.changes ?? [];
@@ -253,6 +270,15 @@ export async function runRounds(ctx) {
     const a = await c.call("edits_apply", { flow: se.flow });
     const mine = (a.out?.results ?? []).find((x) => x.id === r.json?.id);
     B.staleEdit = { posted: r.status, result: mine ? mine.result === "applied" ? "applied" : "needsManual" : "not-found", detail: mine?.result ?? null };
+    if (B.staleEdit.result === "needsManual") {
+      const suggested = mine?.suggest === "outdate";
+      await c.call("edits_outdate", { flow: se.flow, id: r.json?.id });
+      const te = (await api.get(designer, `${flowOf(se.flow)}/text-edits?status=all`)).json;
+      const edit = (te?.edits ?? []).find((x) => x.id === r.json?.id);
+      const openThreads = (await api.get(designer, `${flowOf(se.flow)}/comments?status=open&screen=${se.screen}`)).json;
+      const threadFound = (openThreads?.threads ?? []).some((t) => /changed in version/i.test(t.text));
+      B.staleEdit.outdated = { suggested, status: edit?.status ?? null, threadFound };
+    }
     await c.close();
     const oc = R.B.orphanComment;
     const o = await api.post(client, `${flowOf(oc.flow)}/comments`, { text: "Still thinking about the row picker we had here.", screen: { id: oc.screen, device: "desktop" }, anchor: { x: 20, y: 20 }, flowVersion: oc.version });
@@ -316,10 +342,18 @@ export async function runRounds(ctx) {
     const d = await c.call("diagnose", { lines: 400 });
     r4.forced = { refusedFirst: !refused.ok && refused.error?.code === "STALE_LOCAL", ok: forced.ok, release: forced.out?.release?.number ?? null };
     r4.eventNamesForce = /force=1|"force":true/.test(JSON.stringify(d.out ?? {}));
-    const noop = await c.call("publish", { note: "Release 5: nothing changed" });
-    r4.noop = { ok: noop.ok, release: noop.out?.release?.number ?? null, pushed: noop.out?.pushed?.length ?? null, unchanged: noop.out?.unchanged?.length ?? null, refused: !noop.ok, code: noop.error?.code ?? null };
+    // no note, no force: nothing changed since the forced release, so this must be a plain noop
+    // that never calls POST /releases — count releases before and after to prove it
+    const releasesBefore = (await api.get(designer, `/projects/${PROJECT}/releases`)).json?.releases?.length ?? null;
+    const d0 = await c.call("diagnose", { lines: 3000 });
+    const httpBefore = (d0.out?.lines ?? []).filter((l) => l.includes('"event":"http"')).length;
+    const noop = await c.call("publish", {});
+    const d1 = await c.call("diagnose", { lines: 3000 });
+    const httpAfter = (d1.out?.lines ?? []).filter((l) => l.includes('"event":"http"')).length;
+    const releasesAfter = (await api.get(designer, `/projects/${PROJECT}/releases`)).json?.releases?.length ?? null;
+    r4.noop = { ok: noop.ok, noop: noop.out?.noop === true, release: noop.out?.release ?? null, releasesBefore, releasesAfter, calls: httpAfter - httpBefore };
     await c.close();
-    note(`release 4: refused first ${r4.forced.refusedFirst}, forced ${r4.forced.ok} (release ${r4.forced.release}); no-op publish → ${r4.noop.ok ? `release ${r4.noop.release}, ${r4.noop.pushed} pushed, ${r4.noop.unchanged} unchanged` : r4.noop.code}`);
+    note(`release 4: refused first ${r4.forced.refusedFirst}, forced ${r4.forced.ok} (release ${r4.forced.release}); no-op publish → noop ${r4.noop.noop}, releases ${r4.noop.releasesBefore} → ${r4.noop.releasesAfter}`);
   });
 
   // ---- the developer's end: the portal's MCP server ----
@@ -365,10 +399,16 @@ export async function runRounds(ctx) {
 
   writeFileSync(join(REPO, "NOTES.md"), `# Marquee XL on ${PORTAL}\n\nProject \`${PROJECT}\`. What the suite did, in order:\n\n${notes.join("\n")}\n`);
   commit("notes");
-  // after release 2 the renamed flow exists twice on the portal (the old one cannot be removed), so
-  // the map draws its cross-flow links twice; the deleted flow stays as well, with its links
+  // when the renamed flow's old copy is still on the portal (not archived), the map draws its
+  // cross-flow links twice; once both promo-codes and the old "team" are archived, neither
+  // duplication nor the deleted flow's own links (as a source or a target) show up any more
   const oldFlow = key.flows.find((f) => f.slug === R.release2.renamedFlow.from);
-  const extraEdges = obs.rounds.release2?.renamedFlow?.oldStillOnPortal && obs.rounds.release2?.renamedFlow?.newOnPortal ? (oldFlow?.next ?? []).length : 0;
-  const ui = { journeyExpected: obs.journey?.expected != null ? obs.journey.expected + extraEdges : null, orphan: obs.rounds.release2?.orphan ? { flow: R.release2.removedStep.flow, screen: obs.rounds.release2.orphan.screen, version: 1, text: "row picker" } : null, release2: obs.rounds.release2?.publish?.release ?? null, sheets: (key.components?.files ?? []).length };
+  const deletedSlug = R.release2.deletedFlow;
+  const bothArchived = obs.rounds.release2?.deletedFlow?.stillOnPortal === false && obs.rounds.release2?.renamedFlow?.oldStillOnPortal === false;
+  const extraEdges = !bothArchived && obs.rounds.release2?.renamedFlow?.oldStillOnPortal && obs.rounds.release2?.renamedFlow?.newOnPortal ? (oldFlow?.next ?? []).length : 0;
+  const expectedBase = bothArchived
+    ? key.flows.reduce((n, f) => (f.slug === deletedSlug ? n : n + (f.next ?? []).filter((l) => l.flow !== deletedSlug).length), 0)
+    : obs.journey?.expected;
+  const ui = { journeyExpected: expectedBase != null ? expectedBase + extraEdges : null, orphan: obs.rounds.release2?.orphan ? { flow: R.release2.removedStep.flow, screen: obs.rounds.release2.orphan.screen, version: 1, text: "row picker" } : null, release2: obs.rounds.release2?.publish?.release ?? null, sheets: (key.components?.files ?? []).length };
   return ui;
 }
