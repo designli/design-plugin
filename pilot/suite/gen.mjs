@@ -896,7 +896,7 @@ export function generateXl(out) {
         n,
         id: idOf(i),
         kind: st.kind,
-        states: states.filter((s) => !(tooLarge && s === "Default")).map(nameOf),
+        states: states.map(nameOf),
         missing: st.missing || [],
         custom: (st.extra || []).filter((s) => s.startsWith("Custom-")).map(nameOf),
         weird: !!st.weird,

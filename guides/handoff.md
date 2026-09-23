@@ -4,7 +4,7 @@ Tools: `gaps`, `handoff` (CLI: `scripts/gaps.mjs --flow <slug> --strict`, `scrip
 
 ## Step 1: gate
 
-`gaps` with `strict: true` for the flow. Blocking: a required state neither designed nor waived, a waiver without a reason, a broken file or include, a bad name. List each with what to do and stop; the client-facing gap list on the portal says the same.
+`gaps` with `strict: true` for the flow. Blocking: a required state neither designed nor waived, a waiver without a reason, a broken file or include, a bad name, a state whose file is too large to bundle (`too-large`). List each with what to do and stop; the client-facing gap list on the portal says the same.
 
 If the flow has changes the portal has not seen (`project_status` reports `unpublishedChanges` or `neverPublished`), run the `publish` guide first: the handoff is taken at the current release.
 

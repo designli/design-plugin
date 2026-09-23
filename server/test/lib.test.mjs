@@ -12,6 +12,7 @@ import {
   gapsOf,
   readFlow,
   guessStem,
+  resolveStates,
 } from "../lib/flows.mjs";
 import { buildFlowBundle, buildComponentsBundle } from "../lib/bundle.mjs";
 import { editsApply, digest, mergeStructure } from "../lib/portal.mjs";
@@ -140,7 +141,22 @@ test("scan → propose → write → gaps on a plain HTML prototype", () => {
   assert.deepEqual(flow.entryPoints, [{ from: "?", to: "01-Email" }]);
   const q = prop.questions.filter((x) => x.flow === "signup");
   assert.ok(q.some((x) => x.field === "steps.01.states" && x.why.includes("Submitting")));
-  assert.ok(q.some((x) => x.field === "entryPoints"));
+  assert.ok(!q.some((x) => x.field === "title"), "a sure title is shown, not asked");
+  assert.ok(
+    !q.some((x) => /^steps\.\d+\.kind$/.test(x.field)),
+    "a sure kind is shown, not asked",
+  );
+  assert.ok(!q.some((x) => x.field === "entryPoints"), "one unlinked step is a sure entry point");
+  assert.equal(flow.confidence.steps["01"], "sure");
+  assert.equal(flow.confidence.steps["02"], "sure");
+  assert.equal(flow.confidence.entryPoints, "sure");
+  const goalQ = q.find((x) => x.field === "goal");
+  assert.ok(goalQ, "goal is always a question");
+  assert.equal(goalQ.confidence, "unknown");
+  assert.ok(
+    q.every((x) => x.confidence !== "sure"),
+    "a sure inference is never asked",
+  );
   // the designer answers: waive two states, name the entry point
   flow.steps[0].states.Submitting = "n/a: instant, no network call";
   flow.entryPoints = [{ from: "Landing: Get started", to: "01-Email" }];
@@ -165,6 +181,39 @@ test("scan → propose → write → gaps on a plain HTML prototype", () => {
   assert.equal(gapsOf(dir, { strict: true }).gaps.length, 2);
   assert.equal(scanPrototype(dir).unassigned.length, 0, "declared files are not proposed again");
   assert.equal(proposeFlows(dir).flows.length, 0);
+});
+
+test("a step with two markup signals is a guessed kind; two unlinked steps make the entry point a guess", () => {
+  const dir = scratch();
+  // nothing links to plans.html, and nothing on it links out: an unlinked step, like Email
+  writeFileSync(
+    join(dir, "design", "flows", "signup", "plans.html"),
+    page("Plans", `<form><input type="text" name="q"></form><table><tr><td>Row</td></tr></table>`),
+  );
+  const prop = proposeFlows(dir);
+  const flow = prop.flows[0];
+  const plans = flow.steps.find((s) => s.id === "Plans");
+  assert.ok(plans, "plans.html becomes its own step");
+  assert.equal(flow.confidence.steps[plans.n], "guess", "a form and a table both point at a kind");
+  assert.equal(flow.confidence.entryPoints, "guess", "two unlinked steps: no single sure entry");
+  const q = prop.questions.filter((x) => x.flow === "signup");
+  const entryQ = q.find((x) => x.field === "entryPoints");
+  assert.ok(entryQ, "asked because the entry is not sure");
+  assert.equal(entryQ.confidence, "guess");
+  assert.equal(entryQ.candidates.length, 2);
+});
+
+test("the title comes from a shared screen-title prefix", () => {
+  const dir = mkdtempSync(join(tmpdir(), "proto-"));
+  mkdirSync(join(dir, "design", "flows", "checkout"), { recursive: true });
+  writeFileSync(join(dir, "design", "flows", "checkout", "cart.html"), page("Checkout · Cart", "<p>Cart</p>"));
+  writeFileSync(
+    join(dir, "design", "flows", "checkout", "pay.html"),
+    page("Checkout · Pay", `<form><input type="text"></form>`),
+  );
+  const flow = proposeFlows(dir).flows[0];
+  assert.equal(flow.title, "Checkout");
+  assert.equal(flow.confidence.title, "sure");
 });
 
 test("the bundle names screens by id, inlines includes, rewrites links and infers transitions", () => {
@@ -539,21 +588,56 @@ test("a copy edit inside an include's include (Navbar → Logo) is applied once,
   assert.ok(r.results[0].files.some((f) => f.include === "Logo" && f.result === "applied"));
 });
 
-test("a screen over the size cap is one too-large gap, not also a missing state", () => {
+test("a screen over the size cap is declared truthfully and becomes an unavailable state, not a missing one", () => {
   const dir = scratch();
   const fdir = join(dir, "design", "flows", "signup");
   // the Default screen of step 01 is past the cap before adopt: it stays on disk, the scanner skips
-  // it, so flow.json never declares it (no mobile sibling either)
+  // it (undeclared), so the first propose folds it in as a pseudo-screen and it is written to
+  // flow.json like any other file, truthfully, not silently dropped (no mobile sibling either).
+  // Its own links are unknowable (an oversized file is never parsed), so which step number the
+  // designer's other step lands on is not fixed here; find the Email step by id, not by position.
   writeFileSync(join(fdir, "email.html"), page("Enter your email", `<svg>${"<path d='M0 0h1v1z'/>".repeat(260000)}</svg>`));
   rmSync(join(fdir, "email-m.html"));
   const flow = proposeFlows(dir).flows[0];
   writeFlows(dir, { flows: [flow] });
+  const fj = readFlow(fdir);
+  const emailStep = fj.steps.find((s) => s.id === "Email");
+  assert.ok(emailStep, "the Email step is still declared");
+  assert.equal(emailStep.states.Default, "email.html", "declared, not dropped");
+  const r = resolveStates(fj, fdir);
+  const rEmail = r.steps.find((s) => s.id === "Email");
+  assert.equal(rEmail.states.Default.status, "unavailable");
+  assert.ok(rEmail.states.Default.bytes > 4 * 1024 * 1024);
   const g = gapsOf(dir);
   const tooLarge = g.gaps.filter((x) => x.kind === "too-large");
   assert.equal(tooLarge.length, 1);
-  assert.match(tooLarge[0].proposal, /step (01|Email) Default/);
+  assert.equal(tooLarge[0].step, emailStep.n);
+  assert.equal(tooLarge[0].state, "Default");
+  assert.equal(typeof tooLarge[0].bytes, "number");
   // the Email step still reports its other missing states, never the Default the big file covers
-  const email = g.gaps.filter((x) => x.kind === "state-missing" && /Email/.test(x.proposal));
-  assert.ok(email.length > 0, "the step itself is still known");
-  assert.ok(!email.some((x) => x.state === "Default"), JSON.stringify(email));
+  assert.ok(
+    !g.gaps.some(
+      (x) => x.kind === "state-missing" && x.step === emailStep.n && x.state === "Default",
+    ),
+  );
+  assert.ok(
+    gapsOf(dir, { strict: true }).gaps.some((x) => x.kind === "too-large"),
+    "strict blocks it too",
+  );
+  const b = buildFlowBundle(dir, "signup");
+  assert.equal(b.ok, true, b.errors.join("; "));
+  const bEmail = b.manifest.steps.find((s) => s.id === "Email");
+  const st0 = bEmail.states.find((s) => s.state === "Default");
+  assert.equal(st0.unavailable.reason, "too-large");
+  assert.ok(st0.unavailable.bytes > 4 * 1024 * 1024);
+  assert.ok(
+    !b.manifest.screens.some((s) => s.id === `${emailStep.n}-Email-Default`),
+    "never read or bundled",
+  );
+  assert.ok(
+    b.manifest.screens.some((s) => s.id === `${emailStep.n}-Email-Validation`),
+    "the Validation screen remains",
+  );
+  // a second propose finds nothing left to declare for the oversized file
+  assert.equal(proposeFlows(dir).flows.length, 0);
 });

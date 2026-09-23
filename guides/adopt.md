@@ -1,6 +1,6 @@
 # adopt: declare the prototype's flows, steps and states
 
-Plain words with the designer; the vocabulary of files, steps and states is theirs, the tools are not. One grouped question round per flow at most, every question with a proposal and a recommended default; "I don't know" picks the default and lands in the flow's open questions (a `state-missing` gap or a `?` entry point the next `adopt` asks about again).
+Plain words with the designer; the vocabulary of files, steps and states is theirs, the tools are not. One grouped question per flow at most, listing only what the scan could not settle, every question with a proposal and a recommended default; "I don't know" picks the default and lands in the flow's open questions (a `state-missing` gap or a `?` entry point the next `adopt` asks about again).
 
 Tools: `project_status`, `prototype_scan`, `flows_propose`, `flows_write`, `gaps`, `adopt_from_portal` (CLI: `scripts/adopt.mjs scan | propose | write --file | from-portal`).
 
@@ -12,6 +12,8 @@ Call `project_status`. `SETUP` or `PORTAL_TOKEN` blockers: stop and point at the
 
 `prototype_scan` (with the folder the designer named, default `design/`), then `flows_propose`. The proposal is pure inference: one flow per folder, steps and states from file names, transitions from links, entry points from files nothing links to, kinds from the markup. Nothing is written yet. Screens already declared by a flow are not proposed again: re-running `adopt` only asks about new files.
 
+`flows_propose` returns `questions` only for what it is unsure about (each carries `confidence: guess|unknown`); everything else is on the proposal with `confidence.title`, `confidence.entryPoints` and `confidence.steps.NN` (`sure|guess`).
+
 If `unassigned` is empty and there are no questions, say the prototype is fully declared, run `gaps`, and stop with the next command (`publish`).
 
 ## Step 2: product basics, once
@@ -20,16 +22,9 @@ If the scan reports no product (`product: null`), ask once for the product name 
 
 ## Step 3: one grouped question per proposed flow
 
-For each flow in the proposal, show the designer what was inferred and ask, in one round:
+Show, per flow, one short summary: the title (from the screens or the folder), the steps with kind and states, marking anything with `guess` as "(guess)"; then ask only the items in `questions` for that flow (goal; missing required states; the entry point when `?` had no unique candidate; the folder). End with one line: "Anything to correct in the summary?"
 
-- **Title and goal**: proposed from the folder name; goal is one sentence, what the user achieves.
-- **Steps**: the ordered list with each step's kind (form, data, choice, confirmation, result, info) and the files found per state. Offer "as proposed" as the default, then "reorder", "merge", "split", "rename" as free text.
-- **Missing required states** per step: for each, "design it later" (it stays a visible gap, the recommended default) or "waive: <reason>" (a fact, not a preference).
-- **Entry points**: where users come from (a navbar item, a dashboard action, an email link, another flow). A `?` proposal means the scan could not tell.
-- **Position in the journey** (`order`, 1 = first) and which flows this one leads to (`next: [{ "flow": "<sibling slug>", "on": "<trigger label>" }]`), when the project has more than one flow.
-- **Folder**: if the files are not under `design/flows/<slug>/`, propose moving them there (default) or keeping them in place; moving is the designer's action, not the tool's.
-
-Do not ask what the scan already answered. Do not ask about transitions: they come from links, and the designer can edit `flow.json` later.
+Do not ask about a title, a kind or an entry point the proposal marked `sure`. Do not ask about transitions: they come from links, and the designer can edit `flow.json` later.
 
 ## Step 4: write and check
 
@@ -47,3 +42,5 @@ Finish with: "Published nothing yet. Next: `publish` with a note for the client"
 - A file name the scan cannot read (no state token): it is proposed as `Default` of a step named after the file; the designer corrects it in the question round.
 - Two files map to the same step and state on the same device: report the duplicate; the designer picks one or renames.
 - Kite-style `.dc.html` artboards with an existing `flow.json`: nothing to do; `adopt` reports the prototype as fully declared.
+- A step whose kind is `(guess)` and wrong: the designer corrects it in the "anything to correct" line; `flows_write` takes the corrected `kind`.
+- A screen above 4 MB: it is declared in `flow.json` and reported as `too-large` with its size; the portal shows the state as "unavailable" and it cannot be waived. Trim the inline asset or link it by URL, then publish.

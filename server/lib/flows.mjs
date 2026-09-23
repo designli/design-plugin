@@ -90,6 +90,7 @@ export function resolveStates(flow, dir) {
   const steps = [];
   const problems = [];
   const usedFiles = new Map(); // abs file → screen id
+  const oversized = []; // { step, state, file, bytes, screen } for states whose file is too large
   for (const st of flow.steps || []) {
     const required = new Set(REQUIRED_BY_KIND[st.kind] || ["Default"]);
     const states = {};
@@ -123,6 +124,7 @@ export function resolveStates(flow, dir) {
         continue;
       }
       const files = {};
+      const oversizedHere = []; // { dev, file (as declared), bytes, abs } for this state
       const spec = typeof v === "string" ? { desktop: v } : v;
       for (const dev of Object.keys(spec)) {
         if (!["desktop", "mobile"].includes(dev)) {
@@ -147,6 +149,11 @@ export function resolveStates(flow, dir) {
           });
           continue;
         }
+        const bytes = statSync(f).size;
+        if (bytes > MAX_SOURCE_BYTES) {
+          oversizedHere.push({ dev, file: spec[dev], bytes, abs: f });
+          continue;
+        }
         files[dev] = f;
       }
       // a desktop-only declaration in a two-device flow picks up the mobile sibling by name
@@ -154,7 +161,11 @@ export function resolveStates(flow, dir) {
         const sib = mobileSibling(files.desktop);
         if (sib) files.mobile = sib;
       }
-      for (const [dev, f] of Object.entries(files)) {
+      // both good and oversized files count as "used" (declared), so neither shows up as unassigned
+      for (const [dev, f] of [
+        ...Object.entries(files),
+        ...oversizedHere.map((o) => [o.dev, o.abs]),
+      ]) {
         const prev = usedFiles.get(f);
         if (prev && prev !== screen)
           problems.push({
@@ -168,14 +179,28 @@ export function resolveStates(flow, dir) {
         usedFiles.set(f, screen);
         void dev;
       }
-      states[name] = Object.keys(files).length
-        ? { status: "present", files, required: isRequired, screen }
-        : {
-            status: isRequired ? "missing" : "optional",
-            required: isRequired,
-            screen,
-            broken: true,
-          };
+      for (const o of oversizedHere)
+        oversized.push({ step: st.n, state: name, file: o.file, bytes: o.bytes, screen });
+      if (Object.keys(files).length) {
+        states[name] = { status: "present", files, required: isRequired, screen };
+      } else if (oversizedHere.length) {
+        const o = oversizedHere[0];
+        states[name] = {
+          status: "unavailable",
+          reason: "too-large",
+          bytes: o.bytes,
+          file: o.file,
+          required: isRequired,
+          screen,
+        };
+      } else {
+        states[name] = {
+          status: isRequired ? "missing" : "optional",
+          required: isRequired,
+          screen,
+          broken: true,
+        };
+      }
     }
     steps.push({
       n: st.n,
@@ -188,7 +213,7 @@ export function resolveStates(flow, dir) {
       states,
     });
   }
-  return { steps, problems, usedFiles, devices };
+  return { steps, problems, usedFiles, devices, oversized };
 }
 
 // ---- gaps ----
@@ -199,7 +224,13 @@ export const BLOCKING = new Set([
   "duplicate-state",
   "duplicate-step",
 ]);
-export const STRICT = new Set([...BLOCKING, "state-missing", "state-unwaived", "no-product"]);
+export const STRICT = new Set([
+  ...BLOCKING,
+  "state-missing",
+  "state-unwaived",
+  "no-product",
+  "too-large",
+]);
 /** Everything that stands between the prototype and a clean publish or handoff. */
 export function gapsOf(project, { flow: only, strict = false } = {}) {
   const proto = readPrototype(project);
@@ -216,24 +247,38 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
   const every = listFlows(project);
   const flows = every.filter((f) => !only || f.slug === only || f.dir === resolve(project, only));
   const slugs = new Set(every.map((f) => f.slug));
-  const coveredByTooLarge = new Set(); // "slug|n|State" of steps whose file exists but is too large
-  for (const sk of scanPrototype(project).skipped) {
+  // a file some flow.json declares (even an oversized one) is reported via that flow's r.oversized
+  // below, with a certain step and state; an oversized file nobody declares is reported here, guessed
+  const declaredFiles = new Set();
+  for (const f of every)
+    for (const k of resolveStates(f.flow, f.dir).usedFiles.keys()) declaredFiles.add(k);
+  for (const sk of skippedSources(project)) {
+    if (declaredFiles.has(resolve(project, sk.file))) continue;
     const owner = every.find((f) => resolve(project, sk.file).startsWith(f.dir + "/"));
     if (only && owner?.slug !== only) continue;
     const g = guessStem(splitDevice(basename(sk.file)).stem);
-    if (owner) {
-      if (g.n) coveredByTooLarge.add(`${owner.slug}|n:${g.n}|${g.state}`);
-      coveredByTooLarge.add(`${owner.slug}|id:${g.stepId.toLowerCase()}|${g.state}`);
-    }
     push({
       flow: owner?.slug ?? null,
       kind: "too-large",
       where: sk.file,
+      file: sk.file,
+      bytes: sk.bytes,
       proposal: `${(sk.bytes / 1048576).toFixed(1)} MB; screens above ${MAX_SOURCE_BYTES / 1048576} MB are not scanned or bundled${owner ? ` (it would be step ${g.n ?? g.stepId} ${g.state})` : ""}: trim the inline asset or link it by URL`,
     });
   }
   for (const { slug, dir, flow } of flows) {
     const r = resolveStates(flow, dir);
+    for (const o of r.oversized)
+      push({
+        flow: slug,
+        kind: "too-large",
+        where: relative(project, resolve(dir, o.file)),
+        file: relative(project, resolve(dir, o.file)),
+        step: o.step,
+        state: o.state,
+        bytes: o.bytes,
+        proposal: `${(o.bytes / 1048576).toFixed(1)} MB; screens above ${MAX_SOURCE_BYTES / 1048576} MB are not scanned or bundled: trim the inline asset or link it by URL`,
+      });
     if (!Number.isInteger(flow.order))
       push({
         flow: slug,
@@ -294,8 +339,7 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
     for (const st of r.steps)
       for (const [name, v] of Object.entries(st.states))
         if (v.status === "missing" && !v.broken)
-          if (!coveredByTooLarge.has(`${slug}|n:${st.n}|${name}`) && !coveredByTooLarge.has(`${slug}|id:${String(st.id ?? "").toLowerCase()}|${name}`))
-            push({
+          push({
             flow: slug,
             kind: "state-missing",
             where: `${st.n} ${name}`,
@@ -338,11 +382,12 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
             proposal: `add ${proto.components}/${name}.html`,
           });
     }
-    // transitions must name declared screens
+    // transitions must name declared screens; an unavailable (too-large) state is declared, just not
+    // bundled, so a link into it is not a broken one
     const ids = new Set(
       r.steps.flatMap((s) =>
         Object.values(s.states)
-          .filter((v) => v.status === "present")
+          .filter((v) => v.status === "present" || v.status === "unavailable")
           .map((v) => v.screen),
       ),
     );
@@ -379,6 +424,17 @@ const pascal = (s) =>
     .filter(Boolean)
     .map((w) => w[0].toUpperCase() + w.slice(1))
     .join("");
+// the leading segment of a screen title, split on the separators a title uses to prefix a flow name
+// onto a step name ("Checkout · Cart", "Checkout | Cart", "Checkout - Cart", "Checkout: Cart", …)
+const TITLE_SEPS = [" · ", " | ", " – ", " — ", " - ", ": "];
+const titleLead = (title) => {
+  let cut = title.length;
+  for (const sep of TITLE_SEPS) {
+    const i = title.indexOf(sep);
+    if (i >= 0 && i < cut) cut = i;
+  }
+  return title.slice(0, cut).trim();
+};
 const STATE_LOWER = new Map(STATE_VOCAB.map((s) => [s.toLowerCase(), s]));
 /** `02-details-validation` → { n: "02", stepId: "Details", state: "Validation" }; `client` → step Client, Default. */
 export function guessStem(stem) {
@@ -406,18 +462,15 @@ export function guessStem(stem) {
   const stepId = pascal(tokens.join(" ")) || "Step";
   return { n, stepId, state: custom || state };
 }
-/** Scans a prototype: screens (with links and includes), components, declared flows, unassigned files. */
-export function scanPrototype(project, { dir } = {}) {
+/**
+ * Source files above MAX_SOURCE_BYTES under the prototype root (the components dir is skipped, like
+ * the screen walk): reported, never silently ignored. The stat-only twin of scanPrototype's walk.
+ */
+export function skippedSources(project, { dir } = {}) {
   const proto = readPrototype(project);
   const root = resolve(project, dir || proto.dir || "design");
   const compDir = resolve(project, proto.components);
-  const flows = listFlows(project);
-  const declaredFiles = new Set();
-  for (const f of flows)
-    for (const k of resolveStates(f.flow, f.dir).usedFiles.keys()) declaredFiles.add(k);
-  // screen candidates: every source under root (recursively, skipping components, bundle, dot dirs)
-  const screens = [];
-  const skipped = []; // sources above MAX_SOURCE_BYTES: reported, never silently ignored
+  const out = [];
   const walk = (d, depth) => {
     if (depth > 4 || !existsSync(d)) return;
     for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -427,7 +480,36 @@ export function scanPrototype(project, { dir } = {}) {
           continue;
         walk(p, depth + 1);
       } else if (isSource(e.name) && !isSourceFile(p) && statSync(p).isFile()) {
-        skipped.push({ file: relative(project, p), bytes: statSync(p).size });
+        out.push({ file: relative(project, p), bytes: statSync(p).size });
+      }
+    }
+  };
+  walk(root, 0);
+  return out;
+}
+/** Scans a prototype: screens (with links and includes), components, declared flows, unassigned files. */
+export function scanPrototype(project, { dir } = {}) {
+  const proto = readPrototype(project);
+  const root = resolve(project, dir || proto.dir || "design");
+  const compDir = resolve(project, proto.components);
+  const flows = listFlows(project);
+  const declaredFiles = new Set();
+  for (const f of flows)
+    for (const k of resolveStates(f.flow, f.dir).usedFiles.keys()) declaredFiles.add(k);
+  const skipped = skippedSources(project, { dir }).map((sk) => ({
+    ...sk,
+    declared: declaredFiles.has(resolve(project, sk.file)),
+  }));
+  // screen candidates: every source under root (recursively, skipping components, bundle, dot dirs)
+  const screens = [];
+  const walk = (d, depth) => {
+    if (depth > 4 || !existsSync(d)) return;
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) {
+        if (/^\.|^bundle$|^node_modules$|^directions$|^png$/.test(e.name) || p === compDir)
+          continue;
+        walk(p, depth + 1);
       } else if (
         isSource(e.name) &&
         isSourceFile(p) &&
@@ -508,6 +590,26 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
     if (!byDir.has(key)) byDir.set(key, []);
     byDir.get(key).push(s);
   }
+  // an oversized file nobody declares yet still belongs to a step and state; fold it in as a
+  // pseudo-screen so flows_write declares it too (truthfully, as too-large, not silently dropped)
+  for (const sk of (scan.skipped || []).filter((s) => !s.declared)) {
+    const { stem, device } = splitDevice(basename(sk.file));
+    const key = dirname(sk.file);
+    if (!byDir.has(key)) byDir.set(key, []);
+    byDir.get(key).push({
+      file: sk.file,
+      dir: key,
+      stem,
+      device,
+      title: "",
+      links: [],
+      includes: [],
+      hasForm: false,
+      hasChoice: false,
+      hasTable: false,
+      tooLarge: sk.bytes,
+    });
+  }
   const flows = [];
   const questions = [];
   const existing = listFlows(project);
@@ -575,22 +677,25 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
                 : anyTable
                   ? "data"
                   : "info";
+      // sure when at most one markup signal pointed at this kind; a second signal makes it a guess
+      const kindSignals = [
+        anyForm,
+        anyChoice,
+        anyTable,
+        hasSuccess && hasSubmitting,
+        isLast && hasSuccess,
+      ].filter(Boolean).length;
+      const kindWhy = `guessed from the markup (${anyForm ? "data entry" : anyChoice ? "a pick among options" : hasSubmitting && hasSuccess ? "submitting and success states" : anyTable ? "a table or list" : "static content"})`;
       const proposal = {
         n: nn,
         id: st.id,
         kind,
         purpose: st.files.find((f) => f.title)?.title || "",
         states: st.states,
+        confidence: { kind: kindSignals <= 1 ? "sure" : "guess", why: kindWhy },
       };
       const req = REQUIRED_BY_KIND[kind];
       const missing = req.filter((s) => !(s in st.states));
-      questions.push({
-        flow: slug,
-        field: `steps.${nn}.kind`,
-        proposal: kind,
-        options: STEP_KINDS,
-        why: `guessed from the markup (${anyForm ? "data entry" : anyChoice ? "a pick among options" : hasSubmitting && hasSuccess ? "submitting and success states" : anyTable ? "a table or list" : "static content"})`,
-      });
       if (missing.length)
         questions.push({
           flow: slug,
@@ -598,6 +703,7 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
           proposal: Object.fromEntries(missing.map((m) => [m, "n/a: ?"])),
           options: ["design them", "waive with a reason"],
           why: `required for a ${kind} step: ${missing.join(", ")}`,
+          confidence: "unknown",
         });
       return { ...proposal, _files: st.files };
     });
@@ -622,8 +728,12 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
     const targets = new Set(
       transitions.filter((t) => stepOf(t.from) !== stepOf(t.to)).map((t) => stepOf(t.to)),
     );
-    const entryPoints = stepsOut
-      .filter((st) => !targets.has(`${st.n}-${st.id}`))
+    // one unlinked step: sure of the entry; none unlinked: no candidate to guess from; more than one:
+    // a guess (the first, in step order)
+    const entryCandidates = stepsOut.filter((st) => !targets.has(`${st.n}-${st.id}`));
+    const entryConfidence =
+      entryCandidates.length === 1 ? "sure" : entryCandidates.length === 0 ? "unknown" : "guess";
+    const entryPoints = entryCandidates
       .slice(0, 1)
       .map((st) => ({ from: "?", to: `${st.n}-${st.id}` }));
     // links into another flow's folder are the journey's connectors ("Buy tickets" → buy-tickets)
@@ -643,10 +753,23 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       }
     order++;
     const devices = ["desktop", "mobile"].filter((d) => files.some((f) => f.device === d));
+    // title: every titled screen of the folder sharing one leading segment ("Checkout · Cart" /
+    // "Checkout · Pay" → "Checkout", unless that segment is just the product name), else the existing
+    // title, else a guess from the folder name
+    const titledFiles = files.filter((f) => f.title);
+    const leads = titledFiles.map((f) => titleLead(f.title));
+    const sharedLead = titledFiles.length && leads.every((l) => l === leads[0]) ? leads[0] : null;
+    const titleFromScreens =
+      sharedLead && sharedLead !== (scan.product?.name || "") ? sharedLead : null;
+    const title =
+      titleFromScreens ||
+      existingFlow?.flow.title ||
+      pascal(slug).replace(/([a-z])([A-Z])/g, "$1 $2");
+    const titleConfidence = titleFromScreens || existingFlow?.flow.title ? "sure" : "guess";
     const flowOut = {
       slug,
       devices,
-      title: existingFlow?.flow.title || pascal(slug).replace(/([a-z])([A-Z])/g, "$1 $2"),
+      title,
       goal: existingFlow?.flow.goal || "",
       order: existingFlow?.flow.order ?? order,
       next: existingFlow?.flow.next?.length ? existingFlow.flow.next : next,
@@ -658,14 +781,13 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       dir,
       new: !existingFlow,
       inFlowsDir: inFlows,
+      confidence: {
+        title: titleConfidence,
+        goal: "unknown",
+        entryPoints: entryConfidence,
+        steps: Object.fromEntries(stepsOut.map((s) => [s.n, s.confidence.kind])),
+      },
     };
-    questions.unshift({
-      flow: slug,
-      field: "title",
-      proposal: flowOut.title,
-      options: [],
-      why: "from the folder name",
-    });
     if (!flowOut.goal)
       questions.push({
         flow: slug,
@@ -673,14 +795,17 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
         proposal: "",
         options: [],
         why: "one sentence: what the user achieves",
+        confidence: "unknown",
       });
-    if (entryPoints.some((e) => e.from === "?"))
+    if (entryConfidence !== "sure")
       questions.push({
         flow: slug,
         field: "entryPoints",
         proposal: entryPoints,
         options: ["a navbar item", "a dashboard action", "an email link", "another flow"],
         why: "where users come from",
+        confidence: entryConfidence,
+        candidates: entryCandidates.map((st) => `${st.n}-${st.id}`),
       });
     if (!inFlows)
       questions.push({
@@ -689,6 +814,7 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
         proposal: `design/flows/${slug}`,
         options: ["move the files there", "keep them where they are"],
         why: "flows live under design/flows/<slug> so publish finds them",
+        confidence: "unknown",
       });
     flows.push(flowOut);
   }
@@ -699,6 +825,7 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       proposal: { name: "", summary: "" },
       options: [],
       why: "shown on the portal's project page and in every handoff",
+      confidence: "unknown",
     });
   return { flows, questions, unassigned: scan.unassigned, components: scan.components };
 }
