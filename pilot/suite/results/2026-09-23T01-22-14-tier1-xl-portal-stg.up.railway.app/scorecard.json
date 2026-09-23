@@ -1,0 +1,711 @@
+{
+  "tier": "tier1",
+  "portal": "https://portal-stg.up.railway.app",
+  "plugin": "0.2.4",
+  "portalVersion": "0.1.0",
+  "stamp": "2026-09-23T01-22-14-tier1-xl-portal-stg.up.railway.app",
+  "summary": {
+    "passed": 66,
+    "total": 68,
+    "timings": {
+      "signin": 196733,
+      "project": 3561,
+      "setup": 2941,
+      "adopt": 2128,
+      "publish1": 316490,
+      "portal1": 33359,
+      "lostRepo": 151984,
+      "stress": 4099,
+      "handoffV1": 26451,
+      "journey": 1200,
+      "roundA": 98878,
+      "release2": 316360,
+      "roundB": 11026,
+      "release3": 291618,
+      "release4": 341024,
+      "mcp": 6159,
+      "concurrency3": 17374,
+      "reliability": 1571,
+      "ui": 97213
+    }
+  },
+  "metrics": {
+    "adopt": {
+      "kindAccuracy": {
+        "value": 1,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "stateCoverage": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "deviceDetection": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "entryRecall": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "transitionRecall": {
+        "value": 1,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "journeyLinksRecall": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "questionsPerFlow": {
+        "value": 6.143,
+        "target": 6,
+        "op": "<=",
+        "pass": false,
+        "items": [],
+        "unit": "q"
+      },
+      "avoidableQuestions": {
+        "value": 106,
+        "target": 0,
+        "op": "<=",
+        "pass": false,
+        "items": [],
+        "unit": "q"
+      },
+      "flowsWritten": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "oddNamesHandled": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [
+          "check-in-scan 02: \"ProximoEvento\" → ProximoEvento"
+        ],
+        "unit": ""
+      }
+    },
+    "gaps": {
+      "plantedRecall": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "precision": {
+        "value": 1,
+        "target": 0.9,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "publish": {
+      "flowsPushed": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "brokenFlowIsolated": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "skipped and reported: account-settings"
+        ],
+        "unit": ""
+      },
+      "secondsPerFlow": {
+        "value": 7.6,
+        "target": 10,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": "s"
+      },
+      "http429": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "mobileFlags": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "screensMatch": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "boardOverlaps": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "componentSheets": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "sheetsStyled": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "nestedIncludesInlined": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "caching": {
+        "value": 3,
+        "target": 3,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "limitsRefused": {
+        "value": 2,
+        "target": 2,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "limitsExplained": {
+        "value": 2,
+        "target": 2,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "safety": {
+      "tokensLeaked": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "mcpJsonSafe": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "xl": {
+      "publishSecondsPerFlow": {
+        "value": 7.6,
+        "target": 12,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": "s"
+      },
+      "http429": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "journey": {
+      "connectors": {
+        "value": 30,
+        "target": 30,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "dedupe": {
+      "ratio": {
+        "value": 0.966,
+        "target": 1,
+        "op": "rec",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "rounds": {
+      "A.commentsAccepted": {
+        "value": 29,
+        "target": 29,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "A.supersedeReported": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "A.clientWaiverRefused": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "A.structureAccepted": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "A.reopenWorks": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "release2": {
+      "editsLanded": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "diffShape": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "orphanCommentsReadable": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "deletedFlowStillOnPortal": {
+        "value": true,
+        "target": "documented",
+        "op": "rec",
+        "pass": true,
+        "items": [
+          "latestVersionUnchanged: true"
+        ],
+        "unit": ""
+      },
+      "renamedFlowLeavesOld": {
+        "value": true,
+        "target": "documented",
+        "op": "rec",
+        "pass": true,
+        "items": [
+          "newOnPortal: true"
+        ],
+        "unit": ""
+      },
+      "waiversSurvive": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "stepTitleKept": {
+        "value": "portal",
+        "target": "file",
+        "op": "rec",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "roundB": {
+      "staleEditNeedsManual": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "needsManual"
+        ],
+        "unit": ""
+      },
+      "waiverOnPresent": {
+        "value": 422,
+        "target": "rec",
+        "op": "rec",
+        "pass": true,
+        "items": [
+          "code: VALIDATION"
+        ],
+        "unit": ""
+      }
+    },
+    "release3": {
+      "subsetPublish": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "pushed [\"help-centre\",\"reports\",\"sign-in\",\"sign-up\",\"wallet\"], othersUntouched true"
+        ],
+        "unit": ""
+      },
+      "handoffFrozen": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "release4": {
+      "forcedAudited": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "noopHandled": {
+        "value": "{\"ok\":true,\"release\":7,\"pushed\":0,\"unchanged\":20,\"refused\":false,\"code\":null}",
+        "target": "reused or refused",
+        "op": "rec",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "mcp": {
+      "devAgent": {
+        "value": 4,
+        "target": 4,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "clientRefused": {
+        "value": 2,
+        "target": 2,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "tokenLeaked": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "concurrency": {
+      "threeFlowsClean": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "ok 3, conflicts 0, newVersions 3"
+        ],
+        "unit": ""
+      }
+    },
+    "handoff": {
+      "created": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "roundTrip": {
+      "unchangedAfterRebuild": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "filesIdentical": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "reliability": {
+      "updateNoticeCorrect": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "no notice"
+        ],
+        "unit": ""
+      },
+      "diagnoseByRunId": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "expiredHandleClear": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "failuresWithRunId": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "unexpectedErrors": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "apiCalls": {
+        "value": 167,
+        "target": 0,
+        "op": "rec",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      }
+    },
+    "ui": {
+      "consoleErrors": {
+        "value": 0,
+        "target": 0,
+        "op": "<=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "boardsRendered": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "noUnescapedScript": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "mobileToggleState": {
+        "value": 1,
+        "target": 1,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "reloadRequests": {
+        "value": 8,
+        "target": 0,
+        "op": "rec",
+        "pass": true,
+        "items": [
+          "flow.buy-tickets: 0×304 2×200",
+          "flow.transfer-a-ticket: 0×304 2×200",
+          "flow.create-an-event: 0×304 2×200",
+          "flow.account-settings: 0×304 2×200"
+        ],
+        "unit": ""
+      },
+      "clientSeesNoStaffControls": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "{\"adminLink\":false,\"sendToAgent\":false,\"skipped\":null,\"account\":{\"created\":201,\"accepted\":200,\"signedIn\":true}}"
+        ],
+        "unit": ""
+      },
+      "docsServed": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "deviceBadCodeExplained": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "componentSheetsShown": {
+        "value": 10,
+        "target": 10,
+        "op": ">=",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "journeyConnectors": {
+        "value": 31,
+        "target": 31,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "loops: 1"
+        ],
+        "unit": ""
+      },
+      "orphanVersionVisible": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "release2DiffShown": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "rows 79, viaIncludeShown true"
+        ],
+        "unit": ""
+      },
+      "sheets": {
+        "value": 10,
+        "target": 10,
+        "op": "==",
+        "pass": true,
+        "items": [],
+        "unit": ""
+      },
+      "xssEscaped": {
+        "value": 1,
+        "target": 1,
+        "op": "==",
+        "pass": true,
+        "items": [
+          "{\"imgOnerrorRendered\":false,\"dialogFired\":false}"
+        ],
+        "unit": ""
+      }
+    }
+  },
+  "previous": null,
+  "markdown": "# Scorecard 2026-09-23T01-22-14-tier1-xl-portal-stg.up.railway.app\n\ntier1 · portal https://portal-stg.up.railway.app (0.1.0) · plugin 0.2.4 · 66/68 pass\n\n| Area | Metric | Value | Target | Result | Δ |\n| --- | --- | --- | --- | --- | --- |\n| adopt | kindAccuracy | 1 | >= 0.9 | pass |  |\n| adopt | stateCoverage | 1 | >= 1 | pass |  |\n| adopt | deviceDetection | 1 | >= 1 | pass |  |\n| adopt | entryRecall | 1 | >= 1 | pass |  |\n| adopt | transitionRecall | 1 | >= 0.9 | pass |  |\n| adopt | journeyLinksRecall | 1 | >= 1 | pass |  |\n| adopt | questionsPerFlow | 6.143q | <= 6q | FAIL |  |\n| adopt | avoidableQuestions | 106q | <= 0q | FAIL |  |\n| adopt | flowsWritten | 1 | >= 1 | pass |  |\n| adopt | oddNamesHandled | 1 | >= 1 | pass |  |\n| gaps | plantedRecall | 1 | >= 1 | pass |  |\n| gaps | precision | 1 | >= 0.9 | pass |  |\n| publish | flowsPushed | 1 | >= 1 | pass |  |\n| publish | brokenFlowIsolated | 1 | == 1 | pass |  |\n| publish | secondsPerFlow | 7.6s | <= 10s | pass |  |\n| publish | http429 | 0 | <= 0 | pass |  |\n| publish | mobileFlags | 1 | >= 1 | pass |  |\n| publish | screensMatch | 1 | >= 1 | pass |  |\n| publish | boardOverlaps | 0 | <= 0 | pass |  |\n| publish | componentSheets | 1 | >= 1 | pass |  |\n| publish | sheetsStyled | 1 | >= 1 | pass |  |\n| publish | nestedIncludesInlined | 1 | == 1 | pass |  |\n| publish | caching | 3 | == 3 | pass |  |\n| publish | limitsRefused | 2 | == 2 | pass |  |\n| publish | limitsExplained | 2 | == 2 | pass |  |\n| safety | tokensLeaked | 0 | <= 0 | pass |  |\n| safety | mcpJsonSafe | 1 | == 1 | pass |  |\n| xl | publishSecondsPerFlow | 7.6s | <= 12s | pass |  |\n| xl | http429 | 0 | <= 0 | pass |  |\n| journey | connectors | 30 | == 30 | pass |  |\n| dedupe | ratio | 0.966 | recorded |  |  |\n| rounds | A.commentsAccepted | 29 | == 29 | pass |  |\n| rounds | A.supersedeReported | 1 | == 1 | pass |  |\n| rounds | A.clientWaiverRefused | 1 | == 1 | pass |  |\n| rounds | A.structureAccepted | 1 | == 1 | pass |  |\n| rounds | A.reopenWorks | 1 | == 1 | pass |  |\n| release2 | editsLanded | 1 | == 1 | pass |  |\n| release2 | diffShape | 1 | == 1 | pass |  |\n| release2 | orphanCommentsReadable | 1 | == 1 | pass |  |\n| release2 | deletedFlowStillOnPortal | true | recorded |  |  |\n| release2 | renamedFlowLeavesOld | true | recorded |  |  |\n| release2 | waiversSurvive | 1 | == 1 | pass |  |\n| release2 | stepTitleKept | portal | recorded |  |  |\n| roundB | staleEditNeedsManual | 1 | == 1 | pass |  |\n| roundB | waiverOnPresent | 422 | recorded |  |  |\n| release3 | subsetPublish | 1 | == 1 | pass |  |\n| release3 | handoffFrozen | 1 | == 1 | pass |  |\n| release4 | forcedAudited | 1 | == 1 | pass |  |\n| release4 | noopHandled | {\"ok\":true,\"release\":7,\"pushed\":0,\"unchanged\":20,\"refused\":false,\"code\":null} | recorded |  |  |\n| mcp | devAgent | 4 | == 4 | pass |  |\n| mcp | clientRefused | 2 | == 2 | pass |  |\n| mcp | tokenLeaked | 0 | <= 0 | pass |  |\n| concurrency | threeFlowsClean | 1 | == 1 | pass |  |\n| handoff | created | 1 | >= 1 | pass |  |\n| roundTrip | unchangedAfterRebuild | 1 | >= 1 | pass |  |\n| roundTrip | filesIdentical | 0 | <= 0 | pass |  |\n| reliability | updateNoticeCorrect | 1 | == 1 | pass |  |\n| reliability | diagnoseByRunId | 1 | == 1 | pass |  |\n| reliability | expiredHandleClear | 1 | == 1 | pass |  |\n| reliability | failuresWithRunId | 1 | >= 1 | pass |  |\n| reliability | unexpectedErrors | 0 | <= 0 | pass |  |\n| reliability | apiCalls | 167 | recorded |  |  |\n| ui | consoleErrors | 0 | <= 0 | pass |  |\n| ui | boardsRendered | 1 | >= 1 | pass |  |\n| ui | noUnescapedScript | 1 | == 1 | pass |  |\n| ui | mobileToggleState | 1 | >= 1 | pass |  |\n| ui | reloadRequests | 8 | recorded |  |  |\n| ui | clientSeesNoStaffControls | 1 | == 1 | pass |  |\n| ui | docsServed | 1 | == 1 | pass |  |\n| ui | deviceBadCodeExplained | 1 | == 1 | pass |  |\n| ui | componentSheetsShown | 10 | >= 10 | pass |  |\n| ui | journeyConnectors | 31 | == 31 | pass |  |\n| ui | orphanVersionVisible | 1 | == 1 | pass |  |\n| ui | release2DiffShown | 1 | == 1 | pass |  |\n| ui | sheets | 10 | == 10 | pass |  |\n| ui | xssEscaped | 1 | == 1 | pass |  |\n\n## Failing items\n\nnone\n\n## Timings (s)\n\nsignin 196.7 · project 3.6 · setup 2.9 · adopt 2.1 · publish1 316.5 · portal1 33.4 · lostRepo 152 · stress 4.1 · handoffV1 26.5 · journey 1.2 · roundA 98.9 · release2 316.4 · roundB 11 · release3 291.6 · release4 341 · mcp 6.2 · concurrency3 17.4 · reliability 1.6 · ui 97.2\n"
+}
