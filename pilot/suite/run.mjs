@@ -226,12 +226,14 @@ await timed("publish1", async () => {
   if (ROUNDS) obs.xl = { flows: key.flows.length, screens: key.flows.reduce((n, f) => n + f.files, 0), publishMs: p.ms, secondsPerFlow: Math.round((p.ms / key.flows.length) / 100) / 10 };
   Object.assign(obs.publish1, { ok: p.ok, ms: p.ms, pushed: p.out?.pushed?.map((x) => x.flow) ?? [], unchanged: p.out?.unchanged?.map((x) => x.flow) ?? [], components: p.out?.components ?? null, release: p.out?.release?.number ?? null, error: p.error ?? null });
   const d = await c.call("diagnose", { lines: 3000 });
-  const lines = JSON.stringify(d.out ?? {});
+  // diagnose returns the raw log lines (each its own JSON string); count on them directly (a
+  // re-stringified blob escapes the quotes and matches nothing)
+  const rawLines = d.out?.lines ?? [];
+  const lines = rawLines.join("\n");
   obs.publish1.http429 = (lines.match(/"status":429/g) || []).length;
   if (obs.xl) obs.xl.http429 = obs.publish1.http429;
   obs.publish1.retries = (lines.match(/"attempt":2/g) || []).length;
-  // diagnose returns the raw log lines (each its own JSON string); count the http events among them
-  obs.publish1.httpCalls = (d.out?.lines ?? []).filter((l) => l.includes('"event":"http"')).length;
+  obs.publish1.httpCalls = rawLines.filter((l) => l.includes('"event":"http"')).length;
   await c.close();
   void before;
   sh("git add -A && git -c user.email=suite@designli.co -c user.name=Suite commit -qm publish1 -q || true; git push -q");
