@@ -393,7 +393,14 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
   }
   // ---- round trip ----
   if (obs.lostRepo) {
-    add("roundTrip", "unchangedAfterRebuild", ratio(obs.lostRepo.unchanged, obs.lostRepo.of), 1, { items: obs.lostRepo.dry?.map((s, i) => `${i}: ${s}`).filter((x) => !x.endsWith("unchanged")) ?? [] });
+    // a flow with a too-large state cannot be rebuilt as it was (the portal never had that file), so
+    // its rebuilt manifest legitimately differs; it is left out of the ratio and named instead
+    const cannotRebuild = new Set(flows.filter((f) => f.steps.some((s) => s.tooLarge?.length)).map((f) => f.slug));
+    const byFlow = obs.lostRepo.dryByFlow ?? (obs.lostRepo.dry ?? []).map((status, i) => ({ flow: [...flows].map((f) => f.slug).sort()[i] ?? String(i), status }));
+    const counted = byFlow.filter((x) => !cannotRebuild.has(x.flow));
+    add("roundTrip", "unchangedAfterRebuild", ratio(counted.filter((x) => x.status === "unchanged").length, counted.length), 1, {
+      items: [...byFlow.filter((x) => x.status !== "unchanged" && !cannotRebuild.has(x.flow)).map((x) => `${x.flow}: ${x.status}`), ...byFlow.filter((x) => cannotRebuild.has(x.flow)).map((x) => `${x.flow}: ${x.status} (has a too-large state; not counted)`)],
+    });
     add("roundTrip", "filesIdentical", obs.lostRepo.differing?.length ?? null, 0, { op: "<=", items: obs.lostRepo.differing ?? [] });
   }
   // ---- reliability ----

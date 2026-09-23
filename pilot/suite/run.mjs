@@ -337,7 +337,7 @@ if (!SKIP.has("lost"))
     const dry = await tool(c, "publish", { dryRun: true });
     await c.close();
     const statuses = (dry.out?.flows ?? []).map((f) => f.status);
-    obs.lostRepo = { adopt: { ok: a.ok, flows: a.out?.flows?.length ?? a.out?.written?.length ?? null }, dry: statuses, unchanged: statuses.filter((s) => s === "unchanged").length, of: statuses.length, differing: flowJsonDiffs(d) };
+    obs.lostRepo = { adopt: { ok: a.ok, flows: a.out?.flows?.length ?? a.out?.written?.length ?? null, notRebuilt: a.out?.notRebuilt ?? [] }, dry: statuses, dryByFlow: (dry.out?.flows ?? []).map((f) => ({ flow: f.flow, status: f.status })), unchanged: statuses.filter((s) => s === "unchanged").length, of: statuses.length, differing: flowJsonDiffs(d) };
     rmSync(d, { recursive: true, force: true });
   });
 

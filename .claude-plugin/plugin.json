@@ -1,7 +1,7 @@
 {
   "name": "designli-design",
   "description": "Adopts a static HTML prototype (one file per screen state), publishes releases to the Designli portal, tracks versions by content hash, feeds the client's feedback back into the repository and hands flows off to dev agents through the portal. Harness-neutral core: a local MCP server plus dependency-free Node scripts; Claude Code skills are thin wrappers.",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "author": {
     "name": "Designli"
   },
