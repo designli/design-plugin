@@ -216,14 +216,20 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
   const every = listFlows(project);
   const flows = every.filter((f) => !only || f.slug === only || f.dir === resolve(project, only));
   const slugs = new Set(every.map((f) => f.slug));
+  const coveredByTooLarge = new Set(); // "slug|n|State" of steps whose file exists but is too large
   for (const sk of scanPrototype(project).skipped) {
     const owner = every.find((f) => resolve(project, sk.file).startsWith(f.dir + "/"));
     if (only && owner?.slug !== only) continue;
+    const g = guessStem(splitDevice(basename(sk.file)).stem);
+    if (owner) {
+      if (g.n) coveredByTooLarge.add(`${owner.slug}|n:${g.n}|${g.state}`);
+      coveredByTooLarge.add(`${owner.slug}|id:${g.stepId.toLowerCase()}|${g.state}`);
+    }
     push({
       flow: owner?.slug ?? null,
       kind: "too-large",
       where: sk.file,
-      proposal: `${(sk.bytes / 1048576).toFixed(1)} MB; screens above ${MAX_SOURCE_BYTES / 1048576} MB are not scanned or bundled: trim the inline asset or link it by URL`,
+      proposal: `${(sk.bytes / 1048576).toFixed(1)} MB; screens above ${MAX_SOURCE_BYTES / 1048576} MB are not scanned or bundled${owner ? ` (it would be step ${g.n ?? g.stepId} ${g.state})` : ""}: trim the inline asset or link it by URL`,
     });
   }
   for (const { slug, dir, flow } of flows) {
@@ -288,7 +294,8 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
     for (const st of r.steps)
       for (const [name, v] of Object.entries(st.states))
         if (v.status === "missing" && !v.broken)
-          push({
+          if (!coveredByTooLarge.has(`${slug}|n:${st.n}|${name}`) && !coveredByTooLarge.has(`${slug}|id:${String(st.id ?? "").toLowerCase()}|${name}`))
+            push({
             flow: slug,
             kind: "state-missing",
             where: `${st.n} ${name}`,

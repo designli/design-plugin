@@ -14,6 +14,7 @@ import { Api, Token, textHash } from "./lib/api.mjs";
 import { generateAll } from "./gen.mjs";
 import { score } from "./score.mjs";
 import { uiChecks } from "./ui.mjs";
+import { runRounds } from "./rounds.mjs";
 
 const argv = process.argv.slice(2);
 const opt = (k, d) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : d);
@@ -25,8 +26,10 @@ if (!PORTAL) {
 }
 const PROJECT = opt("--project", `marquee-${new Date().toISOString().slice(2, 16).replace(/[-T:]/g, "")}`);
 const SKIP = new Set((opt("--skip", "") || "").split(",").filter(Boolean));
+const CORPUS = opt("--corpus", "small"); // small (ten flows) | xl (twenty flows)
+const ROUNDS = has("--rounds"); // the multi-release scenario (xl); replaces the single client round
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-const RESULTS = resolve(import.meta.dirname, "results", `${stamp}-tier1-${new URL(PORTAL).hostname}`);
+const RESULTS = resolve(import.meta.dirname, "results", `${stamp}-tier1${(process.argv.includes("--corpus") && process.argv[process.argv.indexOf("--corpus") + 1] === "xl") ? "-xl" : ""}-${new URL(PORTAL).hostname}`);
 mkdirSync(RESULTS, { recursive: true });
 const HOME = join(RESULTS, ".home");
 mkdirSync(join(HOME, ".config", "designli-design"), { recursive: true, mode: 0o700 });
@@ -78,7 +81,7 @@ const tool = async (c, name, args, step = name) => {
 say(`portal ${PORTAL}, project ${PROJECT}, repo ${REPO}`);
 rmSync(REPO, { recursive: true, force: true });
 mkdirSync(REPO, { recursive: true });
-const key = generateAll(REPO, { stress: false });
+const key = generateAll(REPO, { stress: false, profile: CORPUS === "xl" ? "xl" : undefined });
 writeFileSync(join(RESULTS, "answer-key.json"), JSON.stringify(key, null, 2));
 sh("git init -q -b main && git add -A && git -c user.email=suite@designli.co -c user.name=Suite commit -qm corpus");
 const REMOTE = `${REPO}-remote.git`;
@@ -202,10 +205,12 @@ await timed("publish1", async () => {
     const again = await tool(c, "publish", { note: "first cut (account-settings fixed)" });
     if (again.ok) p = { ...again, out: { ...again.out, pushed: [...(p.out.pushed ?? []), ...(again.out.pushed ?? [])] } };
   }
+  if (ROUNDS) obs.xl = { flows: key.flows.length, screens: key.flows.reduce((n, f) => n + f.files, 0), publishMs: p.ms, secondsPerFlow: Math.round((p.ms / key.flows.length) / 100) / 10 };
   Object.assign(obs.publish1, { ok: p.ok, ms: p.ms, pushed: p.out?.pushed?.map((x) => x.flow) ?? [], unchanged: p.out?.unchanged?.map((x) => x.flow) ?? [], components: p.out?.components ?? null, release: p.out?.release?.number ?? null, error: p.error ?? null });
   const d = await c.call("diagnose", { lines: 3000 });
   const lines = JSON.stringify(d.out ?? {});
   obs.publish1.http429 = (lines.match(/"status":429/g) || []).length;
+  if (obs.xl) obs.xl.http429 = obs.publish1.http429;
   obs.publish1.retries = (lines.match(/"attempt":2/g) || []).length;
   await c.close();
   void before;
@@ -334,8 +339,22 @@ if (!SKIP.has("stress"))
     rmSync(dir, { recursive: true, force: true });
   });
 
+// ---- 4x. the multi-release scenario (xl) ----
+let roundsUi = null;
+if (ROUNDS) {
+  await timed("handoffV1", async () => {
+    const c = mcp();
+    obs.handoff = { flows: [] };
+    for (const slug of ["buy-tickets", "sign-up", "payouts"]) {
+      const h = await c.call("handoff", { flow: slug, story: `As a user I can ${slug.replace(/-/g, " ")}` });
+      obs.handoff.flows.push({ slug, ok: h.ok, error: h.error ? `${h.error.code}: ${String(h.error.message).slice(0, 120)}` : null });
+    }
+    await c.close();
+  });
+  roundsUi = await runRounds({ api, PORTAL, PROJECT, REPO, REMOTE, key, obs, mcp, tool, sh, say, fail, timed, secretFile, tokens: { admin, designer, client, dev } });
+}
 // ---- 4. the client round ----
-await timed("clientRound", async () => {
+if (!ROUNDS) await timed("clientRound", async () => {
   const clientFile = secretFile("client.token", client);
   const staffFile = secretFile("designer.token", designer);
   const out = await new Promise((res) => {
@@ -391,7 +410,7 @@ await timed("clientRound", async () => {
 });
 
 // ---- 5. feedback ----
-await timed("feedback", async () => {
+if (!ROUNDS) await timed("feedback", async () => {
   const c = mcp();
   const pull = await tool(c, "feedback_pull", {});
   obs.feedback = { pull: { ok: pull.ok, flows: pull.out?.flows?.map((f) => ({ flow: f.flow ?? f.slug, threads: f.threads ?? f.comments ?? null, edits: f.edits ?? f.textEdits ?? null })) ?? pull.out }, apply: {}, dismiss: null, digest: null };
@@ -428,7 +447,7 @@ await timed("feedback", async () => {
 });
 
 // ---- 6. publish 2, release diff, the stale path, one force ----
-await timed("publish2", async () => {
+if (!ROUNDS) await timed("publish2", async () => {
   const touch = (p, from, to) => writeFileSync(join(REPO, p), readFileSync(join(REPO, p), "utf8").replace(from, to));
   touch("design/flows/sign-up/01-email-default.html", "Continue", "Continue to details");
   touch("design/flows/sign-up/01-email-default-m.html", "Continue", "Continue to details");
@@ -463,7 +482,7 @@ await timed("publish2", async () => {
 });
 
 // ---- 8. handoffs ----
-await timed("handoff", async () => {
+if (!ROUNDS) await timed("handoff", async () => {
   const c = mcp();
   obs.handoff = { flows: [] };
   for (const k of key.flows) {
@@ -482,7 +501,7 @@ await timed("handoff", async () => {
 });
 
 // ---- 7. concurrency: two clones publish at once ----
-if (!SKIP.has("concurrency"))
+if (!SKIP.has("concurrency") && !ROUNDS)
   await timed("concurrency", async () => {
     const a = `${REPO}-clone-a`, b = `${REPO}-clone-b`;
     for (const d of [a, b]) {
@@ -536,7 +555,7 @@ if (!SKIP.has("ui"))
       if (login.ok && cookie) clientSession = new Token(cookie, "client (session)");
       obs.clientAccount = { created: created.status, accepted: acc.status, signedIn: login.ok };
     } else obs.clientAccount = { created: created.status, error: created.error };
-    obs.ui = await uiChecks({ api, portal: PORTAL, project: PROJECT, staffSession: await api.session(admin), clientSession, results: RESULTS, flows: ["buy-tickets", "transfer-a-ticket", "create-an-event", "account-settings"] });
+    obs.ui = await uiChecks({ api, portal: PORTAL, project: PROJECT, staffSession: await api.session(admin), clientSession, results: RESULTS, flows: ["buy-tickets", "transfer-a-ticket", "create-an-event", "account-settings"], ...(roundsUi ?? {}) });
     if (obs.ui.skipped) say(`  ui skipped: ${obs.ui.skipped}`);
   });
 

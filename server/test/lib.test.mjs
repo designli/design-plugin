@@ -2,7 +2,7 @@
 //   node --test "server/test/*.test.mjs"
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -474,6 +474,27 @@ test("the suite's corpus is deterministic and its answer key matches the files",
   }
   assert.ok(existsSync(join(a, "design", "components", "Styles.html")));
   assert.ok(existsSync(join(a, "answer-key.json")));
+
+  // the xl profile: same determinism, a bigger corpus, a richer key. xl-contract.md section 1 calls
+  // this "the twenty flows" but its own flow-by-flow list (Fan + Organizer + Door + Cross-cutting)
+  // names 21 distinct flows — sign-up..account-settings (12), create-an-event..team (7),
+  // check-in-scan (1) and help-centre (1). 20 of those 21 link out to help-centre (every flow but
+  // help-centre itself), which is likely where the contract's "twenty" comes from; this generator
+  // writes all 21 named flows, so that is what the key and this test check.
+  const ax = mkdtempSync(join(tmpdir(), "mq-xl-")), bx = mkdtempSync(join(tmpdir(), "mq-xl-"));
+  const keyXl = generateAll(ax, { profile: "xl" });
+  generateAll(bx, { profile: "xl" });
+  assert.equal(hashOf(join(ax, "design")), hashOf(join(bx, "design")), "two xl generations differ");
+  assert.equal(keyXl.profile, "xl");
+  assert.equal(keyXl.flows.length, 21);
+  for (const f of keyXl.flows) {
+    const files = readdirSync(join(ax, "design", "flows", f.slug)).filter((x) => x.endsWith(".html") && x !== "Main.html");
+    assert.equal(files.length, f.files, `${f.slug}: ${files.length} files on disk, ${f.files} in the key`);
+  }
+  assert.ok(keyXl.dedupe.distinctScreens < keyXl.dedupe.totalScreens, "sharedLoading/identicalDefaultSuccess should plant real duplicates");
+  const nextOf = (slug) => keyXl.flows.find((f) => f.slug === slug).next;
+  assert.ok(nextOf("find-an-event").length > 0, "find-an-event should carry next links");
+  assert.ok(nextOf("payouts").length > 0, "payouts should carry next links");
 });
 
 test("an include that imports another include is flattened all the way down", () => {
@@ -496,3 +517,43 @@ test("a link into another flow's folder becomes a journey connector (next)", () 
   assert.deepEqual(flows.find((f) => f.slug === "signup").next, []);
 });
 
+
+test("a copy edit inside an include's include (Navbar → Logo) is applied once, in the nested file", () => {
+  const dir = scratch();
+  writeFileSync(join(dir, "design", "components", "Logo.html"), `<span class="logo">Acme</span>\n`);
+  writeFileSync(join(dir, "design", "components", "Navbar.html"), `<nav><dc-import name="Logo"></dc-import><a href="#">Home</a></nav>\n`);
+  const flow = proposeFlows(dir).flows[0];
+  writeFlows(dir, { flows: [flow] });
+  const fdir = join(dir, "design", "flows", "signup");
+  writeFileSync(
+    join(fdir, "text-edits.json"),
+    JSON.stringify({
+      schema: 1,
+      edits: [{ id: "n1", flowVersion: 1, screen: { id: "01-Email-Default", device: "desktop" }, elementPath: "b", componentRef: null, originalText: "Acme", originalHash: "x", newText: "ACME", author: { name: "Client", role: "client" }, status: "pending", createdAt: "2026-09-16T10:00:00Z", updatedAt: "2026-09-16T10:00:00Z" }],
+    }),
+  );
+  const r = editsApply(dir, "signup");
+  assert.equal(r.applied, 1, JSON.stringify(r.results));
+  assert.ok(readFileSync(join(dir, "design", "components", "Logo.html"), "utf8").includes("ACME"), "edited in the nested include");
+  assert.ok(!readFileSync(join(dir, "design", "components", "Navbar.html"), "utf8").includes("ACME"), "the parent include is untouched");
+  assert.ok(r.results[0].files.some((f) => f.include === "Logo" && f.result === "applied"));
+});
+
+test("a screen over the size cap is one too-large gap, not also a missing state", () => {
+  const dir = scratch();
+  const fdir = join(dir, "design", "flows", "signup");
+  // the Default screen of step 01 is past the cap before adopt: it stays on disk, the scanner skips
+  // it, so flow.json never declares it (no mobile sibling either)
+  writeFileSync(join(fdir, "email.html"), page("Enter your email", `<svg>${"<path d='M0 0h1v1z'/>".repeat(260000)}</svg>`));
+  rmSync(join(fdir, "email-m.html"));
+  const flow = proposeFlows(dir).flows[0];
+  writeFlows(dir, { flows: [flow] });
+  const g = gapsOf(dir);
+  const tooLarge = g.gaps.filter((x) => x.kind === "too-large");
+  assert.equal(tooLarge.length, 1);
+  assert.match(tooLarge[0].proposal, /step (01|Email) Default/);
+  // the Email step still reports its other missing states, never the Default the big file covers
+  const email = g.gaps.filter((x) => x.kind === "state-missing" && /Email/.test(x.proposal));
+  assert.ok(email.length > 0, "the step itself is still known");
+  assert.ok(!email.some((x) => x.state === "Default"), JSON.stringify(email));
+});

@@ -91,6 +91,83 @@ export class Api {
     return { calls: this.log.length, byStatus: by, ms: this.log.reduce((n, l) => n + l.ms, 0) };
   }
 }
+/**
+ * A tiny JSON-RPC 2.0 client for the MCP *streamable HTTP* transport (POST <url>/mcp), for tests
+ * that must hit the dev-agent / client MCP endpoints over HTTP rather than spawning the stdio
+ * server (see lib/rpc.mjs's McpClient for that). Sends `initialize` once, lazily, then one
+ * `tools/call` per `call()`. Never throws on HTTP or tool errors — everything comes back on the
+ * result. Tokens keep Token's never-enumerable-value semantics; only `token.value` is read, and
+ * only to build the Authorization header.
+ */
+export class McpHttp {
+  constructor(url, token) {
+    this.url = url.replace(/\/$/, "") + "/mcp";
+    this.token = token;
+    this.initialized = false;
+    this.nextId = 1;
+  }
+  async #send(body) {
+    let res;
+    try {
+      res = await fetch(this.url, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${this.token.value}`,
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      return { status: 0, ok: false, json: null };
+    }
+    const status = res.status;
+    const ok = res.ok;
+    const ctype = res.headers.get("content-type") || "";
+    const text = await res.text();
+    let json = null;
+    if (ctype.includes("text/event-stream")) {
+      // SSE body: one or more "data: <json-rpc message>" lines; take the one answering our id,
+      // else the last parseable message.
+      for (const line of text.split("\n")) {
+        const m = line.match(/^data:\s*(.*)$/);
+        if (!m) continue;
+        try {
+          const parsed = JSON.parse(m[1]);
+          if (parsed && typeof parsed === "object" && "jsonrpc" in parsed) {
+            json = parsed;
+            if (parsed.id === body.id) break;
+          }
+        } catch {}
+      }
+    } else {
+      try {
+        json = JSON.parse(text);
+      } catch {}
+    }
+    return { status, ok, json };
+  }
+  async #ensureInitialized() {
+    if (this.initialized) return;
+    this.initialized = true; // once, regardless of outcome: a refused initialize still lets the real call below carry its own error
+    await this.#send({
+      jsonrpc: "2.0",
+      id: this.nextId++,
+      method: "initialize",
+      params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "designli-suite", version: "1" } },
+    });
+  }
+  /** Calls one MCP tool; returns { status, ok, result, error, isError } and never throws. */
+  async call(name, args) {
+    await this.#ensureInitialized();
+    const r = await this.#send({ jsonrpc: "2.0", id: this.nextId++, method: "tools/call", params: { name, arguments: args } });
+    if (!r.json) return { status: r.status, ok: false, result: null, error: { message: "no JSON-RPC response" }, isError: null };
+    const rpcError = r.json.error ?? null;
+    const result = r.json.result ?? null;
+    const isError = result && typeof result === "object" ? (result.isError ?? null) : null;
+    return { status: r.status, ok: r.ok && !rpcError && !isError, result, error: rpcError, isError };
+  }
+}
 export const textHash = (s) => {
   const t = String(s).replace(/\s+/g, " ").trim();
   let h = 5381;

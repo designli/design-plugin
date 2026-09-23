@@ -126,7 +126,9 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       const ok = x.devices.includes("mobile") === wantMobile && (wantDesktop ? x.desktopScreens > 0 : x.desktopScreens === 0);
       if (ok) devOk++;
       else devItems.push(`${f.slug}: manifest devices ${x.devices.join("+")}, desktop screens ${x.desktopScreens}, mobile ${x.mobileScreens}; expected ${f.devices.join("+")}`);
-      const states = f.steps.reduce((n, s) => n + s.states.length, 0) + (["buy-tickets"].includes(f.slug) ? 1 : 0);
+      // the Main map counts as a screen; a key without the flag (older runs) had it on buy-tickets only
+      const mainN = f.main != null ? (f.main ? 1 : 0) : f.slug === "buy-tickets" ? 1 : 0;
+      const states = f.steps.reduce((n, s) => n + s.states.length, 0) + mainN;
       if (x.screens === states) scrOk++;
       else scrItems.push(`${f.slug}: ${x.screens} screens on the portal, ${states} expected`);
     }
@@ -149,9 +151,9 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       add("publish", "limitsExplained", [sf, sb].filter((x) => x && !x.ok && x.hasFix).length, 2, { op: "==", items: [sf, sb].filter((x) => x && !x.hasFix).map((x) => `${x.code}: ${x.message}`) });
     }
   }
-  // ---- feedback ----
-  {
-    const fb = obs.feedback ?? {};
+  // ---- feedback (the single client round of the small corpus) ----
+  if (obs.feedback && key.edits) {
+    const fb = obs.feedback;
     const fw = fb.filesWith ?? {};
     const items = [];
     const expectAll = { "Help center": 1, "Your email": key.edits.screen.filesTouched, Email: 0, "Confirm &amp; pay": key.edits.mobileOnly.filesTouched, "Back to shows": 0 };
@@ -196,8 +198,150 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     add("release", "includeOnlyRows", d.viaInclude ?? 0, 100, { op: ">=", items: [`${(d.flowsChanged ?? []).length} flows changed, ${d.viaInclude ?? 0} rows via include`] });
     add("release", "staleAfterOwnReply", obs.publish2?.staleAfterOwnReply ? 1 : 0, 0, { op: "<=", items: obs.publish2?.staleAfterOwnReply ? ["the plugin's own reply/resolve made the flow count as unpulled"] : [] });
   }
+  // ---- xl / rounds (extended corpus, only present with --corpus xl --rounds) ----
+  // New in this pass, each guarded by the presence of its own observation section so a run of the
+  // small corpus (no --rounds) scores exactly as before. Metric ids added here:
+  //   xl.publishSecondsPerFlow, xl.http429, journey.connectors, dedupe.ratio,
+  //   rounds.A.commentsAccepted, rounds.A.supersedeReported, rounds.A.clientWaiverRefused,
+  //   rounds.A.structureAccepted, rounds.A.reopenWorks,
+  //   release2.editsLanded, release2.diffShape, release2.orphanCommentsReadable,
+  //   release2.deletedFlowStillOnPortal, release2.renamedFlowLeavesOld, release2.waiversSurvive,
+  //   release2.stepTitleKept, roundB.staleEditNeedsManual, roundB.waiverOnPresent,
+  //   release3.subsetPublish, release3.handoffFrozen, release4.forcedAudited, release4.noopHandled,
+  //   mcp.devAgent, mcp.clientRefused, mcp.tokenLeaked
+  // (concurrency.threeFlowsClean is added in the concurrency block below; ui.journeyConnectors,
+  //  ui.orphanVersionVisible, ui.release2DiffShown, ui.sheets, ui.xssEscaped are added in the ui
+  //  block below, since they read obs.ui.checks.*.)
+  {
+    const flowOf = (slug) => flows.find((f) => f.slug === slug);
+    if (obs.xl) {
+      add("xl", "publishSecondsPerFlow", obs.xl.publishMs && obs.xl.flows ? Math.round(obs.xl.publishMs / obs.xl.flows / 100) / 10 : null, 12, { op: "<=", unit: "s" });
+      add("xl", "http429", obs.xl.http429 ?? null, 0, { op: "<=" });
+    }
+    if (obs.journey) {
+      const j = obs.journey;
+      const loopOk = j.loop === true;
+      const items = [];
+      if (j.connectors !== j.expected) items.push(`connectors ${j.connectors} vs expected ${j.expected}`);
+      if (!loopOk) items.push(`loop: ${j.loop}`);
+      add("journey", "connectors", loopOk ? j.connectors : -1, j.expected, { op: "==", items });
+    }
+    if (obs.dedupe) {
+      const kd = key.dedupe;
+      const mismatch = kd && (kd.distinctScreens !== obs.dedupe.distinctScreens || kd.totalScreens !== obs.dedupe.totalScreens);
+      add("dedupe", "ratio", ratio(obs.dedupe.distinctScreens, obs.dedupe.totalScreens), 1, { op: "rec", items: mismatch ? [`key says ${kd.distinctScreens}/${kd.totalScreens}, observed ${obs.dedupe.distinctScreens}/${obs.dedupe.totalScreens}`] : [] });
+    }
+    const rA = obs.rounds?.A, kA = key.rounds?.A;
+    if (rA?.comments) {
+      const co = rA.comments;
+      const items = [];
+      if ((co.statuses?.["422"] ?? co.statuses?.[422] ?? 0) < 1) items.push(`the 4001-char comment was not refused (422): statuses ${JSON.stringify(co.statuses)}`);
+      // every comment but the 4001-char one must be accepted
+      add("rounds", "A.commentsAccepted", co.statuses?.["201"] ?? 0, Math.max(0, (co.posted ?? 0) - 1), { op: "==", items });
+    }
+    if (rA?.edits) add("rounds", "A.supersedeReported", rA.edits.supersedeReplaced ? 1 : 0, 1, { op: "==" });
+    if (rA?.waivers) add("rounds", "A.clientWaiverRefused", rA.waivers.refusedForClient ? 1 : 0, 1, { op: "==" });
+    if (rA?.structure) {
+      const st = rA.structure;
+      const oneOk = (s) => (typeof s === "number" ? s >= 200 && s < 300 : s === true || /^(ok|applied)$/i.test(String(s ?? "")));
+      const okStatus = Array.isArray(st.status) ? st.status.length > 0 && st.status.every(oneOk) : oneOk(st.status);
+      const checks = { stepTitles: st.stepTitles === (kA?.stepTitles ?? 2), entryPoints: st.entryPoints === (kA?.entryPoints ?? 1), status: okStatus };
+      add("rounds", "A.structureAccepted", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => `${k}: ${JSON.stringify(st)}`) });
+    }
+    if (rA?.reopened) {
+      const ro = rA.reopened;
+      const in2xx = (s) => typeof s === "number" && s >= 200 && s < 300;
+      const checks = { resolveStatus: in2xx(ro.resolveStatus), reopenStatus: in2xx(ro.reopenStatus), statusAfter: ro.statusAfter === "open" };
+      add("rounds", "A.reopenWorks", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => `${k}: ${JSON.stringify(ro)}`) });
+    }
+    const r2 = obs.rounds?.release2, kr2 = key.rounds?.release2;
+    if (r2?.editsLanded) {
+      const targets = (kA?.editTargets ?? []).filter((t) => typeof t.filesTouched === "number");
+      let ok = 0;
+      const items = [];
+      for (const t of targets) {
+        if (r2.editsLanded[t.name] === t.filesTouched) ok++;
+        else items.push(`${t.name}: ${r2.editsLanded[t.name] ?? "missing"} files, expected ${t.filesTouched}`);
+      }
+      add("release2", "editsLanded", ratio(ok, targets.length), 1, { op: "==", items });
+    }
+    if (r2?.diff && kr2) {
+      // required states per step kind mirror gen.mjs's REQUIRED table (form/data 4, choice 3, confirmation 4, result 2, info 1)
+      const REQUIRED_N = { form: 4, data: 4, choice: 3, confirmation: 4, result: 2, info: 1 };
+      const removedFlow = flowOf(kr2.removedStep?.flow);
+      const removedStepDef = removedFlow?.steps.find((s) => s.n === kr2.removedStep?.step);
+      // a key with filesByState (xl) knows the exact file count per state and device; older keys fall back to states × devices
+      const filesOf = (step, states) => (step?.filesByState ? states.reduce((n, s) => n + (step.filesByState[s]?.length ?? 0), 0) : null);
+      const expectRemoved = filesOf(removedStepDef, removedStepDef?.states ?? []) ?? (removedStepDef?.states.length ?? 0) * (removedFlow?.devices.length ?? 0);
+      const addedFlow = flowOf(kr2.addedStep?.flow);
+      const copied = addedFlow?.steps.find((s) => s.n === (kr2.addedStep?.copiesOf ?? "02"));
+      const expectAdded = filesOf(copied, copied?.states ?? []) ?? (REQUIRED_N[kr2.addedStep?.kind] ?? 0) * (addedFlow?.devices.length ?? 0);
+      const renamedFlow = flowOf(kr2.renamedState?.flow);
+      const renamedStep = renamedFlow?.steps.find((s) => s.n === kr2.renamedState?.step);
+      const expectRenamedEach = renamedStep?.filesByState?.[kr2.renamedState?.from]?.length ?? renamedFlow?.devices.length ?? 0;
+      const by = r2.diff.byFlow ?? {};
+      const checks = {
+        seatMapRemoved: by.seatMapRemoved === expectRemoved,
+        walletAdded: by.walletAdded === expectAdded,
+        renamedRemoved: by.buyTicketsRenamed?.removed === expectRenamedEach,
+        renamedAdded: by.buyTicketsRenamed?.added === expectRenamedEach,
+      };
+      add("release2", "diffShape", ratio(Object.values(checks).filter(Boolean).length, 4), 1, {
+        op: "==",
+        items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => `${k}: got ${JSON.stringify(by)}, expected removed=${expectRemoved} added=${expectAdded} renamedEach=${expectRenamedEach}`),
+      });
+    }
+    if (r2?.orphan) {
+      const checks = { hasThreads: (r2.orphan.threadsOnRemovedScreen ?? 0) > 0, readable: r2.orphan.readableViaVersionsApi === true };
+      add("release2", "orphanCommentsReadable", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => `${k}: ${JSON.stringify(r2.orphan)}`) });
+    }
+    if (r2?.deletedFlow) add("release2", "deletedFlowStillOnPortal", r2.deletedFlow.stillOnPortal, "documented", { op: "rec", items: [`latestVersionUnchanged: ${r2.deletedFlow.latestVersionUnchanged}`] });
+    if (r2?.renamedFlow) add("release2", "renamedFlowLeavesOld", r2.renamedFlow.oldStillOnPortal, "documented", { op: "rec", items: [`newOnPortal: ${r2.renamedFlow.newOnPortal}`] });
+    if (r2?.waiversSurvive !== undefined) add("release2", "waiversSurvive", r2.waiversSurvive ? 1 : 0, 1, { op: "==" });
+    if (r2?.stepTitleKept !== undefined) add("release2", "stepTitleKept", r2.stepTitleKept, "file", { op: "rec" });
+    const rB = obs.rounds?.B;
+    if (rB?.staleEdit) add("roundB", "staleEditNeedsManual", rB.staleEdit.result === "needsManual" ? 1 : 0, 1, { op: "==", items: [String(rB.staleEdit.result)] });
+    if (rB?.waiverOnPresent) add("roundB", "waiverOnPresent", rB.waiverOnPresent.status ?? null, "rec", { op: "rec", items: [`code: ${rB.waiverOnPresent.code}`] });
+    const r3 = obs.rounds?.release3, kr3 = key.rounds?.release3;
+    if (r3?.subset) {
+      const wantN = kr3?.subset?.length ?? 5;
+      const checks = { count: (r3.subset.pushed?.length ?? 0) === wantN, othersUntouched: r3.subset.othersUntouched === true };
+      add("release3", "subsetPublish", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: [`pushed ${JSON.stringify(r3.subset.pushed)}, othersUntouched ${r3.subset.othersUntouched}`] });
+    }
+    if (r3?.handoffs) {
+      const h = r3.handoffs;
+      const checks = { v1StillV1: h.v1StillV1 === true, v3Created: h.v3Created === true, v1ScreensUrlsHaveV1: h.v1ScreensUrlsHaveV1 === true };
+      add("release3", "handoffFrozen", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) });
+    }
+    const r4 = obs.rounds?.release4;
+    if (r4?.forced) {
+      const checks = { ok: r4.forced.ok === true, eventNamesForce: r4.eventNamesForce === true };
+      add("release4", "forcedAudited", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) });
+    }
+    if (r4?.noop) add("release4", "noopHandled", r4.noop.reused ? "reused" : r4.noop.refused ? "refused" : JSON.stringify(r4.noop), "reused or refused", { op: "rec" });
+    if (obs.mcp?.devAgent) {
+      const da = obs.mcp.devAgent;
+      const in2xx = (s) => typeof s === "number" && s >= 200 && s < 300;
+      const good = (v) => in2xx(v) || v === "ok" || v === true;
+      const ok = Object.values(da).filter(good).length;
+      add("mcp", "devAgent", ok, 4, { op: "==", items: Object.entries(da).filter(([, v]) => !good(v)).map(([k, v]) => `${k}: ${v}`) });
+    }
+    if (obs.mcp?.clientRefused) {
+      const cr = obs.mcp.clientRefused;
+      // "code" here follows this file's convention (see lib/api.mjs): populated only on error, so
+      // any truthy code means the call was refused rather than succeeding.
+      const refused = (v) => Boolean(v);
+      const ok = Object.values(cr).filter(refused).length;
+      add("mcp", "clientRefused", ok, 2, { op: "==", items: Object.entries(cr).filter(([, v]) => !refused(v)).map(([k, v]) => `${k}: ${v}`) });
+    }
+    if (obs.mcp?.tokenLeaked !== undefined) add("mcp", "tokenLeaked", obs.mcp.tokenLeaked ? 1 : 0, 0, { op: "<=" });
+  }
   // ---- concurrency ----
-  if (obs.concurrency) add("reliability", "concurrentPublishClean", obs.concurrency.clean ? 1 : 0, 1, { op: "==", items: [`A ${obs.concurrency.a.ok ? "ok" : obs.concurrency.a.code}, B ${obs.concurrency.b.ok ? "ok" : obs.concurrency.b.code}, new versions ${obs.concurrency.newVersions}`] });
+  if (obs.concurrency?.a) add("reliability", "concurrentPublishClean", obs.concurrency.clean ? 1 : 0, 1, { op: "==", items: [`A ${obs.concurrency.a.ok ? "ok" : obs.concurrency.a.code}, B ${obs.concurrency.b.ok ? "ok" : obs.concurrency.b.code}, new versions ${obs.concurrency.newVersions}`] });
+  if (obs.concurrency?.threeFlows) {
+    const tf = obs.concurrency.threeFlows;
+    add("concurrency", "threeFlowsClean", tf.ok === tf.newVersions ? 1 : 0, 1, { op: "==", items: [`ok ${tf.ok}, conflicts ${tf.conflicts}, newVersions ${tf.newVersions}`] });
+  }
   // ---- handoff ----
   if (obs.handoff) {
     const hs = obs.handoff.flows ?? [];
@@ -258,6 +402,16 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     add("ui", "docsServed", c.docs === 200 ? 1 : 0, 1, { op: "==" });
     add("ui", "deviceBadCodeExplained", c.deviceBadCode ? 1 : 0, 1, { op: "==" });
     add("ui", "componentSheetsShown", c.componentSheets ?? null, key.components.files.length, { op: ">=" });
+    // xl / rounds, only when ui.mjs was given journeyExpected/orphan/release2/sheets to check
+    const journeyExpected = c.journey?.expected ?? obs.journey?.expected;
+    if (c.journey && journeyExpected != null) add("ui", "journeyConnectors", c.journey.connectors, journeyExpected, { op: "==", items: [`loops: ${c.journey.loops}`] });
+    if (c.orphanVersion) add("ui", "orphanVersionVisible", c.orphanVersion.visible ? 1 : 0, 1, { op: "==" });
+    if (c.release2) {
+      const ok = (c.release2.rows ?? 0) > 0 && c.release2.viaIncludeShown === true;
+      add("ui", "release2DiffShown", ok ? 1 : 0, 1, { op: "==", items: [`rows ${c.release2.rows}, viaIncludeShown ${c.release2.viaIncludeShown}`] });
+    }
+    if (typeof c.sheets === "number") add("ui", "sheets", c.sheets, key.components.files.length, { op: "==" });
+    if (c.xss) add("ui", "xssEscaped", c.xss.imgOnerrorRendered || c.xss.dialogFired ? 0 : 1, 1, { op: "==", items: [JSON.stringify(c.xss)] });
   }
   // ---- agent (tier 2) ----
   if (obs.agent) {

@@ -143,8 +143,9 @@ export async function call(ctx, method, path, body, headers = {}, gzip = false) 
         json?.error?.message || "the portal no longer accepts this plugin version; update it",
         json?.error?.details ?? null,
       );
-    if (res.status === 429 && retriable && attempt === 1) {
-      await sleep(Math.min(Number(res.headers.get("retry-after")) || 2, 10) * 1000);
+    // rate limited: back off as told (a push is guarded by If-Match, so retrying it is safe)
+    if (res.status === 429 && attempt <= 4) {
+      await sleep(Math.min(Number(res.headers.get("retry-after")) || 2, 10) * 1000 * attempt);
       continue;
     }
     return { status: res.status, json, text, ok: res.ok };
@@ -762,7 +763,17 @@ export function editsApply(project, flowRef) {
     r.files.push({ ...hit, file: hit.file ? relative(project, hit.file) : null });
     if (hit.result === "not-found" && main) {
       // the text may live in a shared part
-      for (const name of scanFile(main).includes) {
+      // the include tree of the screen: Header, and what Header imports (Logo), and so on
+      const names = [];
+      const queue = [...scanFile(main).includes];
+      while (queue.length) {
+        const name = queue.shift();
+        if (names.includes(name)) continue;
+        names.push(name);
+        const cf0 = componentFile(name, [compDir, dir]);
+        if (cf0) queue.push(...scanFile(cf0).includes);
+      }
+      for (const name of names) {
         const cf = componentFile(name, [compDir, dir]);
         if (!cf) continue;
         const h2 = applyEditToFile(cf, e);
