@@ -85,6 +85,10 @@ Every failure is a typed error with a code (`STALE_LOCAL`, `PORTAL_TOKEN`, `UNRE
 - Screens are named by their id (`NN-StepId-State[-Mobile].html`) in every bundle whatever the source files are called, so comments and edits address stable ids across releases.
 - One HTTP contract: this server and the portal's MCP server read and write the same data with the same scoped token.
 
+## Working on the plugin
+
+Once per clone: `git config core.hooksPath .githooks`. The pre-commit hook then formats the staged files with Prettier and re-stages them, refuses a commit that carries a token or an environment file, syntax-checks staged scripts and runs the unit suite when anything under `server/`, `scripts/`, `pilot/suite/` or `.claude-plugin/` changed. `git commit --no-verify` skips it once.
+
 ## Releasing the plugin
 
 The plugin never updates itself; Claude Code does, from this repository, when a designer runs `/plugin marketplace update designli-tools` then `/plugin update designli-design@designli-tools` (or has auto-update on for the marketplace). The portal tells every plugin which version is current, and `project_status` turns that into a one-line notice with those commands; below the portal's minimum version, its API answers `426 PLUGIN_OUTDATED` and the plugin stops until updated.

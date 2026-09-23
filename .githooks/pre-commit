@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Pre-commit: refuses a commit that carries a token, formats the staged files with Prettier and
+# re-stages them, syntax-checks staged scripts, and runs the unit tests when server, scripts, the
+# suite or the plugin manifest changed. Activate once with `git config core.hooksPath .githooks`.
+# Skip once with `git commit --no-verify`.
+set -eo pipefail
+cd "$(git rev-parse --show-toplevel)"
+staged=()
+while IFS= read -r -d '' f; do staged+=("$f"); done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+if [ ${#staged[@]} -eq 0 ]; then exit 0; fi
+
+# 1. secrets: portal tokens, cloud keys, private keys never go in git
+if git diff --cached -U0 | grep -E '^\+' | grep -qE 'dpat_[A-Za-z0-9_-]{16,}|ddev_[A-Za-z0-9_-]{8,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|sk_live_[A-Za-z0-9]{8,}|re_[A-Za-z0-9]{20,}'; then
+  echo "pre-commit: a staged line looks like a token or a private key; take it out."
+  exit 1
+fi
+for f in "${staged[@]}"; do
+  case "$f" in
+    .env.example | */.env.example) ;;
+    .env* | */.env*) echo "pre-commit: $f is an environment file; it never goes in git."; exit 1 ;;
+  esac
+done
+
+# 2. format and re-stage (Prettier applies .prettierignore itself)
+partial=$(git diff --name-only -- "${staged[@]}")
+if [ -n "$partial" ]; then
+  echo "pre-commit: note, these files had unstaged changes, which are staged too after formatting:"
+  echo "$partial" | sed 's/^/  /'
+fi
+bunx prettier@3.9.6 --write --ignore-unknown --log-level warn "${staged[@]}"
+git add -- "${staged[@]}"
+
+# 3. syntax, then the unit tests when code the tests cover changed
+run_tests=0
+for f in "${staged[@]}"; do
+  case "$f" in
+    *.mjs | *.js | *.cjs) node --check "$f" || { echo "pre-commit: $f does not parse."; exit 1; } ;;
+  esac
+  case "$f" in server/* | scripts/* | pilot/suite/* | .claude-plugin/*) run_tests=1 ;; esac
+done
+if [ $run_tests = 1 ]; then
+  node --test "server/test/*.test.mjs" >/tmp/designli-design-pre-commit.log 2>&1 || {
+    grep -E "^not ok|^# (pass|fail)|AssertionError" /tmp/designli-design-pre-commit.log | head -20
+    echo "pre-commit: the unit tests fail (full log: /tmp/designli-design-pre-commit.log); fix them or commit with --no-verify."
+    exit 1
+  }
+fi
+exit 0
