@@ -179,6 +179,7 @@ const TOOLS = [
         url: str("Portal URL; default from the environment or design/library.json"),
         projectId: str("Scope the token to this project id (default: the one in design/library.json, else none = every project the approver can see)"),
         permissions: strList("Permissions to ask for (default: view, comment, suggest_copy, push, resolve, manage_flows)"),
+        scope: { type: "string", enum: ["project", "full"], description: "\"project\" (default) asks for the project and permissions above; \"full\" asks for everything the approver can do (every project, every permission), the only kind of token that can also open a browser session. The approval page shows the scope and lets the approver narrow it." },
         expiresInDays: { type: ["number", "null"], description: "30, 90 or 365; null = never (default 90)" },
       },
     },
@@ -187,9 +188,10 @@ const TOOLS = [
       if (!urlAllowed(url))
         throw new ToolError("VALIDATION", `refusing ${url}: https only (localhost excepted)`);
       const projectId = a.projectId || readLibrary(PROJECT)?.publish?.portal?.projectId || null;
+      const full = a.scope === "full";
       const r = await deviceStart(url, {
-        projectId,
-        permissions: a.permissions?.length ? a.permissions : DEVICE_PERMISSIONS,
+        projectId: full ? null : projectId,
+        permissions: full ? null : a.permissions?.length ? a.permissions : DEVICE_PERMISSIONS,
         expiresInDays: a.expiresInDays,
         label: deviceLabel(PROJECT),
       });

@@ -169,7 +169,7 @@ export async function deviceStart(url, { projectId, permissions, expiresInDays, 
   const r = await devicePost(url, "/start", {
     label: label || "designli-design",
     projects: projectId ? [projectId] : null,
-    permissions: permissions ?? DEVICE_PERMISSIONS,
+    permissions: permissions === null ? null : (permissions ?? DEVICE_PERMISSIONS), // null = every permission the approver has
     expiresInDays: expiresInDays === undefined ? DEVICE_EXPIRY_DAYS : expiresInDays,
     client: label || "designli-design",
   });

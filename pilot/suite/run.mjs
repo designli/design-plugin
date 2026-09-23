@@ -35,6 +35,7 @@ const HOME = join(RESULTS, ".home");
 mkdirSync(join(HOME, ".config", "designli-design"), { recursive: true, mode: 0o700 });
 const SECRETS = join(RESULTS, ".secrets");
 // the token files and the throwaway HOME go even when the run crashes before its last line
+for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => process.exit(130));
 process.on("exit", () => {
   rmSync(SECRETS, { recursive: true, force: true });
   rmSync(HOME, { recursive: true, force: true });
@@ -113,7 +114,9 @@ await timed("signin", async () => {
     const linkFile = process.env.SUITE_SIGNIN_LINK_FILE || join(RESULTS, "SIGNIN-LINK.txt");
     let p;
     for (let cycle = 0; cycle < 6; cycle++) {
-      const s = await tool(c, "signin_start", { url: PORTAL, expiresInDays: 30 });
+      // full scope: the suite mints the designer, client and dev tokens through a browser session,
+      // and only an unscoped token may open one
+      const s = await tool(c, "signin_start", { url: PORTAL, expiresInDays: 30, scope: "full" });
       if (!s.ok) throw new Error("signin_start failed");
       obs.signin = { mode: "device", userCode: s.out.userCode, leaked: JSON.stringify(s.out).includes("ddev_"), cycles: cycle + 1 };
       const msg = `Approve the sign-in as ADMIN (every project, everything I can do):\n${s.out.verificationUrl}\ncode ${s.out.userCode}\n(issued ${new Date().toISOString()}, valid ten minutes; a fresh link replaces this file when it expires)\n`;
