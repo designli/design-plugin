@@ -34,6 +34,11 @@ mkdirSync(RESULTS, { recursive: true });
 const HOME = join(RESULTS, ".home");
 mkdirSync(join(HOME, ".config", "designli-design"), { recursive: true, mode: 0o700 });
 const SECRETS = join(RESULTS, ".secrets");
+// the token files and the throwaway HOME go even when the run crashes before its last line
+process.on("exit", () => {
+  rmSync(SECRETS, { recursive: true, force: true });
+  rmSync(HOME, { recursive: true, force: true });
+});
 mkdirSync(SECRETS, { recursive: true, mode: 0o700 });
 const REPO = resolve(opt("--repo") || join(tmpdir(), `marquee-${stamp}`));
 const api = new Api(PORTAL);
@@ -103,17 +108,27 @@ await timed("signin", async () => {
   } else {
     writeCreds(new Token("", "none"));
     const c = mcp();
-    const s = await tool(c, "signin_start", { url: PORTAL, expiresInDays: 30 });
-    if (!s.ok) throw new Error("signin_start failed");
-    obs.signin = { mode: "device", userCode: s.out.userCode, leaked: JSON.stringify(s.out).includes("ddev_") };
-    console.log(`\n>>> Approve the sign-in as ADMIN (every project, everything I can do):\n>>> ${s.out.verificationUrl}\n>>> code ${s.out.userCode}\n`);
+    // a device code lives ten minutes on the portal; when nobody approved it in time a new one is
+    // issued, up to six times, and the current link is kept in a file the person can print
+    const linkFile = process.env.SUITE_SIGNIN_LINK_FILE || join(RESULTS, "SIGNIN-LINK.txt");
     let p;
-    for (let i = 0; i < 14; i++) {
-      p = await c.call("signin_poll", { handle: s.out.handle, waitSeconds: 45 });
-      if (p.out?.status !== "pending") break;
-      say("  waiting for the approval…");
+    for (let cycle = 0; cycle < 6; cycle++) {
+      const s = await tool(c, "signin_start", { url: PORTAL, expiresInDays: 30 });
+      if (!s.ok) throw new Error("signin_start failed");
+      obs.signin = { mode: "device", userCode: s.out.userCode, leaked: JSON.stringify(s.out).includes("ddev_"), cycles: cycle + 1 };
+      const msg = `Approve the sign-in as ADMIN (every project, everything I can do):\n${s.out.verificationUrl}\ncode ${s.out.userCode}\n(issued ${new Date().toISOString()}, valid ten minutes; a fresh link replaces this file when it expires)\n`;
+      writeFileSync(linkFile, msg);
+      console.log(`\n>>> ${msg.replace(/\n/g, "\n>>> ")}`);
+      for (let i = 0; i < 14; i++) {
+        p = await c.call("signin_poll", { handle: s.out.handle, waitSeconds: 45 });
+        if (p.out?.status !== "pending") break;
+        say("  waiting for the approval…");
+      }
+      if (p.out?.status !== "expired") break;
+      say("  the code expired; issuing a new one");
     }
     await c.close();
+    rmSync(linkFile, { force: true });
     if (p.out?.status !== "approved") throw new Error(`sign-in ${p.out?.status ?? p.error?.message}`);
     obs.signin.ok = true;
     obs.signin.leaked = obs.signin.leaked || JSON.stringify(p.out).includes("dpat_");
