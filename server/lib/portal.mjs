@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, resolve, relative, dirname } from "node:path";
 import { gzipSync } from "node:zlib";
+import { createHash } from "node:crypto";
 import { PLUGIN_VERSION, DEFAULT_PORTAL, normalizeUrl, tokenFor, readLibrary,
   headerListeners,
 } from "./setup.mjs";
@@ -161,6 +162,29 @@ const expect = (r, what, okStatuses = [200, 201]) => {
 };
 const AGENT = { "x-designli-on-behalf": "agent" };
 export const clientUrl = (ctx) => `${ctx.url}/projects/${ctx.projectId}`;
+/** A release value from the portal may be a number or an object carrying one; either way, the number. */
+const releaseNumber = (r) => (r && typeof r === "object" ? (r.number ?? r.id ?? null) : (r ?? null));
+const stableStringify = (v) =>
+  Array.isArray(v)
+    ? "[" + v.map(stableStringify).join(",") + "]"
+    : v && typeof v === "object"
+      ? "{" +
+        Object.keys(v)
+          .sort()
+          .map((k) => JSON.stringify(k) + ":" + stableStringify(v[k]))
+          .join(",") +
+        "}"
+      : JSON.stringify(v ?? null);
+/**
+ * sha256 of a stable JSON of the manifest minus the fields a push changes without a content
+ * change (generatedAt, generator, publish, contentHash, componentsHash). contentHash covers
+ * screens only; title/goal/order/next/entryPoints/waivers changes are invisible to it, and the
+ * portal applies journey order/next on a reused push, so a metadata-only change must still push.
+ */
+export function manifestHashOf(manifest) {
+  const { generatedAt, generator, publish, contentHash, componentsHash, ...rest } = manifest || {};
+  return "sha256:" + createHash("sha256").update(stableStringify(rest)).digest("hex");
+}
 
 // ---- reads ----
 export async function overview(ctx) {
@@ -186,6 +210,7 @@ export async function overview(ctx) {
       pendingEdits: f.pendingEdits,
       missingStates: f.missingStates ?? null,
       position: f.position ?? null,
+      archivedAt: f.archivedAt ?? null,
     })),
     url: clientUrl(ctx),
   };
@@ -319,12 +344,12 @@ export function mergeStructure(flow, dir, structure, position) {
   }
   return changes;
 }
-/** Pulls threads, copy edits and structure of one flow into the repo. */
-export async function pullFlow(ctx, dir, { status = "all" } = {}) {
+/** Pulls threads, copy edits and structure of one flow into the repo. `head` reuses an already-fetched one. */
+export async function pullFlow(ctx, dir, { status = "all", head: presetHead } = {}) {
   const p = needProject(ctx);
   const flow = readFlow(dir);
   const slug = flow.slug;
-  const h = await head(ctx, slug);
+  const h = presetHead ?? (await head(ctx, slug));
   if (!h.exists)
     return { flow: slug, exists: false, pulled: 0, textEdits: 0, structureChanges: [] };
   const { items: threads, first } = await pageAll(
@@ -415,16 +440,20 @@ async function markApplied(ctx, dir, slug, version) {
   writeEdits(dir, ed);
   return m.json.updated ?? ids.length;
 }
-/** Pushes one flow (bundle first). Throws STALE_LOCAL when the portal has feedback the repo has not pulled. */
-export async function pushFlow(ctx, flowRef, { force = false, note } = {}) {
+/**
+ * Pushes one flow (bundle first). Throws STALE_LOCAL when the portal has feedback the repo has
+ * not pulled. `head`/`bundle` reuse ones already computed by the caller (publish's plan loop)
+ * instead of refetching or rebuilding.
+ */
+export async function pushFlow(ctx, flowRef, { force = false, note, head: presetHead, bundle: presetBundle } = {}) {
   const p = needProject(ctx);
   const dir = resolveFlowDir(ctx.project, flowRef);
-  const b = buildFlowBundle(ctx.project, dir);
+  const b = presetBundle ?? buildFlowBundle(ctx.project, dir);
   if (!b.ok)
     throw new PortalError("BUNDLE", `${b.slug}: ${b.errors.join("; ")}`, { errors: b.errors });
   const flow = readFlow(dir);
   const slug = flow.slug;
-  const h = await head(ctx, slug);
+  const h = presetHead ?? (await head(ctx, slug));
   const localHead = flow.portal?.version ?? 0;
   const ifMatch = force ? String(h.version) : String(localHead);
   const headers = { "if-match": ifMatch };
@@ -460,15 +489,21 @@ export async function pushFlow(ctx, flowRef, { force = false, note } = {}) {
     flowId: slug,
     version: j.version,
     contentHash: j.contentHash,
+    manifestHash: manifestHashOf(b.manifest),
     versionUrl: j.url,
     pushedAt: new Date().toISOString(),
     lastPullAt: flow.portal?.lastPullAt ?? new Date().toISOString(),
   };
   writeFlow(dir, flow);
-  let marked = 0;
-  if (!j.reused) marked = await markApplied(ctx, dir, slug, j.version);
-  // the repo mirrors the portal after a push: threads, edits (now marked) and the pull time
-  await pullFlow(ctx, dir, { status: "all" });
+  // marks applied edits on every successful push, reused or not: an edit applied in an
+  // include-only or no-hash-change push must not stay pending on the portal forever
+  const marked = await markApplied(ctx, dir, slug, j.version);
+  // the repo mirrors the portal after a push: threads, edits (now marked) and the pull time;
+  // the head is synthesized from what the push already told us, no extra fetch
+  await pullFlow(ctx, dir, {
+    status: "all",
+    head: { ...h, exists: true, version: j.version, contentHash: j.contentHash },
+  });
   return {
     flow: slug,
     version: j.version,
@@ -508,10 +543,19 @@ export async function pushComponents(ctx) {
  * Publishes a release: every flow (or the listed ones) is bundled and pushed when changed, the
  * components too, then one release records the snapshot. Refuses before pushing anything when a
  * flow has unpulled feedback (unless force), so a release never overwrites unread comments.
+ * Nothing to push and no note/force given: reports `noop` without recording a release.
  */
 export async function publish(ctx, { note, flows, dryRun = false, force = false } = {}) {
   const p = needProject(ctx);
-  const all = listFlows(ctx.project).filter((f) => !flows || flows.includes(f.slug));
+  const ov = await overview(ctx);
+  // the full local flow list, before the `flows` subset filter, so a flow the designer excluded
+  // from this release does not falsely show up as portal-only
+  const everyFlow = listFlows(ctx.project);
+  const repoSlugs = new Set(everyFlow.map((f) => f.slug));
+  const portalOnly = ov.flows
+    .filter((f) => !repoSlugs.has(f.id) && !f.archivedAt)
+    .map((f) => ({ flow: f.id, title: f.title, version: f.version }));
+  const all = everyFlow.filter((f) => !flows || flows.includes(f.slug));
   if (!all.length)
     throw new PortalError(
       "VALIDATION",
@@ -519,13 +563,26 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
         ? `no such flows: ${flows.join(", ")}`
         : "no flows declared under design/flows; run adopt first",
     );
+  const allGaps = gapsOf(ctx.project).gaps;
   const plan = [];
+  const priv = new Map(); // flow slug -> { b, h, prev }: never returned or thrown, only fed to pushFlow
   const stale = [];
+  const orphaning = [];
   for (const f of all) {
-    const b = buildFlowBundle(ctx.project, f.dir);
-    const g = gapsOf(ctx.project, { flow: f.slug }).gaps;
-    const h = await head(ctx, f.slug);
     const flow = readFlow(f.dir);
+    // read the previous manifest before buildFlowBundle overwrites it; trusted only when it is
+    // what the portal actually has (its contentHash matches what was last pushed)
+    const mpath = join(f.dir, "bundle", "manifest.json");
+    let prev = null;
+    if (existsSync(mpath)) {
+      try {
+        const pm = JSON.parse(readFileSync(mpath, "utf8"));
+        if (pm.contentHash === flow.portal?.contentHash) prev = pm;
+      } catch {}
+    }
+    const b = buildFlowBundle(ctx.project, f.dir);
+    const g = allGaps.filter((x) => x.flow === f.slug && !BLOCKING.has(x.kind)).length;
+    const h = await head(ctx, f.slug);
     const localVersion = flow.portal?.version ?? 0;
     const entry = {
       flow: f.slug,
@@ -534,18 +591,32 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       contentHash: b.contentHash,
       remoteHash: h.contentHash,
       screens: b.screens,
-      gaps: g.filter((x) => !BLOCKING.has(x.kind)).length,
+      gaps: g,
       errors: b.errors,
     };
     if (!b.ok) entry.status = "error";
     else if (!h.exists) entry.status = "new";
     else if (h.version !== localVersion && !force) entry.status = "behind";
-    else if (h.contentHash === b.contentHash) entry.status = "unchanged";
+    else if (h.contentHash === b.contentHash && flow.portal?.manifestHash === manifestHashOf(b.manifest))
+      entry.status = "unchanged";
+    else if (h.contentHash === b.contentHash) entry.status = "metadata"; // pushed; the portal answers reused
     else entry.status = "changed";
     const u = h.exists ? unpulled(h, flow) : [];
     if (u.length && !force) {
       entry.unpulled = u;
       stale.push(entry);
+    }
+    priv.set(f.slug, { b, h, prev });
+    // screens this push would remove that still carry an open thread
+    const newIds = new Set((b.manifest?.screens ?? []).map((s) => s.id));
+    const openOnScreen = (readComments(f.dir).threads || []).filter((t) => t.status === "open" && t.screen?.id);
+    const removedIds = prev
+      ? (prev.screens ?? []).map((s) => s.id).filter((id) => !newIds.has(id))
+      : [...new Set(openOnScreen.map((t) => t.screen.id).filter((id) => !newIds.has(id)))];
+    for (const id of removedIds) {
+      const open = openOnScreen.filter((t) => t.screen.id === id);
+      if (open.length)
+        orphaning.push({ flow: f.slug, screen: id, openThreads: open.length, threads: open.map((t) => t.id) });
     }
     plan.push(entry);
   }
@@ -557,6 +628,10 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       flows: plan,
       components: { state: compState, screens: comps.screens ?? 0, errors: comps.errors },
       wouldRefuse: stale.map((s) => ({ flow: s.flow, unpulled: s.unpulled })),
+      portalOnly,
+      orphaning,
+      wouldNoop: plan.every((e) => e.status === "unchanged"),
+      lastRelease: ov.project.release,
       clientUrl: clientUrl(ctx),
     };
   if (stale.length)
@@ -589,15 +664,23 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
   const skipped = errors.map((e) => ({ flow: e.flow, errors: e.errors }));
   const pushed = [];
   const unchangedFlows = [];
+  const metadataOnly = [];
   for (const e of plan) {
     if (e.status === "error") continue;
-    const r = await pushFlow(ctx, e.flow, { force, note });
+    if (e.status === "unchanged") {
+      // nothing to push: the portal already has this content and this metadata
+      unchangedFlows.push({ flow: e.flow, version: e.version, url: null, editsMarkedApplied: 0 });
+      continue;
+    }
+    const pv = priv.get(e.flow);
+    const r = await pushFlow(ctx, e.flow, { force, note, head: pv?.h, bundle: pv?.b });
     (r.reused ? unchangedFlows : pushed).push({
       flow: r.flow,
       version: r.version,
       url: r.url,
       editsMarkedApplied: r.editsMarkedApplied,
     });
+    if (e.status === "metadata") metadataOnly.push(r.flow);
   }
   let components = { state: "none" };
   if (compState === "ready") {
@@ -608,18 +691,42 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       screens: c.screens,
     };
   } else if (compState === "error") components = { state: "error", errors: comps.errors };
-  const rel = expect(
-    await call(ctx, "POST", `/projects/${p}/releases`, {
-      note: note || null,
-      flows: plan.filter((e) => e.status !== "error").map((e) => e.flow),
-      product: readProduct(ctx.project),
-    }),
-    "release",
-    [201],
-  );
+  // nothing changed and nobody asked for a note or a forced snapshot: report it without a release
+  if (pushed.length === 0 && components.state !== "pushed" && !note && !force)
+    return {
+      noop: true,
+      release: ov.project.release,
+      message: `nothing changed since release ${releaseNumber(ov.project.release)}`,
+      unchanged: unchangedFlows,
+      portalOnly,
+      orphaning: [],
+      components,
+      clientUrl: clientUrl(ctx),
+    };
+  const relResp = await call(ctx, "POST", `/projects/${p}/releases`, {
+    note: note || null,
+    flows: plan.filter((e) => e.status !== "error").map((e) => e.flow),
+    product: readProduct(ctx.project),
+    allowUnchanged: !!force,
+  });
+  if (relResp.status === 409 && relResp.json?.error?.code === "RELEASE_UNCHANGED") {
+    const previous = relResp.json?.error?.details?.previous ?? null;
+    throw new PortalError(
+      "RELEASE_UNCHANGED",
+      `nothing changed since release ${releaseNumber(previous)}: the note was not recorded; pass force to record an identical snapshot`,
+      { release: previous },
+    );
+  }
+  const rel = expect(relResp, "release", [201]);
   await listReleases(ctx).catch(() => null);
   return {
-    release: { number: rel.number, url: rel.url, note: rel.note, flows: rel.flows },
+    release: {
+      number: rel.number,
+      url: rel.url,
+      note: rel.note,
+      flows: rel.flows,
+      summary: rel.summary ?? null,
+    },
     pushed,
     unchanged: unchangedFlows,
     ...(skipped.length
@@ -627,8 +734,26 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       : {}),
     components,
     gaps: plan.reduce((n, e) => n + e.gaps, 0),
+    portalOnly,
+    orphaning,
+    metadataOnly,
     clientUrl: clientUrl(ctx),
   };
+}
+/** Archives (or, with undo, unarchives) a flow on the portal that the repository no longer has. */
+export async function flowsArchive(ctx, slug, { undo = false } = {}) {
+  const p = needProject(ctx);
+  const r = await call(
+    ctx,
+    "POST",
+    `/projects/${p}/flows/${slug}/${undo ? "unarchive" : "archive"}`,
+    {},
+    AGENT,
+  );
+  if (r.status === 404)
+    throw new PortalError("UNSUPPORTED", "this portal does not archive flows yet");
+  const j = expect(r, "archive", [200]);
+  return { flow: slug, archived: !undo, archivedAt: j.archivedAt ?? null };
 }
 
 // ---- feedback ----
@@ -806,6 +931,10 @@ export function editsApply(project, flowRef) {
             }
     }
     r.result = hit.result;
+    // an edit requested on an older version whose text is now gone is a candidate to outdate,
+    // not a manual fix: the text it targeted no longer exists to be found
+    r.stale = (e.flowVersion ?? 0) < (flow.portal?.version ?? 0);
+    if (hit.result !== "applied") r.suggest = r.stale && hit.result !== "ambiguous" ? "outdate" : "manual";
     if (hit.result === "applied")
       data.appliedLocally = [
         ...(data.appliedLocally || []),
@@ -818,12 +947,17 @@ export function editsApply(project, flowRef) {
     results.push(r);
   }
   writeEdits(dir, data);
+  const outdateCount = results.filter((r) => r.suggest === "outdate").length;
   return {
     flow: flow.slug,
     applied: results.filter((r) => r.result === "applied").length,
     needsManual: results.filter((r) => r.result !== "applied"),
     results,
-    note: "the next publish marks applied edits as applied on the portal",
+    note:
+      "the next publish marks applied edits as applied on the portal" +
+      (outdateCount
+        ? `; ${outdateCount} item(s) were requested on an older version and their text is gone (suggest: outdate)`
+        : ""),
   };
 }
 /** Declines a copy edit with a reason the client reads as a thread on that screen. */
@@ -865,6 +999,51 @@ export async function editsDismiss(ctx, flowRef, id, reason) {
   data.appliedLocally = (data.appliedLocally || []).filter((a) => a.id !== id);
   writeEdits(dir, data);
   return { flow: slug, edit: id, status: "dismissed", thread: thread.id };
+}
+/** Marks a pending copy edit outdated because its text changed in a later version, and tells the client so on that screen. */
+export async function editsOutdate(ctx, flowRef, id, note) {
+  const p = needProject(ctx);
+  const dir = resolveFlowDir(ctx.project, flowRef);
+  const flow = readFlow(dir);
+  const slug = flow.slug;
+  const data = readEdits(dir);
+  const e = (data.edits || []).find((x) => x.id === id);
+  if (!e)
+    throw new PortalError("NOT_FOUND", `${id} is not in ${slug}'s text-edits.json; pull first`);
+  if (e.status !== "pending")
+    throw new PortalError("VALIDATION", `${id} is ${e.status}, not pending`);
+  const patched = expect(
+    await call(
+      ctx,
+      "PATCH",
+      `/projects/${p}/flows/${slug}/text-edits/${id}`,
+      { status: "outdated", note: note ?? null },
+      AGENT,
+    ),
+    "outdate",
+  );
+  const version = flow.portal?.version ?? e.flowVersion;
+  const trimmedNote = note && String(note).trim();
+  const text =
+    `This text changed in version ${version} after the request ("${e.originalText}" → "${e.newText}"); please have another look.` +
+    (trimmedNote ? ` ${trimmedNote}` : "");
+  const thread = expect(
+    await call(
+      ctx,
+      "POST",
+      `/projects/${p}/flows/${slug}/comments`,
+      { text, screen: e.screen, flowVersion: version },
+      AGENT,
+    ),
+    "reply",
+    [201],
+  );
+  data.edits = data.edits.map((x) =>
+    x.id === id ? { ...x, status: "outdated", updatedAt: patched.updatedAt ?? x.updatedAt } : x,
+  );
+  data.appliedLocally = (data.appliedLocally || []).filter((a) => a.id !== id);
+  writeEdits(dir, data);
+  return { flow: slug, edit: id, status: "outdated", thread: thread.id, version };
 }
 export async function reply(ctx, flowRef, thread, text) {
   const p = needProject(ctx);

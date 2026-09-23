@@ -445,7 +445,7 @@ const TOOLS = [
   {
     name: "publish",
     description:
-      "Records a release: bundles every flow (or the listed ones), refuses before pushing anything when a flow has unpulled feedback or the portal is ahead (STALE_LOCAL with the fix), pushes the changed flows as versions and the components, then POSTs one release with the note; marks applied copy edits; caches design/releases.json. dryRun reports per flow: new, changed, unchanged, behind, error, with gap counts and what would be refused. CLI: scripts/portal.mjs publish --note ... [--flows a,b] [--dry-run] [--force]",
+      "Records a release: bundles every flow (or the listed ones), refuses before pushing anything when a flow has unpulled feedback or the portal is ahead (STALE_LOCAL with the fix), pushes the changed flows as versions and the components, then POSTs one release with the note; marks applied copy edits; caches design/releases.json. Returns `noop: true` (no release) when nothing changed and no note was given; `portalOnly` lists flows on the portal that are not in the repository; `orphaning` lists screens this release removes that still carry open threads. dryRun reports per flow: new, changed, unchanged, behind, error, with gap counts and what would be refused. CLI: scripts/portal.mjs publish --note ... [--flows a,b] [--dry-run] [--force]",
     inputSchema: {
       type: "object",
       properties: {
@@ -490,7 +490,7 @@ const TOOLS = [
   {
     name: "edits_apply",
     description:
-      "Applies the pending copy edits of a flow to the source: the screen file, or the include that holds the text (edited once, so every screen using it changes), plus the other device variant when the text is unique there. Returns needsManual for ambiguous or missing text. The next publish marks applied edits applied on the portal. CLI: scripts/portal.mjs edits apply --flow <slug>",
+      "Applies the pending copy edits of a flow to the source: the screen file, or the include that holds the text (edited once, so every screen using it changes), plus the other device variant when the text is unique there. Returns needsManual for ambiguous or missing text. `needsManual` items carry `suggest: outdate` when the edit predates the current version and its text is gone. The next publish marks applied edits applied on the portal. CLI: scripts/portal.mjs edits apply --flow <slug>",
     inputSchema: { type: "object", properties: { flow: str() }, required: ["flow"] },
     run: wrap((a) => P.editsApply(PROJECT, a.flow)),
   },
@@ -509,6 +509,25 @@ const TOOLS = [
     },
     run: wrap(async (a) => {
       const r = await P.editsDismiss(ctx(), a.flow, a.id, a.reason);
+      await P.pullFlow(ctx(), resolveFlowDir(PROJECT, a.flow), { status: "all" }).catch(() => null);
+      return r;
+    }),
+  },
+  {
+    name: "edits_outdate",
+    description:
+      "Marks a pending copy edit outdated because the text it targeted changed in a later version, and opens a thread on that screen telling the client so. Use for edits_apply results with `suggest: outdate`, after the designer agreed. CLI: scripts/portal.mjs edits outdate --flow <slug> --id <edit> [--note ...]",
+    inputSchema: {
+      type: "object",
+      properties: {
+        flow: str(),
+        id: str("the edit id from edits_apply's needsManual"),
+        note: str("optional context for the client"),
+      },
+      required: ["flow", "id"],
+    },
+    run: wrap(async (a) => {
+      const r = await P.editsOutdate(ctx(), a.flow, a.id, a.note);
       await P.pullFlow(ctx(), resolveFlowDir(PROJECT, a.flow), { status: "all" }).catch(() => null);
       return r;
     }),
@@ -587,6 +606,17 @@ const TOOLS = [
       await P.pullFlow(ctx(), resolveFlowDir(PROJECT, a.flow), { status: "all" }).catch(() => null);
       return r;
     }),
+  },
+  {
+    name: "flows_archive",
+    description:
+      "Archives a flow on the portal that the repository no longer has (or undoes it with undo). Only after the designer said yes. CLI: scripts/portal.mjs archive --flow <slug> [--undo]",
+    inputSchema: {
+      type: "object",
+      properties: { flow: str(), undo: bool("unarchive instead of archive") },
+      required: ["flow"],
+    },
+    run: wrap((a) => P.flowsArchive(ctx(), a.flow, { undo: !!a.undo })),
   },
 ];
 

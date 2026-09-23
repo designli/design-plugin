@@ -75,7 +75,7 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       const p = proposed(x.flow);
       if (!f || !p) continue;
       if (x.field === "title") avoidable++;
-      else if (x.field === "entryPoints" && p.entry?.includes(f.entry)) avoidable++;
+      else if (x.field === "entryPoints" && p.entry?.includes(f.entry) && x.candidates === 1) avoidable++;
       else if (/^steps\.(\d+)\.kind$/.test(x.field)) {
         const n = x.field.match(/^steps\.(\d+)\.kind$/)[1];
         const s = f.steps.find((y) => y.n === n), ps = p.steps.find((y) => y.n === n);
@@ -83,6 +83,9 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       }
     }
     add("adopt", "avoidableQuestions", avoidable, 0, { op: "<=", unit: "q" });
+    // a question asked with confidence "sure" should not have been asked at all
+    const sureAsked = q.filter((x) => x.confidence === "sure").length;
+    add("adopt", "sureAsked", sureAsked, 0, { op: "<=", unit: "q" });
     const writes = obs.adopt?.writes ?? [];
     add("adopt", "flowsWritten", ratio(writes.filter((w) => w.ok).length, flows.length), 1, { items: writes.filter((w) => !w.ok).map((w) => `${w.slug}: ${w.error?.message ?? w.error?.code}`) });
     const weird = flows.flatMap((f) => f.steps.filter((s) => s.weird).map((s) => ({ f, s })));
@@ -113,6 +116,7 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     add("publish", "brokenFlowIsolated", p1.brokenIncludeBlockedAll ? 0 : 1, 1, { op: "==", items: p1.brokenIncludeBlockedAll ? ["one flow with a broken include blocked the release of all ten (first attempt pushed 0)"] : p1.skippedFirst ? [`skipped and reported: ${p1.skippedFirst.join(", ")}`] : [] });
     add("publish", "secondsPerFlow", p1.ms ? Math.round(p1.ms / flows.length / 100) / 10 : null, 10, { op: "<=", unit: "s" });
     add("publish", "http429", p1.http429 ?? null, 0, { op: "<=" });
+    if (p1.httpCalls != null) add("publish", "httpCallsPerFlow", ratio(p1.httpCalls, flows.length), 0, { op: "rec" });
     const pf = obs.portal1?.flows ?? [];
     const devItems = [], scrItems = [];
     let devOk = 0, scrOk = 0;
@@ -126,9 +130,10 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       const ok = x.devices.includes("mobile") === wantMobile && (wantDesktop ? x.desktopScreens > 0 : x.desktopScreens === 0);
       if (ok) devOk++;
       else devItems.push(`${f.slug}: manifest devices ${x.devices.join("+")}, desktop screens ${x.desktopScreens}, mobile ${x.mobileScreens}; expected ${f.devices.join("+")}`);
-      // the Main map counts as a screen; a key without the flag (older runs) had it on buy-tickets only
+      // the Main map counts as a screen; a key without the flag (older runs) had it on buy-tickets only;
+      // a too-large step's Default is written but never becomes a screen on the portal
       const mainN = f.main != null ? (f.main ? 1 : 0) : f.slug === "buy-tickets" ? 1 : 0;
-      const states = f.steps.reduce((n, s) => n + s.states.length, 0) + mainN;
+      const states = f.steps.reduce((n, s) => n + s.states.length - (s.tooLarge?.length ?? 0), 0) + mainN;
       if (x.screens === states) scrOk++;
       else scrItems.push(`${f.slug}: ${x.screens} screens on the portal, ${states} expected`);
     }
@@ -254,6 +259,10 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       const checks = { resolveStatus: in2xx(ro.resolveStatus), reopenStatus: in2xx(ro.reopenStatus), statusAfter: ro.statusAfter === "open" };
       add("rounds", "A.reopenWorks", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => `${k}: ${JSON.stringify(ro)}`) });
     }
+    if (rA?.tooLarge) {
+      const ok = rA.tooLarge.gridStatus === "unavailable" && rA.tooLarge.waiverStatus >= 400;
+      add("rounds", "A.tooLargeUnavailable", ok ? 1 : 0, 1, { op: "==", items: [JSON.stringify(rA.tooLarge)] });
+    }
     const r2 = obs.rounds?.release2, kr2 = key.rounds?.release2;
     if (r2?.editsLanded) {
       const targets = (kA?.editTargets ?? []).filter((t) => typeof t.filesTouched === "number");
@@ -295,12 +304,32 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       const checks = { hasThreads: (r2.orphan.threadsOnRemovedScreen ?? 0) > 0, readable: r2.orphan.readableViaVersionsApi === true };
       add("release2", "orphanCommentsReadable", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => `${k}: ${JSON.stringify(r2.orphan)}`) });
     }
-    if (r2?.deletedFlow) add("release2", "deletedFlowStillOnPortal", r2.deletedFlow.stillOnPortal, "documented", { op: "rec", items: [`latestVersionUnchanged: ${r2.deletedFlow.latestVersionUnchanged}`] });
-    if (r2?.renamedFlow) add("release2", "renamedFlowLeavesOld", r2.renamedFlow.oldStillOnPortal, "documented", { op: "rec", items: [`newOnPortal: ${r2.renamedFlow.newOnPortal}`] });
+    if (r2?.portalOnly && kr2) {
+      const expected = [kr2.deletedFlow, kr2.renamedFlow?.from].filter(Boolean);
+      add("release2", "portalOnlyReported", setEq(r2.portalOnly, expected) ? 1 : 0, 1, {
+        op: "==",
+        items: [`got ${JSON.stringify(r2.portalOnly)}, expected ${JSON.stringify(expected)}`],
+      });
+    }
+    if ((r2?.orphaningDry || r2?.orphaning) && kr2) {
+      const screen = `${kr2.removedStep?.step}-${kr2.removedStep?.id}-Default`;
+      const hasIt = (list) => (list ?? []).some((o) => o.screen === screen && (o.openThreads ?? 0) >= 1);
+      const ok = hasIt(r2.orphaningDry) && hasIt(r2.orphaning);
+      add("release2", "orphaningReported", ok ? 1 : 0, 1, {
+        op: "==",
+        items: [`dry ${JSON.stringify(r2.orphaningDry)}, real ${JSON.stringify(r2.orphaning)}, expected screen ${screen}`],
+      });
+    }
+    if (r2?.deletedFlow) add("release2", "deletedFlowStillOnPortal", r2.deletedFlow.stillOnPortal ? 1 : 0, 0, { op: "<=", items: [`latestVersionUnchanged: ${r2.deletedFlow.latestVersionUnchanged}`] });
+    if (r2?.renamedFlow) add("release2", "renamedFlowLeavesOld", r2.renamedFlow.oldStillOnPortal ? 1 : 0, 0, { op: "<=", items: [`newOnPortal: ${r2.renamedFlow.newOnPortal}`] });
     if (r2?.waiversSurvive !== undefined) add("release2", "waiversSurvive", r2.waiversSurvive ? 1 : 0, 1, { op: "==" });
     if (r2?.stepTitleKept !== undefined) add("release2", "stepTitleKept", r2.stepTitleKept, "file", { op: "rec" });
     const rB = obs.rounds?.B;
     if (rB?.staleEdit) add("roundB", "staleEditNeedsManual", rB.staleEdit.result === "needsManual" ? 1 : 0, 1, { op: "==", items: [String(rB.staleEdit.result)] });
+    if (rB?.staleEdit?.outdated) {
+      const okOutdated = rB.staleEdit.outdated.status === "outdated" && rB.staleEdit.outdated.threadFound === true;
+      add("roundB", "outdatedEdit", okOutdated ? 1 : 0, 1, { op: "==", items: [JSON.stringify(rB.staleEdit.outdated)] });
+    }
     if (rB?.waiverOnPresent) add("roundB", "waiverOnPresent", rB.waiverOnPresent.status ?? null, "rec", { op: "rec", items: [`code: ${rB.waiverOnPresent.code}`] });
     const r3 = obs.rounds?.release3, kr3 = key.rounds?.release3;
     if (r3?.subset) {
@@ -318,7 +347,11 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
       const checks = { ok: r4.forced.ok === true, eventNamesForce: r4.eventNamesForce === true };
       add("release4", "forcedAudited", Object.values(checks).every(Boolean) ? 1 : 0, 1, { op: "==", items: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) });
     }
-    if (r4?.noop) add("release4", "noopHandled", r4.noop.reused ? "reused" : r4.noop.refused ? "refused" : JSON.stringify(r4.noop), "reused or refused", { op: "rec" });
+    if (r4?.noop) {
+      const ok = r4.noop.noop === true && r4.noop.releasesAfter === r4.noop.releasesBefore;
+      add("release4", "noopHandled", ok ? 1 : 0, 1, { op: "==", items: [JSON.stringify(r4.noop)] });
+      add("release4", "noopCalls", r4.noop.calls ?? null, 0, { op: "rec" });
+    }
     if (obs.mcp?.devAgent) {
       const da = obs.mcp.devAgent;
       const in2xx = (s) => typeof s === "number" && s >= 200 && s < 300;
@@ -355,6 +388,8 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     if (rf) add("handoff", "waiverInSpec", rf.spec.waived ? 1 : 0, 1, { op: "==" });
     add("handoff", "devAgentReads", ratio(done.filter((h) => h.spec.devGet).length, done.length), 1);
     }
+    if (obs.handoff.tooLargeRefused)
+      add("handoff", "tooLargeRefused", obs.handoff.tooLargeRefused.code ?? null, 0, { op: "rec", items: [JSON.stringify(obs.handoff.tooLargeRefused)] });
   }
   // ---- round trip ----
   if (obs.lostRepo) {

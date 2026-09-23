@@ -174,7 +174,7 @@ await timed("adopt", async () => {
   obs.adopt = {
     scan: { screens: scan.out?.screens?.length ?? null, components: (scan.out?.components ?? []).map((x) => ({ name: x.name, usedBy: x.usedBy.length })) },
     proposed: (prop.out?.flows ?? []).map((f) => ({ slug: f.slug, devices: f.devices, title: f.title, entry: f.entryPoints?.map((e) => e.to) ?? [], steps: f.steps.map((s) => ({ n: s.n, id: s.id, kind: s.kind, states: Object.keys(s.states) })), transitions: f.transitions, next: f.next ?? [] })),
-    questions: (prop.out?.questions ?? []).map((q) => ({ flow: q.flow, field: q.field })),
+    questions: (prop.out?.questions ?? []).map((q) => ({ flow: q.flow, field: q.field, confidence: q.confidence, candidates: q.candidates?.length })),
     writes: [],
   };
   // answer with the key: kinds, titles, goals, entry points; states as proposed (the missing one stays missing)
@@ -230,6 +230,8 @@ await timed("publish1", async () => {
   obs.publish1.http429 = (lines.match(/"status":429/g) || []).length;
   if (obs.xl) obs.xl.http429 = obs.publish1.http429;
   obs.publish1.retries = (lines.match(/"attempt":2/g) || []).length;
+  // diagnose returns the raw log lines (each its own JSON string); count the http events among them
+  obs.publish1.httpCalls = (d.out?.lines ?? []).filter((l) => l.includes('"event":"http"')).length;
   await c.close();
   void before;
   sh("git add -A && git -c user.email=suite@designli.co -c user.name=Suite commit -qm publish1 -q || true; git push -q");
@@ -367,6 +369,13 @@ if (ROUNDS) {
       const h = await c.call("handoff", { flow: slug, story: `As a user I can ${slug.replace(/-/g, " ")}` });
       obs.handoff.flows.push({ slug, ok: h.ok, error: h.error ? `${h.error.code}: ${String(h.error.message).slice(0, 120)}` : null });
     }
+    // reports carries a too-large screen: the handoff must refuse rather than hand off a gap
+    const rpt = await c.call("handoff", { flow: "reports", story: "As an organizer I can export reports" });
+    const gapsR = await c.call("gaps", { flow: "reports", strict: true });
+    obs.handoff.tooLargeRefused = {
+      code: rpt.ok ? null : (rpt.error?.code ?? null),
+      hasTooLargeGap: (gapsR.out?.gaps ?? []).some((g) => g.kind === "too-large"),
+    };
     await c.close();
   });
   roundsUi = await runRounds({ api, PORTAL, PROJECT, REPO, REMOTE, key, obs, mcp, tool, sh, say, fail, timed, secretFile, tokens: { admin, designer, client, dev } });
