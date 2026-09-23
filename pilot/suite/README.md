@@ -16,18 +16,18 @@ results/       one folder per run: observations.json, scorecard.{json,md}, run.l
 
 Tickets for live events. Ten flows with deliberate edge cases, each a scored item:
 
-| Flow | Devices | Planted case |
-| --- | --- | --- |
-| sign-up | both | `Custom-Locked` state |
-| find-an-event | both | data step with Empty/Loading/Error; deep link into buy-tickets |
-| buy-tickets | both | declined card; `Main.html` map; 120-character titles; `data-goto` |
-| transfer-a-ticket | mobile only | no desktop files |
-| request-a-refund | desktop | a required state missing (the waiver path) |
-| check-in-scan | both | file names with spaces and uppercase; a step called "Próximo Evento" |
-| create-an-event | desktop | 30 screens; a 1.4 MB screen |
-| payouts | desktop | table step; link back to create-an-event |
-| account-settings | both | a broken link and a broken include |
-| notifications | desktop | a step id shared with sign-up |
+| Flow              | Devices     | Planted case                                                         |
+| ----------------- | ----------- | -------------------------------------------------------------------- |
+| sign-up           | both        | `Custom-Locked` state                                                |
+| find-an-event     | both        | data step with Empty/Loading/Error; deep link into buy-tickets       |
+| buy-tickets       | both        | declined card; `Main.html` map; 120-character titles; `data-goto`    |
+| transfer-a-ticket | mobile only | no desktop files                                                     |
+| request-a-refund  | desktop     | a required state missing (the waiver path)                           |
+| check-in-scan     | both        | file names with spaces and uppercase; a step called "Próximo Evento" |
+| create-an-event   | desktop     | 30 screens; a 1.4 MB screen                                          |
+| payouts           | desktop     | table step; link back to create-an-event                             |
+| account-settings  | both        | a broken link and a broken include                                   |
+| notifications     | desktop     | a step id shared with sign-up                                        |
 
 `--stress` adds two flows the portal must refuse: 450 files and a 21 MB screen. `gen.mjs` is deterministic; a test in `server/test/lib.test.mjs` checks that two generations are identical and that the key matches the files.
 
@@ -57,19 +57,19 @@ Options: `--project <id>`, `--repo <dir>`, `--keep` (leave the generated repo), 
 
 Every metric is a number with a target; `scorecard.md` lists the failing items with what was expected and what was seen. Targets are goals, not excuses: a red row is either a bug to fix or a target to argue about in the pull request that changes it.
 
-| Area | Metrics |
-| --- | --- |
-| adopt | step-kind accuracy, state coverage, device detection, entry-point and transition recall, questions per flow, avoidable questions (a title, a kind or an entry point the proposal already had right), odd names handled |
-| gaps | planted defects found (recall), false alarms (precision) |
-| publish | flows pushed, a broken flow isolated from the others, seconds per flow, 429s, mobile flags, screens match, board overlaps, component sheets present and styled, ETag/304/bridge, limits refused and explained |
-| feedback | edits landed in the right files (every state of the step, both devices, an include once, HTML-escaped), digest agent-first, dismiss/reply/resolve, supersede reported |
-| safety | client scope enforced (waiver, push, agent flag), long comments capped, stale publish refused, force works, tokens never in output, `.mcp.json` safe |
-| release | source vs include rows in the diff |
-| reliability | concurrent publishes clean, update notice correct, diagnose by run id, expired sign-in handle, failures carry a run id, no unexpected errors |
-| handoff | created for every flow, steps, transitions, copy and the waiver in the spec, readable with a dev-agent token |
-| roundTrip | a lost repository rebuilt from the portal: dry run unchanged, structure identical |
-| ui (tier 1) | console errors, boards rendered, mobile toggle state, no unescaped script, 304 on reload, client sees no staff controls |
-| agent (tier 2) | questions listed per flow, turns and cost per step, forced publish, token in transcript, stale attempt refused |
+| Area           | Metrics                                                                                                                                                                                                                |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| adopt          | step-kind accuracy, state coverage, device detection, entry-point and transition recall, questions per flow, avoidable questions (a title, a kind or an entry point the proposal already had right), odd names handled |
+| gaps           | planted defects found (recall), false alarms (precision)                                                                                                                                                               |
+| publish        | flows pushed, a broken flow isolated from the others, seconds per flow, 429s, mobile flags, screens match, board overlaps, component sheets present and styled, ETag/304/bridge, limits refused and explained          |
+| feedback       | edits landed in the right files (every state of the step, both devices, an include once, HTML-escaped), digest agent-first, dismiss/reply/resolve, supersede reported                                                  |
+| safety         | client scope enforced (waiver, push, agent flag), long comments capped, stale publish refused, force works, tokens never in output, `.mcp.json` safe                                                                   |
+| release        | source vs include rows in the diff                                                                                                                                                                                     |
+| reliability    | concurrent publishes clean, update notice correct, diagnose by run id, expired sign-in handle, failures carry a run id, no unexpected errors                                                                           |
+| handoff        | created for every flow, steps, transitions, copy and the waiver in the spec, readable with a dev-agent token                                                                                                           |
+| roundTrip      | a lost repository rebuilt from the portal: dry run unchanged, structure identical                                                                                                                                      |
+| ui (tier 1)    | console errors, boards rendered, mobile toggle state, no unescaped script, 304 on reload, client sees no staff controls                                                                                                |
+| agent (tier 2) | questions listed per flow, turns and cost per step, forced publish, token in transcript, stale attempt refused                                                                                                         |
 
 ## Reading a run
 

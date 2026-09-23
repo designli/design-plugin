@@ -51,8 +51,20 @@ export class McpClient {
     const m = await this.request("tools/call", { name, arguments: args });
     const ms = Date.now() - t0;
     const r = m.result;
-    if (!r) return { ok: false, error: { code: "RPC", message: m.error?.message || "no result" }, ms, raw: m };
-    if (r.isError) return { ok: false, error: r.structuredContent?.error ?? { code: "TOOL", message: r.content?.[0]?.text }, ms, raw: m };
+    if (!r)
+      return {
+        ok: false,
+        error: { code: "RPC", message: m.error?.message || "no result" },
+        ms,
+        raw: m,
+      };
+    if (r.isError)
+      return {
+        ok: false,
+        error: r.structuredContent?.error ?? { code: "TOOL", message: r.content?.[0]?.text },
+        ms,
+        raw: m,
+      };
     return { ok: true, out: r.structuredContent, ms, raw: m };
   }
   async tools() {

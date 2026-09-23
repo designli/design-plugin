@@ -54,7 +54,12 @@ function rpc(project, messages, env = {}) {
 function rpcSeq(project, messages, env = {}) {
   return new Promise((res, rej) => {
     const child = spawn(process.execPath, [SERVER, "--project", project], {
-      env: { ...process.env, DESIGNLI_PORTAL_TOKEN: "", HOME: env.HOME ?? process.env.HOME, ...env },
+      env: {
+        ...process.env,
+        DESIGNLI_PORTAL_TOKEN: "",
+        HOME: env.HOME ?? process.env.HOME,
+        ...env,
+      },
       stdio: ["pipe", "pipe", "pipe"],
     });
     const byId = {};
@@ -375,7 +380,13 @@ test("adopt over the server: scan, propose, write, gaps, bundle on a plain HTML 
 });
 
 /** A portal that only knows device sign-in, /me and /projects: what the sign-in tools need. */
-function fakePortal({ pendingPolls = 1, outcome = "approved", pluginLatest = null, pluginMin = null, refuse = false } = {}) {
+function fakePortal({
+  pendingPolls = 1,
+  outcome = "approved",
+  pluginLatest = null,
+  pluginMin = null,
+  refuse = false,
+} = {}) {
   const TOKEN = "dpat_" + "f".repeat(48);
   const DEVICE = "ddev_" + "e".repeat(48);
   const seen = { starts: [], polls: 0, me: 0 };
@@ -394,8 +405,14 @@ function fakePortal({ pendingPolls = 1, outcome = "approved", pluginLatest = nul
         return send(426, {
           error: {
             code: "PLUGIN_OUTDATED",
-            message: "This plugin is older than the portal supports. In Claude Code run /plugin marketplace update designli-tools then /plugin update designli-design@designli-tools and restart.",
-            details: { commands: ["/plugin marketplace update designli-tools", "/plugin update designli-design@designli-tools"] },
+            message:
+              "This plugin is older than the portal supports. In Claude Code run /plugin marketplace update designli-tools then /plugin update designli-design@designli-tools and restart.",
+            details: {
+              commands: [
+                "/plugin marketplace update designli-tools",
+                "/plugin update designli-design@designli-tools",
+              ],
+            },
           },
         });
       if (req.method === "POST" && req.url === "/api/v1/device/start") {
@@ -411,7 +428,8 @@ function fakePortal({ pendingPolls = 1, outcome = "approved", pluginLatest = nul
       }
       if (req.method === "POST" && req.url === "/api/v1/device/poll") {
         seen.polls++;
-        if (JSON.parse(body).deviceCode !== DEVICE) return send(404, { error: { message: "Unknown device code" } });
+        if (JSON.parse(body).deviceCode !== DEVICE)
+          return send(404, { error: { message: "Unknown device code" } });
         if (seen.polls <= pendingPolls) return send(200, { status: "pending" });
         if (outcome === "approved")
           return send(200, {
@@ -427,7 +445,8 @@ function fakePortal({ pendingPolls = 1, outcome = "approved", pluginLatest = nul
       }
       if (req.url === "/api/v1/me") {
         seen.me++;
-        if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: { message: "Invalid token" } });
+        if (req.headers.authorization !== `Bearer ${TOKEN}`)
+          return send(401, { error: { message: "Invalid token" } });
         return send(200, {
           user: { id: "usr_1", name: "Ada", email: "ada@designli.co", role: "staff" },
           scope: { projects: ["nook"], permissions: ["view", "push"] },
@@ -437,13 +456,24 @@ function fakePortal({ pendingPolls = 1, outcome = "approved", pluginLatest = nul
       if (req.url === "/api/v1/projects/nook") return send(200, { id: "nook", name: "Nook" });
       if (req.url === "/api/v1/projects/nook/flows") return send(200, { flows: [] });
       if (req.url?.startsWith("/api/v1/projects"))
-        return send(200, { projects: [{ id: "nook", name: "Nook", preset: "designer", permissions: ["view", "push"] }], pageCount: 1 });
+        return send(200, {
+          projects: [
+            { id: "nook", name: "Nook", preset: "designer", permissions: ["view", "push"] },
+          ],
+          pageCount: 1,
+        });
       send(404, { error: { message: "no such route " + req.url } });
     });
   });
   return new Promise((res) =>
     server.listen(0, "127.0.0.1", () =>
-      res({ url: `http://127.0.0.1:${server.address().port}`, seen, TOKEN, DEVICE, close: () => server.close() }),
+      res({
+        url: `http://127.0.0.1:${server.address().port}`,
+        seen,
+        TOKEN,
+        DEVICE,
+        close: () => server.close(),
+      }),
     ),
   );
 }
@@ -464,11 +494,30 @@ function fakeProjectPortal({ project = "nook" } = {}) {
     seen: { calls: [] },
   };
   // two flows already on the portal that the repo never declares: one live, one archived
-  state.flows.set("promo-codes", { version: 1, contentHash: "sha256:seed-promo", structure: null, archivedAt: null, title: "Promo codes", position: 5, next: [] });
-  state.flows.set("old-thing", { version: 1, contentHash: "sha256:seed-old", structure: null, archivedAt: new Date().toISOString(), title: "Old thing", position: 6, next: [] });
-  let editSeq = 0, threadSeq = 0;
-  const editsOf = (slug) => state.edits.get(slug) ?? (state.edits.set(slug, []), state.edits.get(slug));
-  const threadsOf = (slug) => state.threads.get(slug) ?? (state.threads.set(slug, []), state.threads.get(slug));
+  state.flows.set("promo-codes", {
+    version: 1,
+    contentHash: "sha256:seed-promo",
+    structure: null,
+    archivedAt: null,
+    title: "Promo codes",
+    position: 5,
+    next: [],
+  });
+  state.flows.set("old-thing", {
+    version: 1,
+    contentHash: "sha256:seed-old",
+    structure: null,
+    archivedAt: new Date().toISOString(),
+    title: "Old thing",
+    position: 6,
+    next: [],
+  });
+  let editSeq = 0,
+    threadSeq = 0;
+  const editsOf = (slug) =>
+    state.edits.get(slug) ?? (state.edits.set(slug, []), state.edits.get(slug));
+  const threadsOf = (slug) =>
+    state.threads.get(slug) ?? (state.threads.set(slug, []), state.threads.get(slug));
   const server = createServer((req, res) => {
     const chunks = [];
     req.on("data", (d) => chunks.push(d));
@@ -496,7 +545,11 @@ function fakeProjectPortal({ project = "nook" } = {}) {
       let x;
       const lastRelease = () => state.releases[state.releases.length - 1] ?? null;
       if (req.method === "GET" && path === `/api/v1/projects/${project}`) {
-        return send(200, { id: project, name: "Nook", release: lastRelease() ? { number: lastRelease().number } : null });
+        return send(200, {
+          id: project,
+          name: "Nook",
+          release: lastRelease() ? { number: lastRelease().number } : null,
+        });
       }
       if (req.method === "GET" && path === `/api/v1/projects/${project}/flows`) {
         const includeArchived = u.searchParams.get("archived") === "1";
@@ -515,7 +568,10 @@ function fakeProjectPortal({ project = "nook" } = {}) {
           }));
         return send(200, { flows: rows });
       }
-      if (req.method === "POST" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/(archive|unarchive)$/))) {
+      if (
+        req.method === "POST" &&
+        (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/(archive|unarchive)$/))
+      ) {
         const [, slug, verb] = x;
         const f = state.flows.get(slug);
         if (!f) return send(404, { error: { code: "NOT_FOUND", message: "no such flow" } });
@@ -524,7 +580,8 @@ function fakeProjectPortal({ project = "nook" } = {}) {
       }
       if (req.method === "GET" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/head$/))) {
         const f = state.flows.get(x[1]);
-        if (!f || !f.version) return send(404, { error: { code: "NOT_FOUND", message: "never pushed" } });
+        if (!f || !f.version)
+          return send(404, { error: { code: "NOT_FOUND", message: "never pushed" } });
         return send(200, {
           version: f.version,
           contentHash: f.contentHash,
@@ -533,10 +590,18 @@ function fakeProjectPortal({ project = "nook" } = {}) {
           lastActivityAt: f.lastActivityAt ?? null,
           structure: f.structure ?? null,
           structureUpdatedAt: f.structureUpdatedAt ?? null,
-          flow: { title: f.title ?? x[1], goal: f.goal ?? "", position: f.position ?? null, next: f.next ?? [] },
+          flow: {
+            title: f.title ?? x[1],
+            goal: f.goal ?? "",
+            position: f.position ?? null,
+            next: f.next ?? [],
+          },
         });
       }
-      if (req.method === "POST" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/versions$/))) {
+      if (
+        req.method === "POST" &&
+        (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/versions$/))
+      ) {
         const slug = x[1];
         let f = state.flows.get(slug);
         const newHash = body?.manifest?.contentHash ?? null;
@@ -560,16 +625,26 @@ function fakeProjectPortal({ project = "nook" } = {}) {
           reused,
         });
       }
-      if (req.method === "GET" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/comments$/))) {
+      if (
+        req.method === "GET" &&
+        (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/comments$/))
+      ) {
         const slug = x[1];
         let list = threadsOf(slug);
         const status = u.searchParams.get("status") || "open";
         if (status !== "all") list = list.filter((t) => t.status === status);
         const screen = u.searchParams.get("screen");
         if (screen && screen !== "orphan") list = list.filter((t) => t.screen?.id === screen);
-        return send(200, { threads: list, counts: { open: list.filter((t) => t.status === "open").length }, nextCursor: null });
+        return send(200, {
+          threads: list,
+          counts: { open: list.filter((t) => t.status === "open").length },
+          nextCursor: null,
+        });
       }
-      if (req.method === "POST" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/comments$/))) {
+      if (
+        req.method === "POST" &&
+        (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/comments$/))
+      ) {
         const slug = x[1];
         const row = {
           id: `thr_${++threadSeq}`,
@@ -586,14 +661,20 @@ function fakeProjectPortal({ project = "nook" } = {}) {
         threadsOf(slug).push(row);
         return send(201, row);
       }
-      if (req.method === "GET" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/text-edits$/))) {
+      if (
+        req.method === "GET" &&
+        (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/text-edits$/))
+      ) {
         const slug = x[1];
         let list = editsOf(slug);
         const status = u.searchParams.get("status") || "all";
         if (status !== "all") list = list.filter((e) => e.status === status);
         return send(200, { edits: list, nextCursor: null });
       }
-      if (req.method === "PATCH" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/text-edits\/([^/]+)$/))) {
+      if (
+        req.method === "PATCH" &&
+        (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/text-edits\/([^/]+)$/))
+      ) {
         const [, slug, id] = x;
         const e = editsOf(slug).find((y) => y.id === id);
         if (!e) return send(404, { error: { code: "NOT_FOUND", message: "no such edit" } });
@@ -602,7 +683,10 @@ function fakeProjectPortal({ project = "nook" } = {}) {
         e.updatedAt = new Date().toISOString();
         return send(200, e);
       }
-      if (req.method === "POST" && (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/text-edits\/mark-applied$/))) {
+      if (
+        req.method === "POST" &&
+        (x = m(/^\/api\/v1\/projects\/[^/]+\/flows\/([^/]+)\/text-edits\/mark-applied$/))
+      ) {
         const slug = x[1];
         const ids = body?.ids ?? [];
         let updated = 0;
@@ -618,20 +702,38 @@ function fakeProjectPortal({ project = "nook" } = {}) {
       if (req.method === "POST" && path === `/api/v1/projects/${project}/components/versions`) {
         const hash = body?.manifest?.contentHash ?? null;
         const reused = !!state.components && state.components.contentHash === hash;
-        if (!reused) state.components = { version: (state.components?.version ?? 0) + 1, contentHash: hash };
-        return send(reused ? 200 : 201, { version: state.components.version, contentHash: state.components.contentHash, reused });
+        if (!reused)
+          state.components = { version: (state.components?.version ?? 0) + 1, contentHash: hash };
+        return send(reused ? 200 : 201, {
+          version: state.components.version,
+          contentHash: state.components.contentHash,
+          reused,
+        });
       }
       if (req.method === "GET" && path === `/api/v1/projects/${project}/releases`) {
         return send(200, { releases: [...state.releases].reverse() });
       }
       if (req.method === "POST" && path === `/api/v1/projects/${project}/releases`) {
-        const flowsList = body?.flows ?? [...state.flows.keys()].filter((s) => !state.flows.get(s).archivedAt);
+        const flowsList =
+          body?.flows ?? [...state.flows.keys()].filter((s) => !state.flows.get(s).archivedAt);
         const last = lastRelease();
-        const changed = !last || flowsList.some((slug) => (state.flows.get(slug)?.version ?? 0) !== (last.snapshot?.[slug] ?? -1));
+        const changed =
+          !last ||
+          flowsList.some(
+            (slug) => (state.flows.get(slug)?.version ?? 0) !== (last.snapshot?.[slug] ?? -1),
+          );
         if (last && !changed && !body?.allowUnchanged)
-          return send(409, { error: { code: "RELEASE_UNCHANGED", message: "identical to the previous release", details: { previous: { number: last.number } } } });
+          return send(409, {
+            error: {
+              code: "RELEASE_UNCHANGED",
+              message: "identical to the previous release",
+              details: { previous: { number: last.number } },
+            },
+          });
         const number = (last?.number ?? 0) + 1;
-        const snapshot = Object.fromEntries(flowsList.map((slug) => [slug, state.flows.get(slug)?.version ?? 0]));
+        const snapshot = Object.fromEntries(
+          flowsList.map((slug) => [slug, state.flows.get(slug)?.version ?? 0]),
+        );
         const rel = {
           number,
           note: body?.note ?? null,
@@ -640,17 +742,31 @@ function fakeProjectPortal({ project = "nook" } = {}) {
           createdAt: new Date().toISOString(),
           url: `http://fake/projects/${project}/releases/${number}`,
           snapshot,
-          summary: { flowsChanged: flowsList.length, flowsAdded: 0, flowsRemoved: 0, screensChanged: 0, viaIncludeOnly: [], flows: flowsList.map((f) => ({ id: f, via: "source", includes: [], screens: 0 })) },
+          summary: {
+            flowsChanged: flowsList.length,
+            flowsAdded: 0,
+            flowsRemoved: 0,
+            screensChanged: 0,
+            viaIncludeOnly: [],
+            flows: flowsList.map((f) => ({ id: f, via: "source", includes: [], screens: 0 })),
+          },
         };
         state.releases.push(rel);
         return send(201, rel);
       }
-      send(404, { error: { code: "NOT_FOUND", message: "no such route " + req.method + " " + path } });
+      send(404, {
+        error: { code: "NOT_FOUND", message: "no such route " + req.method + " " + path },
+      });
     });
   });
   return new Promise((res) =>
     server.listen(0, "127.0.0.1", () =>
-      res({ url: `http://127.0.0.1:${server.address().port}`, TOKEN, state, close: () => server.close() }),
+      res({
+        url: `http://127.0.0.1:${server.address().port}`,
+        TOKEN,
+        state,
+        close: () => server.close(),
+      }),
     ),
   );
   void editSeq;
@@ -678,7 +794,14 @@ test("signin_start then signin_poll: the designer approves in the browser, the t
     assert.ok(s.tell.includes("WXYZ-2345"));
     assert.ok(!JSON.stringify(s).includes("ddev_"), "the device code stays in the server");
     assert.deepEqual(portal.seen.starts[0].projects, ["nook"]);
-    assert.deepEqual(portal.seen.starts[0].permissions, ["view", "comment", "suggest_copy", "push", "resolve", "manage_flows"]);
+    assert.deepEqual(portal.seen.starts[0].permissions, [
+      "view",
+      "comment",
+      "suggest_copy",
+      "push",
+      "resolve",
+      "manage_flows",
+    ]);
     assert.equal(portal.seen.starts[0].expiresInDays, 90);
     assert.ok(portal.seen.starts[0].client.includes("designli-design on"));
     const p = r[2].result.structuredContent;
@@ -686,7 +809,9 @@ test("signin_start then signin_poll: the designer approves in the browser, the t
     assert.equal(p.user.email, "ada@designli.co");
     assert.deepEqual(p.scope.projects, ["nook"]);
     assert.ok(!JSON.stringify(r[2]).includes("dpat_"), "the token never reaches the agent");
-    const cred = JSON.parse(readFileSync(join(home, ".config", "designli-design", "credentials.json"), "utf8"));
+    const cred = JSON.parse(
+      readFileSync(join(home, ".config", "designli-design", "credentials.json"), "utf8"),
+    );
     assert.equal(cred.portals[portal.url].token, portal.TOKEN);
     assert.equal(r[3].result.structuredContent.ok, true);
     assert.equal(r[3].result.structuredContent.tokenSource, "credentials");
@@ -736,12 +861,17 @@ function connectedRepo(portal) {
   mkdirSync(join(dir, "design"), { recursive: true });
   writeFileSync(
     join(dir, "design", "library.json"),
-    JSON.stringify({ publish: { target: "portal", portal: { url: portal.url, projectId: "nook" } }, harness: "claude" }),
+    JSON.stringify({
+      publish: { target: "portal", portal: { url: portal.url, projectId: "nook" } },
+      harness: "claude",
+    }),
   );
   mkdirSync(join(home, ".config", "designli-design"), { recursive: true, mode: 0o700 });
   writeFileSync(
     join(home, ".config", "designli-design", "credentials.json"),
-    JSON.stringify({ portals: { [portal.url]: { token: portal.TOKEN, savedAt: new Date().toISOString() } } }),
+    JSON.stringify({
+      portals: { [portal.url]: { token: portal.TOKEN, savedAt: new Date().toISOString() } },
+    }),
     { mode: 0o600 },
   );
   return { home, dir };
@@ -764,7 +894,10 @@ test("project_status says when a newer plugin exists, with the Claude Code comma
     assert.equal(s2.plugin.updateAvailable, true);
     assert.equal(s2.plugin.updateRequired, false);
     assert.equal(s2.ok, true, "an available update is advice, not a blocker");
-    assert.ok(s2.nextSteps[0].includes("/plugin marketplace update designli-tools"), s2.nextSteps[0]);
+    assert.ok(
+      s2.nextSteps[0].includes("/plugin marketplace update designli-tools"),
+      s2.nextSteps[0],
+    );
     assert.ok(s2.nextSteps[0].includes("restart Claude Code"));
   } finally {
     quiet.close();
@@ -785,7 +918,11 @@ test("a portal that refuses the plugin version blocks project_status and every p
     assert.ok(s.nextSteps[0].startsWith("This plugin"));
     assert.equal(r[2].result.isError, true);
     assert.equal(r[2].result.structuredContent.error.code, "PLUGIN_OUTDATED");
-    assert.ok(r[2].result.structuredContent.error.message.includes("/plugin marketplace update designli-tools"));
+    assert.ok(
+      r[2].result.structuredContent.error.message.includes(
+        "/plugin marketplace update designli-tools",
+      ),
+    );
   } finally {
     portal.close();
   }
@@ -807,13 +944,20 @@ async function nookRepo(portal) {
     join(dir, "design", "flows", "checkout", "cart-empty.html"),
     doc("Your cart", `<p>Nothing here yet</p>`),
   );
-  writeFileSync(join(dir, "design", "flows", "checkout", "pay.html"), doc("Pay", `<form><input></form>`));
+  writeFileSync(
+    join(dir, "design", "flows", "checkout", "pay.html"),
+    doc("Pay", `<form><input></form>`),
+  );
   const r = await rpc(dir, [call(1, "prototype_scan"), call(2, "flows_propose")], { HOME: home });
   const flow = r[2].result.structuredContent.flows[0];
   flow.entryPoints = [{ from: "Nav: Cart", to: "01-Cart" }];
-  await rpc(dir, [call(1, "flows_write", { flows: [flow], prototype: { product: { name: "Shop" } } })], {
-    HOME: home,
-  });
+  await rpc(
+    dir,
+    [call(1, "flows_write", { flows: [flow], prototype: { product: { name: "Shop" } } })],
+    {
+      HOME: home,
+    },
+  );
   return { home, dir };
 }
 /** One tool call, its own server process; returns the JSON-RPC result. */
@@ -844,7 +988,9 @@ test("publish: fewer calls, no-op, portal-only flows, orphaned screens; edits_ou
     assert.equal(out2.release.number, 1);
     const callsForNoop = portal.state.seen.calls.length - callsAfterFirst;
     assert.ok(
-      !portal.state.seen.calls.slice(callsAfterFirst).some((c) => c.method === "POST" && c.path.endsWith("/releases")),
+      !portal.state.seen.calls
+        .slice(callsAfterFirst)
+        .some((c) => c.method === "POST" && c.path.endsWith("/releases")),
       "a noop publish must not POST /releases",
     );
     assert.ok(callsForNoop <= 1 + 3, `expected <= N+3 calls for the noop, got ${callsForNoop}`);
@@ -856,7 +1002,9 @@ test("publish: fewer calls, no-op, portal-only flows, orphaned screens; edits_ou
     const releasesBeforeForce = portal.state.releases.length;
     const pub4 = await one(dir, home, "publish", { force: true });
     assert.equal(pub4.structuredContent.release.number, releasesBeforeForce + 1);
-    const forcedCall = portal.state.seen.calls.filter((c) => c.method === "POST" && c.path.endsWith("/releases")).at(-1);
+    const forcedCall = portal.state.seen.calls
+      .filter((c) => c.method === "POST" && c.path.endsWith("/releases"))
+      .at(-1);
     assert.equal(forcedCall.body.allowUnchanged, true);
 
     // 2. portalOnly lists the flow the repo does not declare, not the archived one; archiving it
@@ -869,7 +1017,9 @@ test("publish: fewer calls, no-op, portal-only flows, orphaned screens; edits_ou
     const archived = await one(dir, home, "flows_archive", { flow: "promo-codes" });
     assert.equal(archived.structuredContent.archived, true);
     assert.ok(
-      portal.state.seen.calls.some((c) => c.method === "POST" && c.path === "/api/v1/projects/nook/flows/promo-codes/archive"),
+      portal.state.seen.calls.some(
+        (c) => c.method === "POST" && c.path === "/api/v1/projects/nook/flows/promo-codes/archive",
+      ),
     );
     assert.ok(portal.state.flows.get("promo-codes").archivedAt);
     const dry2 = await one(dir, home, "publish", { dryRun: true });
@@ -934,23 +1084,37 @@ test("publish: fewer calls, no-op, portal-only flows, orphaned screens; edits_ou
         updatedAt: new Date().toISOString(),
       },
     ];
-    edits.appliedLocally = [...(edits.appliedLocally || []), { id: "ted_meta1", files: [], at: new Date().toISOString() }];
+    edits.appliedLocally = [
+      ...(edits.appliedLocally || []),
+      { id: "ted_meta1", files: [], at: new Date().toISOString() },
+    ];
     writeFileSync(editsPath, JSON.stringify(edits, null, 2) + "\n");
     // the fake needs to know about the edit too, the way a real pull would have taught it
     portal.state.edits.set("checkout", [
       ...(portal.state.edits.get("checkout") ?? []),
-      { id: "ted_meta1", status: "pending", screen: { id: "01-Cart-Default", device: "desktop" }, flowVersion: 1 },
+      {
+        id: "ted_meta1",
+        status: "pending",
+        screen: { id: "01-Cart-Default", device: "desktop" },
+        flowVersion: 1,
+      },
     ]);
     const markedBefore = portal.state.seen.calls.length;
     // force so the release actually records (the version did not change, only the metadata) and
     // the full result (with metadataOnly) comes back instead of a noop/refusal
     const pub6 = await one(dir, home, "publish", { force: true });
     assert.ok(
-      portal.state.seen.calls.slice(markedBefore).some((c) => c.method === "POST" && c.path.endsWith("/text-edits/mark-applied")),
+      portal.state.seen.calls
+        .slice(markedBefore)
+        .some((c) => c.method === "POST" && c.path.endsWith("/text-edits/mark-applied")),
       "the fake must have seen mark-applied even though the push was reused",
     );
     assert.deepEqual(pub6.structuredContent.metadataOnly, ["checkout"]);
-    assert.equal(pub6.structuredContent.pushed.length, 0, "a metadata-only push is reused, not pushed");
+    assert.equal(
+      pub6.structuredContent.pushed.length,
+      0,
+      "a metadata-only push is reused, not pushed",
+    );
     // metadata now synced and nothing else changed: an unforced publish is a plain no-op, same as test 1
     const pub7 = await one(dir, home, "publish", {});
     assert.equal(pub7.structuredContent.noop, true);
@@ -973,17 +1137,29 @@ test("publish: fewer calls, no-op, portal-only flows, orphaned screens; edits_ou
     writeFileSync(editsPath, JSON.stringify(edits2, null, 2) + "\n");
     portal.state.edits.set("checkout", [
       ...(portal.state.edits.get("checkout") ?? []),
-      { id: "ted_stale1", status: "pending", screen: { id: "01-Cart-Default", device: "desktop" }, flowVersion: 1 },
+      {
+        id: "ted_stale1",
+        status: "pending",
+        screen: { id: "01-Cart-Default", device: "desktop" },
+        flowVersion: 1,
+      },
     ]);
     const outdated = await one(dir, home, "edits_outdate", { flow: "checkout", id: "ted_stale1" });
     assert.equal(outdated.structuredContent.status, "outdated");
     const patchCall = portal.state.seen.calls.find(
-      (c) => c.method === "PATCH" && c.path === "/api/v1/projects/nook/flows/checkout/text-edits/ted_stale1",
+      (c) =>
+        c.method === "PATCH" &&
+        c.path === "/api/v1/projects/nook/flows/checkout/text-edits/ted_stale1",
     );
     assert.equal(patchCall.body.status, "outdated");
-    const commentCall = [...portal.state.seen.calls].reverse().find(
-      (c) => c.method === "POST" && c.path === "/api/v1/projects/nook/flows/checkout/comments" && /changed in version/.test(c.body?.text ?? ""),
-    );
+    const commentCall = [...portal.state.seen.calls]
+      .reverse()
+      .find(
+        (c) =>
+          c.method === "POST" &&
+          c.path === "/api/v1/projects/nook/flows/checkout/comments" &&
+          /changed in version/.test(c.body?.text ?? ""),
+      );
     assert.ok(commentCall, "expected a comment whose text mentions a version change");
     const editsAfter = JSON.parse(readFileSync(editsPath, "utf8"));
     assert.equal(editsAfter.edits.find((e) => e.id === "ted_stale1").status, "outdated");

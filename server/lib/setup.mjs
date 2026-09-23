@@ -128,7 +128,14 @@ export function updateAdvice({ latest = null, minimum = null } = {}) {
 }
 // ---- device sign-in: the token is approved in the browser, never typed ----
 /** What the workflow needs: publish, pull feedback, answer threads, waive states. */
-export const DEVICE_PERMISSIONS = ["view", "comment", "suggest_copy", "push", "resolve", "manage_flows"];
+export const DEVICE_PERMISSIONS = [
+  "view",
+  "comment",
+  "suggest_copy",
+  "push",
+  "resolve",
+  "manage_flows",
+];
 export const DEVICE_EXPIRY_DAYS = 90;
 /** "acme-proto (designli-design on gabriel-mbp)": what the approval page shows. */
 export const deviceLabel = (project) =>
@@ -189,7 +196,11 @@ export async function devicePoll(url, deviceCode) {
  * Polls until the request is answered or `waitSeconds` pass. On approval the token is stored and
  * verified; the result never carries it: { status: "approved", credentialsFile, me } | { status }.
  */
-export async function deviceWait(url, deviceCode, { interval = 5, waitSeconds = 30, store = true } = {}) {
+export async function deviceWait(
+  url,
+  deviceCode,
+  { interval = 5, waitSeconds = 30, store = true } = {},
+) {
   const until = Date.now() + waitSeconds * 1000;
   for (;;) {
     const r = await devicePoll(url, deviceCode);

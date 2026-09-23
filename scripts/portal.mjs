@@ -120,13 +120,25 @@ async function readSecretFromStdin() {
         if (!start.ok && !start.unsupported)
           return fail(`could not start the sign-in: ${start.error}`);
         if (start.ok) {
-          console.error(`Approve the sign-in at ${start.verificationUrlComplete} (code ${start.userCode})`);
+          console.error(
+            `Approve the sign-in at ${start.verificationUrlComplete} (code ${start.userCode})`,
+          );
           const until = Date.now() + start.expiresIn * 1000;
           let r = { status: "pending" };
           while (r.status === "pending" && Date.now() < until)
-            r = await deviceWait(url, start.deviceCode, { interval: start.interval, waitSeconds: 30 });
-          if (r.status !== "approved") return fail(`sign-in ${r.status}${r.error ? ": " + r.error : ""}`);
-          return out({ ok: true, url, tokenSource: "credentials", user: r.me.user, scope: r.me.scope });
+            r = await deviceWait(url, start.deviceCode, {
+              interval: start.interval,
+              waitSeconds: 30,
+            });
+          if (r.status !== "approved")
+            return fail(`sign-in ${r.status}${r.error ? ": " + r.error : ""}`);
+          return out({
+            ok: true,
+            url,
+            tokenSource: "credentials",
+            user: r.me.user,
+            scope: r.me.scope,
+          });
         }
         console.error(`${url} does not offer browser sign-in; paste the token (echo off)`);
       }

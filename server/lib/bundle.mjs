@@ -229,7 +229,9 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
     ...(s.purpose ? { purpose: s.purpose } : {}),
     ...(s.primaryAction ? { primaryAction: s.primaryAction } : {}),
     states: Object.entries(s.states)
-      .filter(([, v]) => v.status === "present" || v.status === "waived" || v.status === "unavailable")
+      .filter(
+        ([, v]) => v.status === "present" || v.status === "waived" || v.status === "unavailable",
+      )
       .map(([state, v]) =>
         v.status === "present"
           ? { state, screen: v.screen }
@@ -405,7 +407,8 @@ export function buildComponentsBundle(project, { out } = {}) {
     const digest = sha(html);
     entries.push({ path: `screens/${id}.html`, sha256: digest });
     const a = dims[name] || {};
-    const frame = proto.devices[host?.device === "mobile" ? "mobile" : "desktop"] || proto.devices.desktop;
+    const frame =
+      proto.devices[host?.device === "mobile" ? "mobile" : "desktop"] || proto.devices.desktop;
     const w = a.w || frame.w || 960;
     widest = Math.max(widest, w);
     screens.push({

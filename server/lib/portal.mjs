@@ -5,7 +5,12 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, resolve, relative, dirname } from "node:path";
 import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
-import { PLUGIN_VERSION, DEFAULT_PORTAL, normalizeUrl, tokenFor, readLibrary,
+import {
+  PLUGIN_VERSION,
+  DEFAULT_PORTAL,
+  normalizeUrl,
+  tokenFor,
+  readLibrary,
   headerListeners,
 } from "./setup.mjs";
 import {
@@ -163,7 +168,8 @@ const expect = (r, what, okStatuses = [200, 201]) => {
 const AGENT = { "x-designli-on-behalf": "agent" };
 export const clientUrl = (ctx) => `${ctx.url}/projects/${ctx.projectId}`;
 /** A release value from the portal may be a number or an object carrying one; either way, the number. */
-const releaseNumber = (r) => (r && typeof r === "object" ? (r.number ?? r.id ?? null) : (r ?? null));
+const releaseNumber = (r) =>
+  r && typeof r === "object" ? (r.number ?? r.id ?? null) : (r ?? null);
 const stableStringify = (v) =>
   Array.isArray(v)
     ? "[" + v.map(stableStringify).join(",") + "]"
@@ -189,7 +195,10 @@ export function manifestHashOf(manifest) {
   const flow = { ...(rest.flow || {}) };
   delete flow.sourceDir;
   delete flow.prototype;
-  const steps = (rest.steps || []).map((st) => ({ ...st, states: [...(st.states || [])].sort(byKey("state")) }));
+  const steps = (rest.steps || []).map((st) => ({
+    ...st,
+    states: [...(st.states || [])].sort(byKey("state")),
+  }));
   const screens = [...(rest.screens || [])]
     .map((s) => {
       const devices = {};
@@ -201,7 +210,9 @@ export function manifestHashOf(manifest) {
       return { ...s, devices, includes: [...(s.includes || [])].sort() };
     })
     .sort(byKey("id"));
-  const transitions = [...(rest.transitions || [])].sort((a, b) => `${a.from}|${a.on}|${a.to}`.localeCompare(`${b.from}|${b.on}|${b.to}`));
+  const transitions = [...(rest.transitions || [])].sort((a, b) =>
+    `${a.from}|${a.on}|${a.to}`.localeCompare(`${b.from}|${b.on}|${b.to}`),
+  );
   const canonical = { ...rest, flow, steps, screens, transitions };
   return "sha256:" + createHash("sha256").update(stableStringify(canonical)).digest("hex");
 }
@@ -465,7 +476,11 @@ async function markApplied(ctx, dir, slug, version) {
  * not pulled. `head`/`bundle` reuse ones already computed by the caller (publish's plan loop)
  * instead of refetching or rebuilding.
  */
-export async function pushFlow(ctx, flowRef, { force = false, note, head: presetHead, bundle: presetBundle } = {}) {
+export async function pushFlow(
+  ctx,
+  flowRef,
+  { force = false, note, head: presetHead, bundle: presetBundle } = {},
+) {
   const p = needProject(ctx);
   const dir = resolveFlowDir(ctx.project, flowRef);
   const b = presetBundle ?? buildFlowBundle(ctx.project, dir);
@@ -617,9 +632,13 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
     if (!b.ok) entry.status = "error";
     else if (!h.exists) entry.status = "new";
     else if (h.version !== localVersion && !force) entry.status = "behind";
-    else if (h.contentHash === b.contentHash && flow.portal?.manifestHash === manifestHashOf(b.manifest))
+    else if (
+      h.contentHash === b.contentHash &&
+      flow.portal?.manifestHash === manifestHashOf(b.manifest)
+    )
       entry.status = "unchanged";
-    else if (h.contentHash === b.contentHash) entry.status = "metadata"; // pushed; the portal answers reused
+    else if (h.contentHash === b.contentHash)
+      entry.status = "metadata"; // pushed; the portal answers reused
     else entry.status = "changed";
     const u = h.exists ? unpulled(h, flow) : [];
     if (u.length && !force) {
@@ -629,14 +648,21 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
     priv.set(f.slug, { b, h, prev });
     // screens this push would remove that still carry an open thread
     const newIds = new Set((b.manifest?.screens ?? []).map((s) => s.id));
-    const openOnScreen = (readComments(f.dir).threads || []).filter((t) => t.status === "open" && t.screen?.id);
+    const openOnScreen = (readComments(f.dir).threads || []).filter(
+      (t) => t.status === "open" && t.screen?.id,
+    );
     const removedIds = prev
       ? (prev.screens ?? []).map((s) => s.id).filter((id) => !newIds.has(id))
       : [...new Set(openOnScreen.map((t) => t.screen.id).filter((id) => !newIds.has(id)))];
     for (const id of removedIds) {
       const open = openOnScreen.filter((t) => t.screen.id === id);
       if (open.length)
-        orphaning.push({ flow: f.slug, screen: id, openThreads: open.length, threads: open.map((t) => t.id) });
+        orphaning.push({
+          flow: f.slug,
+          screen: id,
+          openThreads: open.length,
+          threads: open.map((t) => t.id),
+        });
     }
     plan.push(entry);
   }
@@ -738,7 +764,13 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       const releases = await listReleases(ctx).catch(() => null);
       const rel = releases?.releases?.find?.((r) => r.number === previous) ?? { number: previous };
       return {
-        release: { number: rel.number, url: rel.url ?? null, note: rel.note ?? null, flows: rel.flows ?? null, summary: rel.summary ?? null },
+        release: {
+          number: rel.number,
+          url: rel.url ?? null,
+          note: rel.note ?? null,
+          flows: rel.flows ?? null,
+          summary: rel.summary ?? null,
+        },
         includedInExistingRelease: true,
         message: `your pushes are already in release ${releaseNumber(previous)}, recorded by another publish at the same moment; nothing more to record`,
         pushed,
@@ -770,7 +802,10 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
     pushed,
     unchanged: unchangedFlows,
     ...(skipped.length
-      ? { skipped, warnings: skipped.map((x) => `${x.flow} was not published: ${x.errors.join("; ")}`) }
+      ? {
+          skipped,
+          warnings: skipped.map((x) => `${x.flow} was not published: ${x.errors.join("; ")}`),
+        }
       : {}),
     components,
     gaps: plan.reduce((n, e) => n + e.gaps, 0),
@@ -974,7 +1009,8 @@ export function editsApply(project, flowRef) {
     // an edit requested on an older version whose text is now gone is a candidate to outdate,
     // not a manual fix: the text it targeted no longer exists to be found
     r.stale = (e.flowVersion ?? 0) < (flow.portal?.version ?? 0);
-    if (hit.result !== "applied") r.suggest = r.stale && hit.result !== "ambiguous" ? "outdate" : "manual";
+    if (hit.result !== "applied")
+      r.suggest = r.stale && hit.result !== "ambiguous" ? "outdate" : "manual";
     if (hit.result === "applied")
       data.appliedLocally = [
         ...(data.appliedLocally || []),
@@ -1161,7 +1197,9 @@ export async function adoptFromPortal(ctx) {
         }
         if (x.unavailable) {
           // the portal never received this screen (too large to publish); nothing to rebuild
-          notRebuilt.push(`${f.id} ${st.n} ${x.state}: ${x.unavailable.reason}${x.unavailable.bytes ? ` (${(x.unavailable.bytes / 1048576).toFixed(1)} MB)` : ""}`);
+          notRebuilt.push(
+            `${f.id} ${st.n} ${x.state}: ${x.unavailable.reason}${x.unavailable.bytes ? ` (${(x.unavailable.bytes / 1048576).toFixed(1)} MB)` : ""}`,
+          );
           continue;
         }
         const sc = byId.get(x.screen);

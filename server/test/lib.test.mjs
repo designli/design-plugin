@@ -2,7 +2,15 @@
 //   node --test "server/test/*.test.mjs"
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -142,10 +150,7 @@ test("scan → propose → write → gaps on a plain HTML prototype", () => {
   const q = prop.questions.filter((x) => x.flow === "signup");
   assert.ok(q.some((x) => x.field === "steps.01.states" && x.why.includes("Submitting")));
   assert.ok(!q.some((x) => x.field === "title"), "a sure title is shown, not asked");
-  assert.ok(
-    !q.some((x) => /^steps\.\d+\.kind$/.test(x.field)),
-    "a sure kind is shown, not asked",
-  );
+  assert.ok(!q.some((x) => /^steps\.\d+\.kind$/.test(x.field)), "a sure kind is shown, not asked");
   assert.ok(!q.some((x) => x.field === "entryPoints"), "one unlinked step is a sure entry point");
   assert.equal(flow.confidence.steps["01"], "sure");
   assert.equal(flow.confidence.steps["02"], "sure");
@@ -206,7 +211,10 @@ test("a step with two markup signals is a guessed kind; two unlinked steps make 
 test("the title comes from a shared screen-title prefix", () => {
   const dir = mkdtempSync(join(tmpdir(), "proto-"));
   mkdirSync(join(dir, "design", "flows", "checkout"), { recursive: true });
-  writeFileSync(join(dir, "design", "flows", "checkout", "cart.html"), page("Checkout · Cart", "<p>Cart</p>"));
+  writeFileSync(
+    join(dir, "design", "flows", "checkout", "cart.html"),
+    page("Checkout · Cart", "<p>Cart</p>"),
+  );
   writeFileSync(
     join(dir, "design", "flows", "checkout", "pay.html"),
     page("Checkout · Pay", `<form><input type="text"></form>`),
@@ -432,8 +440,12 @@ test("compareVersions orders numerically with prereleases first; updateAdvice sp
 });
 
 test("plugin.json and marketplace.json carry the same version", () => {
-  const plugin = JSON.parse(readFileSync(join(PLUGIN_ROOT, ".claude-plugin", "plugin.json"), "utf8"));
-  const market = JSON.parse(readFileSync(join(PLUGIN_ROOT, ".claude-plugin", "marketplace.json"), "utf8"));
+  const plugin = JSON.parse(
+    readFileSync(join(PLUGIN_ROOT, ".claude-plugin", "plugin.json"), "utf8"),
+  );
+  const market = JSON.parse(
+    readFileSync(join(PLUGIN_ROOT, ".claude-plugin", "marketplace.json"), "utf8"),
+  );
   assert.equal(plugin.version, PLUGIN_VERSION);
   assert.equal(market.plugins[0].version, plugin.version);
 });
@@ -445,21 +457,46 @@ test("component sheets render inside a host screen's head; unused ones fall back
   writeFileSync(join(dir, "design", "components", "Card.html"), `<div class="card">Card</div>\n`);
   let b = buildComponentsBundle(dir);
   assert.equal(b.ok, true, b.errors.join("; "));
-  const sheet = (id) => readFileSync(join(dir, "design", "components", "bundle", "screens", `${id}.html`), "utf8");
+  const sheet = (id) =>
+    readFileSync(join(dir, "design", "components", "bundle", "screens", `${id}.html`), "utf8");
   const nav = sheet("CmpNavbar");
   assert.ok(nav.includes("<title>Navbar</title>"), "titled by the component");
-  assert.ok(nav.includes("<style>body{font-family:sans-serif}</style>"), "the host screen's styles come along");
-  assert.ok(nav.includes('data-imported-component="Navbar"') || nav.includes("<nav>"), "the fragment is the body");
+  assert.ok(
+    nav.includes("<style>body{font-family:sans-serif}</style>"),
+    "the host screen's styles come along",
+  );
+  assert.ok(
+    nav.includes('data-imported-component="Navbar"') || nav.includes("<nav>"),
+    "the fragment is the body",
+  );
   assert.ok(!nav.includes("<h1>"), "nothing of the host's body leaks in");
-  assert.equal(b.manifest.screens.find((s) => s.id === "CmpNavbar").devices.desktop.w, 1440, "sized to the host device");
+  assert.equal(
+    b.manifest.screens.find((s) => s.id === "CmpNavbar").devices.desktop.w,
+    1440,
+    "sized to the host device",
+  );
   assert.equal(b.manifest.devices.desktop.w, 1440);
   assert.ok(!sheet("CmpCard").includes("font-family:sans-serif"), "no host, no borrowed styles");
-  assert.ok(b.warnings.some((w) => w.startsWith("CmpCard:") && w.includes("without the screens' styles")), b.warnings.join("; "));
-  writeFileSync(join(dir, "design", "components", "Styles.html"), `<style>.card{border:1px solid}</style>\n`);
+  assert.ok(
+    b.warnings.some((w) => w.startsWith("CmpCard:") && w.includes("without the screens' styles")),
+    b.warnings.join("; "),
+  );
+  writeFileSync(
+    join(dir, "design", "components", "Styles.html"),
+    `<style>.card{border:1px solid}</style>\n`,
+  );
   b = buildComponentsBundle(dir);
-  assert.ok(sheet("CmpCard").includes(".card{border:1px solid}"), "the Styles include dresses an unused component");
-  assert.ok(b.warnings.some((w) => w.startsWith("CmpCard:") && w.includes("uses the Styles include")));
-  assert.ok(!b.warnings.some((w) => w.startsWith("CmpStyles:")), "the Styles include itself is not reported");
+  assert.ok(
+    sheet("CmpCard").includes(".card{border:1px solid}"),
+    "the Styles include dresses an unused component",
+  );
+  assert.ok(
+    b.warnings.some((w) => w.startsWith("CmpCard:") && w.includes("uses the Styles include")),
+  );
+  assert.ok(
+    !b.warnings.some((w) => w.startsWith("CmpStyles:")),
+    "the Styles include itself is not reported",
+  );
 });
 
 test("an include's external script is hoisted into the host's head", () => {
@@ -480,14 +517,20 @@ test("an include's external script is hoisted into the host's head", () => {
 test("a flow's devices come from its files: mobile variants make it a two-device flow, none keeps it desktop", () => {
   const dir = scratch();
   mkdirSync(join(dir, "design", "flows", "cancel"), { recursive: true });
-  writeFileSync(join(dir, "design", "flows", "cancel", "find.html"), page("Find your pass", "<form><input></form>"));
+  writeFileSync(
+    join(dir, "design", "flows", "cancel", "find.html"),
+    page("Find your pass", "<form><input></form>"),
+  );
   const proposed = proposeFlows(dir).flows;
   const signup = proposed.find((f) => f.slug === "signup");
   const cancel = proposed.find((f) => f.slug === "cancel");
   assert.deepEqual(signup.devices, ["desktop", "mobile"]);
   assert.deepEqual(cancel.devices, ["desktop"]);
   writeFlows(dir, { flows: proposed });
-  assert.ok(buildFlowBundle(dir, "signup").manifest.devices.mobile, "the manifest lists mobile, so the portal enables the toggle");
+  assert.ok(
+    buildFlowBundle(dir, "signup").manifest.devices.mobile,
+    "the manifest lists mobile, so the portal enables the toggle",
+  );
   assert.equal(buildFlowBundle(dir, "cancel").manifest.devices.mobile, undefined);
   // a flow.json written by an older adopt without devices still infers mobile from its states
   const fj = join(dir, "design", "flows", "signup", "flow.json");
@@ -501,7 +544,9 @@ test("the suite's corpus is deterministic and its answer key matches the files",
   const hashOf = (dir) => {
     const h = createHash("sha256");
     const walk = (d) => {
-      for (const e of readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      for (const e of readdirSync(d, { withFileTypes: true }).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      )) {
         const p = join(d, e.name);
         if (e.isDirectory()) walk(p);
         else h.update(e.name).update(readFileSync(p));
@@ -510,14 +555,21 @@ test("the suite's corpus is deterministic and its answer key matches the files",
     walk(dir);
     return h.digest("hex");
   };
-  const a = mkdtempSync(join(tmpdir(), "mq-")), b = mkdtempSync(join(tmpdir(), "mq-"));
+  const a = mkdtempSync(join(tmpdir(), "mq-")),
+    b = mkdtempSync(join(tmpdir(), "mq-"));
   const key = generateAll(a, {});
   generateAll(b, {});
   assert.equal(hashOf(join(a, "design")), hashOf(join(b, "design")), "two generations differ");
   assert.equal(key.flows.length, 10);
   for (const f of key.flows) {
-    const files = readdirSync(join(a, "design", "flows", f.slug)).filter((x) => x.endsWith(".html") && x !== "Main.html");
-    assert.equal(files.length, f.files, `${f.slug}: ${files.length} files on disk, ${f.files} in the key`);
+    const files = readdirSync(join(a, "design", "flows", f.slug)).filter(
+      (x) => x.endsWith(".html") && x !== "Main.html",
+    );
+    assert.equal(
+      files.length,
+      f.files,
+      `${f.slug}: ${files.length} files on disk, ${f.files} in the key`,
+    );
     const states = f.steps.reduce((n, s) => n + s.states.length, 0) * f.devices.length;
     assert.equal(f.files, states, `${f.slug}: files vs states × devices`);
   }
@@ -530,17 +582,27 @@ test("the suite's corpus is deterministic and its answer key matches the files",
   // check-in-scan (1) and help-centre (1). 20 of those 21 link out to help-centre (every flow but
   // help-centre itself), which is likely where the contract's "twenty" comes from; this generator
   // writes all 21 named flows, so that is what the key and this test check.
-  const ax = mkdtempSync(join(tmpdir(), "mq-xl-")), bx = mkdtempSync(join(tmpdir(), "mq-xl-"));
+  const ax = mkdtempSync(join(tmpdir(), "mq-xl-")),
+    bx = mkdtempSync(join(tmpdir(), "mq-xl-"));
   const keyXl = generateAll(ax, { profile: "xl" });
   generateAll(bx, { profile: "xl" });
   assert.equal(hashOf(join(ax, "design")), hashOf(join(bx, "design")), "two xl generations differ");
   assert.equal(keyXl.profile, "xl");
   assert.equal(keyXl.flows.length, 21);
   for (const f of keyXl.flows) {
-    const files = readdirSync(join(ax, "design", "flows", f.slug)).filter((x) => x.endsWith(".html") && x !== "Main.html");
-    assert.equal(files.length, f.files, `${f.slug}: ${files.length} files on disk, ${f.files} in the key`);
+    const files = readdirSync(join(ax, "design", "flows", f.slug)).filter(
+      (x) => x.endsWith(".html") && x !== "Main.html",
+    );
+    assert.equal(
+      files.length,
+      f.files,
+      `${f.slug}: ${files.length} files on disk, ${f.files} in the key`,
+    );
   }
-  assert.ok(keyXl.dedupe.distinctScreens < keyXl.dedupe.totalScreens, "sharedLoading/identicalDefaultSuccess should plant real duplicates");
+  assert.ok(
+    keyXl.dedupe.distinctScreens < keyXl.dedupe.totalScreens,
+    "sharedLoading/identicalDefaultSuccess should plant real duplicates",
+  );
   const nextOf = (slug) => keyXl.flows.find((f) => f.slug === slug).next;
   assert.ok(nextOf("find-an-event").length > 0, "find-an-event should carry next links");
   assert.ok(nextOf("payouts").length > 0, "payouts should carry next links");
@@ -549,8 +611,14 @@ test("the suite's corpus is deterministic and its answer key matches the files",
 test("an include that imports another include is flattened all the way down", () => {
   const dir = scratch();
   writeFileSync(join(dir, "design", "components", "Logo.html"), `<span class="logo">Acme</span>\n`);
-  writeFileSync(join(dir, "design", "components", "Navbar.html"), `<nav><dc-import name="Logo"></dc-import><a href="#">Home</a></nav>\n`);
-  const r = flatten(join(dir, "design", "flows", "signup", "email.html"), { componentDirs: [join(dir, "design", "components")], project: dir });
+  writeFileSync(
+    join(dir, "design", "components", "Navbar.html"),
+    `<nav><dc-import name="Logo"></dc-import><a href="#">Home</a></nav>\n`,
+  );
+  const r = flatten(join(dir, "design", "flows", "signup", "email.html"), {
+    componentDirs: [join(dir, "design", "components")],
+    project: dir,
+  });
   assert.ok(!/<dc-import/.test(r.html), "no import tag left");
   assert.ok(r.html.includes('<span class="logo">Acme</span>'), "the nested include is inlined");
   assert.deepEqual(r.includes.sort(), ["Logo", "Navbar"]);
@@ -559,18 +627,23 @@ test("an include that imports another include is flattened all the way down", ()
 test("a link into another flow's folder becomes a journey connector (next)", () => {
   const dir = scratch();
   mkdirSync(join(dir, "design", "flows", "billing"), { recursive: true });
-  writeFileSync(join(dir, "design", "flows", "billing", "plan.html"), page("Pick a plan", `<p><a href="../signup/email.html">Create an account first</a></p>`));
+  writeFileSync(
+    join(dir, "design", "flows", "billing", "plan.html"),
+    page("Pick a plan", `<p><a href="../signup/email.html">Create an account first</a></p>`),
+  );
   const flows = proposeFlows(dir).flows;
   const billing = flows.find((f) => f.slug === "billing");
   assert.deepEqual(billing.next, [{ flow: "signup", on: "Create an account first" }]);
   assert.deepEqual(flows.find((f) => f.slug === "signup").next, []);
 });
 
-
 test("a copy edit inside an include's include (Navbar → Logo) is applied once, in the nested file", () => {
   const dir = scratch();
   writeFileSync(join(dir, "design", "components", "Logo.html"), `<span class="logo">Acme</span>\n`);
-  writeFileSync(join(dir, "design", "components", "Navbar.html"), `<nav><dc-import name="Logo"></dc-import><a href="#">Home</a></nav>\n`);
+  writeFileSync(
+    join(dir, "design", "components", "Navbar.html"),
+    `<nav><dc-import name="Logo"></dc-import><a href="#">Home</a></nav>\n`,
+  );
   const flow = proposeFlows(dir).flows[0];
   writeFlows(dir, { flows: [flow] });
   const fdir = join(dir, "design", "flows", "signup");
@@ -578,13 +651,34 @@ test("a copy edit inside an include's include (Navbar → Logo) is applied once,
     join(fdir, "text-edits.json"),
     JSON.stringify({
       schema: 1,
-      edits: [{ id: "n1", flowVersion: 1, screen: { id: "01-Email-Default", device: "desktop" }, elementPath: "b", componentRef: null, originalText: "Acme", originalHash: "x", newText: "ACME", author: { name: "Client", role: "client" }, status: "pending", createdAt: "2026-09-16T10:00:00Z", updatedAt: "2026-09-16T10:00:00Z" }],
+      edits: [
+        {
+          id: "n1",
+          flowVersion: 1,
+          screen: { id: "01-Email-Default", device: "desktop" },
+          elementPath: "b",
+          componentRef: null,
+          originalText: "Acme",
+          originalHash: "x",
+          newText: "ACME",
+          author: { name: "Client", role: "client" },
+          status: "pending",
+          createdAt: "2026-09-16T10:00:00Z",
+          updatedAt: "2026-09-16T10:00:00Z",
+        },
+      ],
     }),
   );
   const r = editsApply(dir, "signup");
   assert.equal(r.applied, 1, JSON.stringify(r.results));
-  assert.ok(readFileSync(join(dir, "design", "components", "Logo.html"), "utf8").includes("ACME"), "edited in the nested include");
-  assert.ok(!readFileSync(join(dir, "design", "components", "Navbar.html"), "utf8").includes("ACME"), "the parent include is untouched");
+  assert.ok(
+    readFileSync(join(dir, "design", "components", "Logo.html"), "utf8").includes("ACME"),
+    "edited in the nested include",
+  );
+  assert.ok(
+    !readFileSync(join(dir, "design", "components", "Navbar.html"), "utf8").includes("ACME"),
+    "the parent include is untouched",
+  );
   assert.ok(r.results[0].files.some((f) => f.include === "Logo" && f.result === "applied"));
 });
 
@@ -596,7 +690,10 @@ test("a screen over the size cap is declared truthfully and becomes an unavailab
   // flow.json like any other file, truthfully, not silently dropped (no mobile sibling either).
   // Its own links are unknowable (an oversized file is never parsed), so which step number the
   // designer's other step lands on is not fixed here; find the Email step by id, not by position.
-  writeFileSync(join(fdir, "email.html"), page("Enter your email", `<svg>${"<path d='M0 0h1v1z'/>".repeat(260000)}</svg>`));
+  writeFileSync(
+    join(fdir, "email.html"),
+    page("Enter your email", `<svg>${"<path d='M0 0h1v1z'/>".repeat(260000)}</svg>`),
+  );
   rmSync(join(fdir, "email-m.html"));
   const flow = proposeFlows(dir).flows[0];
   writeFlows(dir, { flows: [flow] });

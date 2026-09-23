@@ -149,7 +149,9 @@ if (target === "portal") {
       });
       if (start.ok) {
         say("");
-        say("Sign in by approving this request in your browser (you must be signed in to the portal):");
+        say(
+          "Sign in by approving this request in your browser (you must be signed in to the portal):",
+        );
         say(`  ${start.verificationUrlComplete}`);
         say(`  the page must show the code ${start.userCode}`);
         process.stdout.write("  waiting for the approval");

@@ -177,10 +177,22 @@ const TOOLS = [
       type: "object",
       properties: {
         url: str("Portal URL; default from the environment or design/library.json"),
-        projectId: str("Scope the token to this project id (default: the one in design/library.json, else none = every project the approver can see)"),
-        permissions: strList("Permissions to ask for (default: view, comment, suggest_copy, push, resolve, manage_flows)"),
-        scope: { type: "string", enum: ["project", "full"], description: "\"project\" (default) asks for the project and permissions above; \"full\" asks for everything the approver can do (every project, every permission), the only kind of token that can also open a browser session. The approval page shows the scope and lets the approver narrow it." },
-        expiresInDays: { type: ["number", "null"], description: "30, 90 or 365; null = never (default 90)" },
+        projectId: str(
+          "Scope the token to this project id (default: the one in design/library.json, else none = every project the approver can see)",
+        ),
+        permissions: strList(
+          "Permissions to ask for (default: view, comment, suggest_copy, push, resolve, manage_flows)",
+        ),
+        scope: {
+          type: "string",
+          enum: ["project", "full"],
+          description:
+            '"project" (default) asks for the project and permissions above; "full" asks for everything the approver can do (every project, every permission), the only kind of token that can also open a browser session. The approval page shows the scope and lets the approver narrow it.',
+        },
+        expiresInDays: {
+          type: ["number", "null"],
+          description: "30, 90 or 365; null = never (default 90)",
+        },
       },
     },
     run: wrap(async (a) => {
@@ -203,7 +215,12 @@ const TOOLS = [
             : `could not start the sign-in: ${r.error}`,
         );
       const handle = `signin_${++signinSeq}`;
-      SIGNINS.set(handle, { url, deviceCode: r.deviceCode, interval: r.interval, until: Date.now() + r.expiresIn * 1000 });
+      SIGNINS.set(handle, {
+        url,
+        deviceCode: r.deviceCode,
+        interval: r.interval,
+        until: Date.now() + r.expiresIn * 1000,
+      });
       return {
         handle,
         url,
@@ -211,7 +228,11 @@ const TOOLS = [
         userCode: r.userCode,
         expiresIn: r.expiresIn,
         interval: r.interval,
-        scope: { projectId, permissions: a.permissions?.length ? a.permissions : DEVICE_PERMISSIONS, expiresInDays: a.expiresInDays === undefined ? 90 : a.expiresInDays },
+        scope: {
+          projectId,
+          permissions: a.permissions?.length ? a.permissions : DEVICE_PERMISSIONS,
+          expiresInDays: a.expiresInDays === undefined ? 90 : a.expiresInDays,
+        },
         tell: `Open ${r.verificationUrlComplete} (signed in to the portal), check the code reads ${r.userCode}, and approve. Then I finish on my own.`,
       };
     }),
@@ -224,7 +245,10 @@ const TOOLS = [
       type: "object",
       properties: {
         handle: str("The handle returned by signin_start"),
-        waitSeconds: { type: "number", description: "How long to wait this call (default 30, max 50)" },
+        waitSeconds: {
+          type: "number",
+          description: "How long to wait this call (default 30, max 50)",
+        },
       },
       required: ["handle"],
     },
@@ -238,7 +262,11 @@ const TOOLS = [
       const waitSeconds = Math.max(1, Math.min(50, Number(a.waitSeconds) || 30));
       const r = await deviceWait(s.url, s.deviceCode, { interval: s.interval, waitSeconds });
       if (r.status === "pending")
-        return { status: "pending", secondsLeft: Math.round((s.until - Date.now()) / 1000), next: "call signin_poll again" };
+        return {
+          status: "pending",
+          secondsLeft: Math.round((s.until - Date.now()) / 1000),
+          next: "call signin_poll again",
+        };
       SIGNINS.delete(a.handle);
       if (r.status === "approved")
         return {
@@ -249,10 +277,21 @@ const TOOLS = [
           credentialsFile: r.credentialsFile,
           user: r.me.user,
           scope: r.me.scope,
-          projects: r.me.projects.map((p) => ({ id: p.id, name: p.name, preset: p.preset, permissions: p.permissions })),
+          projects: r.me.projects.map((p) => ({
+            id: p.id,
+            name: p.name,
+            preset: p.preset,
+            permissions: p.permissions,
+          })),
         };
       if (r.status === "error") throw new ToolError("PORTAL", r.error);
-      return { status: r.status, next: r.status === "denied" ? "the designer refused; ask before starting again" : "call signin_start again" };
+      return {
+        status: r.status,
+        next:
+          r.status === "denied"
+            ? "the designer refused; ask before starting again"
+            : "call signin_start again",
+      };
     }),
   },
   {

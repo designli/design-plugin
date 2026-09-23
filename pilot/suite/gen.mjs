@@ -48,7 +48,11 @@ export const FLOWS = [
     steps: [
       { id: "Search", kind: "form" },
       { id: "Results", kind: "data" },
-      { id: "Event", kind: "info", deepLink: { flow: "buy-tickets", file: "01-tickets-default.html", label: "Buy tickets" } },
+      {
+        id: "Event",
+        kind: "info",
+        deepLink: { flow: "buy-tickets", file: "01-tickets-default.html", label: "Buy tickets" },
+      },
       { id: "Dates", kind: "choice" },
     ],
   },
@@ -125,7 +129,15 @@ export const FLOWS = [
       { id: "Overview", kind: "data" },
       { id: "Bank", kind: "form" },
       { id: "Schedule", kind: "choice" },
-      { id: "History", kind: "data", deepLink: { flow: "create-an-event", file: "01-basics-default.html", label: "Create another event" } },
+      {
+        id: "History",
+        kind: "data",
+        deepLink: {
+          flow: "create-an-event",
+          file: "01-basics-default.html",
+          label: "Create another event",
+        },
+      },
     ],
   },
   {
@@ -161,9 +173,17 @@ export const REQUIRED = {
 const nn = (i) => String(i + 1).padStart(2, "0");
 const lc = (s) => s.toLowerCase().replace(/[^a-z0-9]+/gi, "-");
 const stepId = (id) => id.replace(/[^A-Za-z0-9]/g, "");
-const statesOf = (st) => [...REQUIRED[st.kind].filter((s) => !(st.missing || []).includes(s)), ...(st.extra || [])];
+const statesOf = (st) => [
+  ...REQUIRED[st.kind].filter((s) => !(st.missing || []).includes(s)),
+  ...(st.extra || []),
+];
 const fileOf = (n, st, state, device, odd) => {
-  const base = odd && st.weird ? `${n}-${st.id}-${state}` : odd ? `${n}-${st.id}-${state.toLowerCase()}` : `${n}-${lc(st.id)}-${lc(state)}`;
+  const base =
+    odd && st.weird
+      ? `${n}-${st.id}-${state}`
+      : odd
+        ? `${n}-${st.id}-${state.toLowerCase()}`
+        : `${n}-${lc(st.id)}-${lc(state)}`;
   return `${base}${device === "mobile" ? "-m" : ""}.html`;
 };
 
@@ -266,7 +286,12 @@ ${st.big && state === "Default" ? bigSvg() : ""}${st.sizeMB && state === "Defaul
     case "choice":
       content = `<fieldset>
   <legend>Pick one</legend>
-  ${EVENTS.slice(0, 3).map((e, k) => `<label class="card"><input type="radio" name="opt" ${k === 0 && state === "Selected" ? "checked" : ""}> ${e[0]} <small>${e[1]} · ${e[2]}</small></label>`).join("\n  ")}
+  ${EVENTS.slice(0, 3)
+    .map(
+      (e, k) =>
+        `<label class="card"><input type="radio" name="opt" ${k === 0 && state === "Selected" ? "checked" : ""}> ${e[0]} <small>${e[1]} · ${e[2]}</small></label>`,
+    )
+    .join("\n  ")}
 </fieldset>
 ${state === "Loading" ? '<div class="skeleton"></div><div class="skeleton"></div>' : ""}
 ${state === "Error" ? '<p class="alert" role="alert">The options did not load. Refresh to try again.</p>' : ""}
@@ -307,7 +332,9 @@ ${state === "Error" ? '<p class="alert" role="alert">Payment failed. Nothing was
     i === flow.steps.length - 1 &&
     (state === "Default" || (st.identicalDefaultSuccess && state === "Success"));
   const crossLinks = [
-    ...(st.links || []).map((l) => `<a class="btn secondary" href="../${l.flow}/${l.file}">${l.label}</a>`),
+    ...(st.links || []).map(
+      (l) => `<a class="btn secondary" href="../${l.flow}/${l.file}">${l.label}</a>`,
+    ),
     ...(flow.xl && isLastDefault && flow.slug !== "help-centre"
       ? ['<a class="btn secondary" href="../help-centre/01-home-default.html">Help centre</a>']
       : []),
@@ -353,7 +380,9 @@ ${html}
 </html>
 `;
 }
-const MAIN = (flow) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${flow.title} map</title><dc-import name="Styles"></dc-import></head>
+const MAIN = (
+  flow,
+) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${flow.title} map</title><dc-import name="Styles"></dc-import></head>
 <body><main><h1>${flow.title}: the map</h1><ol>${flow.steps.map((s, i) => `<li>${nn(i)} ${s.id}</li>`).join("")}</ol><p>Comment with the screen name first, e.g. <code>02-Seats-Default: …</code></p></main></body></html>
 `;
 
@@ -384,11 +413,30 @@ export function generate(out, { stress = false } = {}) {
   for (const flow of flows) {
     const fdir = join(design, "flows", flow.slug);
     mkdirSync(fdir, { recursive: true });
-    const k = { slug: flow.slug, title: flow.title, devices: flow.devices, main: !!flow.main, steps: [], entry: null, transitions: [], crossFlow: [], gaps: [], files: 0 };
+    const k = {
+      slug: flow.slug,
+      title: flow.title,
+      devices: flow.devices,
+      main: !!flow.main,
+      steps: [],
+      entry: null,
+      transitions: [],
+      crossFlow: [],
+      gaps: [],
+      files: 0,
+    };
     flow.steps.forEach((st, i) => {
       const n = nn(i);
       const states = statesOf(st);
-      const ks = { n, id: st.weird ? st.id : stepId(st.id), kind: st.kind, states, missing: st.missing || [], custom: (st.extra || []).filter((s) => s.startsWith("Custom-")), weird: !!st.weird };
+      const ks = {
+        n,
+        id: st.weird ? st.id : stepId(st.id),
+        kind: st.kind,
+        states,
+        missing: st.missing || [],
+        custom: (st.extra || []).filter((s) => s.startsWith("Custom-")),
+        weird: !!st.weird,
+      };
       k.steps.push(ks);
       for (const state of states)
         for (const device of flow.devices) {
@@ -400,13 +448,28 @@ export function generate(out, { stress = false } = {}) {
       if (next) {
         const from = `${n}-${stepId(st.id)}-Default`;
         const to = `${nn(i + 1)}-${stepId(next.id)}-Default`;
-        const label = st.kind === "form" ? (st.id === "Payment" ? "Pay COP 180.000" : "Continue") : st.kind === "confirmation" ? "Confirm and pay" : st.kind === "result" ? "Back to events" : "Continue";
+        const label =
+          st.kind === "form"
+            ? st.id === "Payment"
+              ? "Pay COP 180.000"
+              : "Continue"
+            : st.kind === "confirmation"
+              ? "Confirm and pay"
+              : st.kind === "result"
+                ? "Back to events"
+                : "Continue";
         k.transitions.push({ from, on: label, to });
       }
-      if (st.deepLink) k.crossFlow.push({ from: `${n}-${stepId(st.id)}`, to: st.deepLink.flow, label: st.deepLink.label });
+      if (st.deepLink)
+        k.crossFlow.push({
+          from: `${n}-${stepId(st.id)}`,
+          to: st.deepLink.flow,
+          label: st.deepLink.label,
+        });
       for (const m of st.missing || []) k.gaps.push({ kind: "state-missing", where: `${n} ${m}` });
       if (st.brokenLink) k.gaps.push({ kind: "broken-link", where: `${n} ${st.brokenLink}` });
-      if (st.brokenInclude) k.gaps.push({ kind: "broken-include", where: `${n} ${st.brokenInclude}` });
+      if (st.brokenInclude)
+        k.gaps.push({ kind: "broken-include", where: `${n} ${st.brokenInclude}` });
     });
     k.entry = `01-${stepId(flow.steps[0].id)}`;
     if (flow.main) writeFileSync(join(fdir, "Main.html"), MAIN(flow));
@@ -421,19 +484,42 @@ export function generate(out, { stress = false } = {}) {
   // copy-edit targets the client round uses: an include text (Header), a screen text that appears
   // in every state file of a step, and a text only on the mobile-only flow
   key.edits = {
-    include: { text: "Help centre", component: "Header", screensUsing: key.flows.reduce((n, f) => n + f.files, 0) },
-    screen: { flow: "sign-up", step: "01", text: "Email address", filesTouched: 4 * 2, note: "every state of the step, both devices" },
-    mobileOnly: { flow: "transfer-a-ticket", text: "Confirm and pay", filesTouched: 2, note: "Default and Error states carry the button, mobile only; the applied text is HTML-escaped" },
+    include: {
+      text: "Help centre",
+      component: "Header",
+      screensUsing: key.flows.reduce((n, f) => n + f.files, 0),
+    },
+    screen: {
+      flow: "sign-up",
+      step: "01",
+      text: "Email address",
+      filesTouched: 4 * 2,
+      note: "every state of the step, both devices",
+    },
+    mobileOnly: {
+      flow: "transfer-a-ticket",
+      text: "Confirm and pay",
+      filesTouched: 2,
+      note: "Default and Error states carry the button, mobile only; the applied text is HTML-escaped",
+    },
   };
   if (stress)
     key.stress = {
-      files: { slug: "stress-files", files: 450, expect: "refused: more than 400 files", code: "VALIDATION" },
+      files: {
+        slug: "stress-files",
+        files: 450,
+        expect: "refused: more than 400 files",
+        code: "VALIDATION",
+      },
       bytes: { slug: "stress-bytes", expect: "refused: over 20 MB", code: "BUNDLE_TOO_LARGE" },
     };
   writeFileSync(join(dir, "BRIEF.md"), brief(flows));
   writeFileSync(join(dir, "answer-key.json"), JSON.stringify(key, null, 2) + "\n");
   if (!existsSync(join(dir, ".gitignore")))
-    writeFileSync(join(dir, ".gitignore"), "design/**/bundle/\ndesign/**/.seed/\ndesign/**/.review/\n.mcp.local.json\n.DS_Store\n");
+    writeFileSync(
+      join(dir, ".gitignore"),
+      "design/**/bundle/\ndesign/**/.seed/\ndesign/**/.review/\n.mcp.local.json\n.DS_Store\n",
+    );
   return key;
 }
 // ---- the xl profile: twenty [xl-contract.md counts 21, see note below] flows, a bigger design
@@ -458,7 +544,8 @@ const COMPONENTS_XL = {
 };
 // team's goal, built to land at exactly 500 characters (longGoal): deterministic, no hand-counting.
 const TEAM_GOAL = (() => {
-  const base = "An organizer invites teammates, assigns roles and controls who can publish events, issue refunds, edit payouts and read reports across every event the organizer runs. ";
+  const base =
+    "An organizer invites teammates, assigns roles and controls who can publish events, issue refunds, edit payouts and read reports across every event the organizer runs. ";
   const filler = "Roles keep the account safe without a shared password. ";
   let s = base;
   while (s.length < 500) s += filler;
@@ -522,7 +609,11 @@ export const FLOWS_XL = [
     showsEventCard: true,
     steps: [
       { id: "Overview", kind: "info" },
-      { id: "Venue", kind: "info", links: [{ flow: "seat-map", file: "01-map-default.html", label: "Pick seats" }] },
+      {
+        id: "Venue",
+        kind: "info",
+        links: [{ flow: "seat-map", file: "01-map-default.html", label: "Pick seats" }],
+      },
     ],
   },
   {
@@ -554,7 +645,11 @@ export const FLOWS_XL = [
         ],
       },
       { id: "Review", kind: "confirmation" },
-      { id: "Done", kind: "result", links: [{ flow: "my-tickets", file: "01-list-default.html", label: "See my tickets" }] },
+      {
+        id: "Done",
+        kind: "result",
+        links: [{ flow: "my-tickets", file: "01-list-default.html", label: "See my tickets" }],
+      },
     ],
   },
   {
@@ -567,7 +662,13 @@ export const FLOWS_XL = [
     steps: [
       { id: "Map", kind: "choice" },
       { id: "Row", kind: "choice" }, // removed in release 2 (rounds.release2.removedStep)
-      { id: "Seat", kind: "choice", links: [{ flow: "buy-tickets", file: "01-tickets-default.html", label: "Continue to payment" }] },
+      {
+        id: "Seat",
+        kind: "choice",
+        links: [
+          { flow: "buy-tickets", file: "01-tickets-default.html", label: "Continue to payment" },
+        ],
+      },
     ],
   },
   {
@@ -600,7 +701,11 @@ export const FLOWS_XL = [
     steps: [
       { id: "Recipient", kind: "form" },
       { id: "Confirm", kind: "confirmation" },
-      { id: "Sent", kind: "result", links: [{ flow: "my-tickets", file: "01-list-default.html", label: "Back to my tickets" }] }, // the loop
+      {
+        id: "Sent",
+        kind: "result",
+        links: [{ flow: "my-tickets", file: "01-list-default.html", label: "Back to my tickets" }],
+      }, // the loop
     ],
   },
   {
@@ -697,7 +802,11 @@ export const FLOWS_XL = [
       { id: "List", kind: "data", rows: 60 },
       { id: "New", kind: "form" },
       { id: "Pricing", kind: "form" },
-      { id: "Review", kind: "confirmation", links: [{ flow: "promo-codes", file: "01-list-default.html", label: "Add a promo code" }] },
+      {
+        id: "Review",
+        kind: "confirmation",
+        links: [{ flow: "promo-codes", file: "01-list-default.html", label: "Add a promo code" }],
+      },
     ],
   },
   {
@@ -724,7 +833,17 @@ export const FLOWS_XL = [
       { id: "Overview", kind: "data" },
       { id: "Bank", kind: "form" },
       { id: "Schedule", kind: "choice" },
-      { id: "History", kind: "data", links: [{ flow: "create-an-event", file: "01-basics-default.html", label: "Create another event" }] },
+      {
+        id: "History",
+        kind: "data",
+        links: [
+          {
+            flow: "create-an-event",
+            file: "01-basics-default.html",
+            label: "Create another event",
+          },
+        ],
+      },
     ],
   },
   {
@@ -780,8 +899,10 @@ export const FLOWS_XL = [
 ];
 /** Which devices get a file for one (step, state): mobileOnlyStates and mobileFirst narrow it down. */
 function devicesForXl(flow, st, state) {
-  if ((st.mobileOnlyStates || []).includes(state)) return flow.devices.filter((d) => d === "mobile");
-  if (flow.mobileFirst) return state === "Default" ? flow.devices : flow.devices.filter((d) => d === "mobile");
+  if ((st.mobileOnlyStates || []).includes(state))
+    return flow.devices.filter((d) => d === "mobile");
+  if (flow.mobileFirst)
+    return state === "Default" ? flow.devices : flow.devices.filter((d) => d === "mobile");
   return flow.devices;
 }
 const pushDedup = (list, flow, on) => {
@@ -796,11 +917,15 @@ function buildRoundsXl(design, key) {
   const stepFiles = (slug, n) => {
     const dir = join(design, "flows", slug);
     return existsSync(dir)
-      ? readdirSync(dir).filter((f) => f.startsWith(`${n}-`) && f.endsWith(".html") && f !== "Main.html")
+      ? readdirSync(dir).filter(
+          (f) => f.startsWith(`${n}-`) && f.endsWith(".html") && f !== "Main.html",
+        )
       : [];
   };
   const containing = (slug, n, text) =>
-    stepFiles(slug, n).filter((f) => readFileSync(join(design, "flows", slug, f), "utf8").includes(text)).length;
+    stepFiles(slug, n).filter((f) =>
+      readFileSync(join(design, "flows", slug, f), "utf8").includes(text),
+    ).length;
   const eventCardUsedBy = key.components.usedBy.EventCard || [];
   return {
     A: {
@@ -812,27 +937,97 @@ function buildRoundsXl(design, key) {
       agentThreads: 2,
       reopened: 1,
       editTargets: [
-        { name: "screen", flow: "sign-up", screen: "01-Email-Default", text: "Email address", newText: "Your email", filesTouched: stepFiles("sign-up", "01").length },
-        { name: "include", flow: "sign-up", screen: "01-Email-Default", text: "Help centre", newText: "Help center", component: "Header", filesTouched: 1 },
-        { name: "nested", flow: "sign-up", screen: "01-Email-Default", text: "Marquee", newText: "MARQUEE", component: "Logo", filesTouched: 1 },
-        { name: "shared", flow: "find-an-event", screen: "03-Event-Default", text: "Doors open one hour before.", newText: "Doors open 60 minutes before.", component: "EventCard", filesTouched: 1, screensUsing: `>=${eventCardUsedBy.length}` },
-        { name: "supersede", flow: "sign-up", screen: "01-Email-Default", text: "Email address", newText: "Email", supersededBy: "screen" },
-        { name: "twoIncludes", flow: "buy-tickets", screen: "01-Tickets-Default", text: "Help centre", newText: "Support", note: "appears in Header and in the help link; lands in the include, reported once" },
-        { name: "table", flow: "ticket-types", screen: "01-List-Default", text: "General admission", newText: "General entry", filesTouched: containing("ticket-types", "01", "General admission") },
-        { name: "mobileOnly", flow: "transfer-a-ticket", screen: "02-Confirm-Default", text: "Confirm and pay", newText: "Confirm & pay", filesTouched: containing("transfer-a-ticket", "02", "Confirm and pay") },
+        {
+          name: "screen",
+          flow: "sign-up",
+          screen: "01-Email-Default",
+          text: "Email address",
+          newText: "Your email",
+          filesTouched: stepFiles("sign-up", "01").length,
+        },
+        {
+          name: "include",
+          flow: "sign-up",
+          screen: "01-Email-Default",
+          text: "Help centre",
+          newText: "Help center",
+          component: "Header",
+          filesTouched: 1,
+        },
+        {
+          name: "nested",
+          flow: "sign-up",
+          screen: "01-Email-Default",
+          text: "Marquee",
+          newText: "MARQUEE",
+          component: "Logo",
+          filesTouched: 1,
+        },
+        {
+          name: "shared",
+          flow: "find-an-event",
+          screen: "03-Event-Default",
+          text: "Doors open one hour before.",
+          newText: "Doors open 60 minutes before.",
+          component: "EventCard",
+          filesTouched: 1,
+          screensUsing: `>=${eventCardUsedBy.length}`,
+        },
+        {
+          name: "supersede",
+          flow: "sign-up",
+          screen: "01-Email-Default",
+          text: "Email address",
+          newText: "Email",
+          supersededBy: "screen",
+        },
+        {
+          name: "twoIncludes",
+          flow: "buy-tickets",
+          screen: "01-Tickets-Default",
+          text: "Help centre",
+          newText: "Support",
+          note: "appears in Header and in the help link; lands in the include, reported once",
+        },
+        {
+          name: "table",
+          flow: "ticket-types",
+          screen: "01-List-Default",
+          text: "General admission",
+          newText: "General entry",
+          filesTouched: containing("ticket-types", "01", "General admission"),
+        },
+        {
+          name: "mobileOnly",
+          flow: "transfer-a-ticket",
+          screen: "02-Confirm-Default",
+          text: "Confirm and pay",
+          newText: "Confirm & pay",
+          filesTouched: containing("transfer-a-ticket", "02", "Confirm and pay"),
+        },
       ],
     },
     release2: {
       removedStep: { flow: "seat-map", step: "02", id: "Row" },
       addedStep: { flow: "wallet", id: "Cards", kind: "form", copiesOf: "02" },
       // "from" as the plugin derived it from the file name on adopt (Custom-3dsecure), "to" as the designer writes it
-      renamedState: { flow: "buy-tickets", step: "03", from: "Custom-3dsecure", to: "Custom-ThreeDS" },
+      renamedState: {
+        flow: "buy-tickets",
+        step: "03",
+        from: "Custom-3dsecure",
+        to: "Custom-ThreeDS",
+      },
       includeOnly: "Footer",
       deletedFlow: "promo-codes",
       renamedFlow: { from: "team", to: "organizer-team" },
     },
     B: {
-      staleEdit: { flow: "sign-up", screen: "01-Email-Default", text: "Email address", note: "text changed in release 2, must become needsManual" },
+      staleEdit: {
+        flow: "sign-up",
+        screen: "01-Email-Default",
+        text: "Email address",
+        note: "text changed in release 2, must become needsManual",
+      },
       orphanComment: { flow: "seat-map", screen: "02-Row-Default", version: 1 },
       waiverOnPresent: { flow: "request-a-refund", step: "02", state: "Validation" },
     },
@@ -846,7 +1041,8 @@ export function generateXl(out) {
   const design = join(dir, "design");
   rmSync(join(design, "flows"), { recursive: true, force: true });
   mkdirSync(join(design, "components"), { recursive: true });
-  for (const [f, c] of Object.entries(COMPONENTS_XL)) writeFileSync(join(design, "components", f), c);
+  for (const [f, c] of Object.entries(COMPONENTS_XL))
+    writeFileSync(join(design, "components", f), c);
   writeFileSync(
     join(design, "prototype.json"),
     JSON.stringify(
@@ -862,7 +1058,16 @@ export function generateXl(out) {
       2,
     ) + "\n",
   );
-  const key = { profile: "xl", product: PRODUCT, flows: [], components: {}, edits: {}, dedupe: null, rounds: null, stress: null };
+  const key = {
+    profile: "xl",
+    product: PRODUCT,
+    flows: [],
+    components: {},
+    edits: {},
+    dedupe: null,
+    rounds: null,
+    stress: null,
+  };
   const hashes = new Map(); // sha256(file) → occurrences, for the dedupe count
   let totalScreens = 0;
   for (const flow of FLOWS_XL) {
@@ -885,7 +1090,8 @@ export function generateXl(out) {
       identical: [],
     };
     // step id and state names as the plugin will derive them from the desktop file name
-    const derive = (n, st, state) => guessStem(fileOf(n, st, state, "desktop", flow.oddNames).replace(/\.html$/, ""));
+    const derive = (n, st, state) =>
+      guessStem(fileOf(n, st, state, "desktop", flow.oddNames).replace(/\.html$/, ""));
     const idOf = (i) => derive(nn(i), flow.steps[i], "Default").stepId;
     flow.steps.forEach((st, i) => {
       const n = nn(i);
@@ -916,17 +1122,36 @@ export function generateXl(out) {
           totalScreens++;
           hashes.set(createHash("sha256").update(html).digest("hex"), true);
         }
-        if (flow.sharedLoading && state === "Loading") k.identical.push({ kind: "sharedLoading", step: n, state });
+        if (flow.sharedLoading && state === "Loading")
+          k.identical.push({ kind: "sharedLoading", step: n, state });
       }
-      if (st.identicalDefaultSuccess) k.identical.push({ kind: "identicalDefaultSuccess", step: n, states: ["Default", "Success"] });
+      if (st.identicalDefaultSuccess)
+        k.identical.push({
+          kind: "identicalDefaultSuccess",
+          step: n,
+          states: ["Default", "Success"],
+        });
       if (st.sizeMB) k.sizes.push({ step: n, mb: st.sizeMB });
-      if (tooLarge) k.gaps.push({ kind: "too-large", where: `design/flows/${flow.slug}/${fileOf(n, st, "Default", "desktop", flow.oddNames)}` });
+      if (tooLarge)
+        k.gaps.push({
+          kind: "too-large",
+          where: `design/flows/${flow.slug}/${fileOf(n, st, "Default", "desktop", flow.oddNames)}`,
+        });
       const next = flow.steps[i + 1];
       // a transition into or out of a too-large screen cannot be scanned, so the key does not expect it
       if (next && !tooLarge && !(next.sizeMB > 4)) {
         const from = `${n}-${idOf(i)}-Default`;
         const to = `${nn(i + 1)}-${idOf(i + 1)}-Default`;
-        const label = st.kind === "form" ? (st.id === "Payment" ? "Pay COP 180.000" : "Continue") : st.kind === "confirmation" ? "Confirm and pay" : st.kind === "result" ? "Back to events" : "Continue";
+        const label =
+          st.kind === "form"
+            ? st.id === "Payment"
+              ? "Pay COP 180.000"
+              : "Continue"
+            : st.kind === "confirmation"
+              ? "Confirm and pay"
+              : st.kind === "result"
+                ? "Back to events"
+                : "Continue";
         k.transitions.push({ from, on: label, to });
       }
       for (const l of st.links || []) {
@@ -935,12 +1160,17 @@ export function generateXl(out) {
       }
       for (const m of st.missing || []) k.gaps.push({ kind: "state-missing", where: `${n} ${m}` });
       if (st.brokenLink) k.gaps.push({ kind: "broken-link", where: `${n} ${st.brokenLink}` });
-      if (st.brokenInclude) k.gaps.push({ kind: "broken-include", where: `${n} ${st.brokenInclude}` });
+      if (st.brokenInclude)
+        k.gaps.push({ kind: "broken-include", where: `${n} ${st.brokenInclude}` });
     });
     // every flow but help-centre links to it from its last step's Default screen
     if (flow.slug !== "help-centre") {
       const lastN = nn(flow.steps.length - 1);
-      k.crossFlow.push({ from: `${lastN}-${idOf(flow.steps.length - 1)}`, to: "help-centre", label: "Help centre" });
+      k.crossFlow.push({
+        from: `${lastN}-${idOf(flow.steps.length - 1)}`,
+        to: "help-centre",
+        label: "Help centre",
+      });
       pushDedup(k.next, "help-centre", "Help centre");
     }
     k.entry = `01-${idOf(0)}`;
@@ -962,7 +1192,10 @@ export function generateXl(out) {
   writeFileSync(join(dir, "BRIEF.md"), brief(FLOWS_XL));
   writeFileSync(join(dir, "answer-key.json"), JSON.stringify(key, null, 2) + "\n");
   if (!existsSync(join(dir, ".gitignore")))
-    writeFileSync(join(dir, ".gitignore"), "design/**/bundle/\ndesign/**/.seed/\ndesign/**/.review/\n.mcp.local.json\n.DS_Store\n");
+    writeFileSync(
+      join(dir, ".gitignore"),
+      "design/**/bundle/\ndesign/**/.seed/\ndesign/**/.review/\n.mcp.local.json\n.DS_Store\n",
+    );
   return key;
 }
 // limit checks: refused by the portal, must fail cleanly
@@ -972,7 +1205,11 @@ const STRESS = [
     title: "Stress: too many files",
     goal: "A flow with 450 files; the portal accepts at most 400.",
     devices: ["desktop", "mobile"],
-    steps: Array.from({ length: 45 }, (_, i) => ({ id: `Step${i + 1}`, kind: "form", extra: ["Selected"] })),
+    steps: Array.from({ length: 45 }, (_, i) => ({
+      id: `Step${i + 1}`,
+      kind: "form",
+      extra: ["Selected"],
+    })),
   },
   {
     slug: "stress-bytes",
@@ -989,7 +1226,10 @@ export function generateAll(out, opts) {
   const key = origGenerate(out, opts);
   if (opts?.stress) {
     const f = join(resolve(out), "design", "flows", "stress-bytes", "01-huge-default.html");
-    writeFileSync(f, `<!doctype html><html><head><meta charset="utf-8"><title>Huge</title></head><body><h1>Huge</h1><pre>${"x".repeat(21 * 1024 * 1024)}</pre></body></html>\n`);
+    writeFileSync(
+      f,
+      `<!doctype html><html><head><meta charset="utf-8"><title>Huge</title></head><body><h1>Huge</h1><pre>${"x".repeat(21 * 1024 * 1024)}</pre></body></html>\n`,
+    );
   }
   return key;
 }
@@ -1022,5 +1262,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(2);
   }
   const key = generateAll(out, { stress: a.includes("--stress"), profile });
-  console.log(`${key.flows.length} flows, ${key.flows.reduce((n, f) => n + f.files, 0)} screen files, ${key.components.files.length} components → ${resolve(out)}`);
+  console.log(
+    `${key.flows.length} flows, ${key.flows.reduce((n, f) => n + f.files, 0)} screen files, ${key.components.files.length} components → ${resolve(out)}`,
+  );
 }

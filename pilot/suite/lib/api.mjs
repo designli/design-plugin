@@ -32,11 +32,19 @@ export class Api {
           "x-designli-client": "designli-suite/1",
           ...headers,
         },
-        body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
+        body:
+          body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
       });
     } catch (e) {
       this.log.push({ method, path, status: 0, ms: Date.now() - t0 });
-      return { status: 0, json: null, text: "", error: e.message, ok: false, headers: new Headers() };
+      return {
+        status: 0,
+        json: null,
+        text: "",
+        error: e.message,
+        ok: false,
+        headers: new Headers(),
+      };
     }
     const text = await res.text();
     let json = null;
@@ -44,7 +52,15 @@ export class Api {
       json = JSON.parse(text);
     } catch {}
     this.log.push({ method, path, status: res.status, ms: Date.now() - t0 });
-    return { status: res.status, json, text, ok: res.ok, headers: res.headers, error: res.ok ? null : json?.error?.message || text.slice(0, 200), code: json?.error?.code ?? null };
+    return {
+      status: res.status,
+      json,
+      text,
+      ok: res.ok,
+      headers: res.headers,
+      error: res.ok ? null : json?.error?.message || text.slice(0, 200),
+      code: json?.error?.code ?? null,
+    };
   }
   get(token, path, o) {
     return this.req(token, "GET", path, undefined, o);
@@ -154,18 +170,40 @@ export class McpHttp {
       jsonrpc: "2.0",
       id: this.nextId++,
       method: "initialize",
-      params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "designli-suite", version: "1" } },
+      params: {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "designli-suite", version: "1" },
+      },
     });
   }
   /** Calls one MCP tool; returns { status, ok, result, error, isError } and never throws. */
   async call(name, args) {
     await this.#ensureInitialized();
-    const r = await this.#send({ jsonrpc: "2.0", id: this.nextId++, method: "tools/call", params: { name, arguments: args } });
-    if (!r.json) return { status: r.status, ok: false, result: null, error: { message: "no JSON-RPC response" }, isError: null };
+    const r = await this.#send({
+      jsonrpc: "2.0",
+      id: this.nextId++,
+      method: "tools/call",
+      params: { name, arguments: args },
+    });
+    if (!r.json)
+      return {
+        status: r.status,
+        ok: false,
+        result: null,
+        error: { message: "no JSON-RPC response" },
+        isError: null,
+      };
     const rpcError = r.json.error ?? null;
     const result = r.json.result ?? null;
     const isError = result && typeof result === "object" ? (result.isError ?? null) : null;
-    return { status: r.status, ok: r.ok && !rpcError && !isError, result, error: rpcError, isError };
+    return {
+      status: r.status,
+      ok: r.ok && !rpcError && !isError,
+      result,
+      error: rpcError,
+      isError,
+    };
   }
 }
 export const textHash = (s) => {
