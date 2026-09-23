@@ -1,0 +1,2129 @@
+{
+  "profile": "xl",
+  "product": {
+    "name": "Marquee",
+    "summary": "Tickets for live events: fans find a show, pick seats and pay in a minute; organizers publish events and get paid out weekly.",
+    "audience": "Fans buying tickets on their phone; organizers on a laptop."
+  },
+  "flows": [
+    {
+      "slug": "sign-up",
+      "title": "Sign up",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Email",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Details",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error",
+            "Custom-Locked"
+          ],
+          "missing": [],
+          "custom": [
+            "Custom-Locked"
+          ],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Welcome",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Email",
+      "transitions": [
+        {
+          "from": "01-Email-Default",
+          "on": "Continue",
+          "to": "02-Details-Default"
+        },
+        {
+          "from": "02-Details-Default",
+          "on": "Continue",
+          "to": "03-Welcome-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Welcome",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 22,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "sign-in",
+      "title": "Sign in",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Email",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Code",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Email",
+      "transitions": [
+        {
+          "from": "01-Email-Default",
+          "on": "Continue",
+          "to": "02-Code-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "02-Code",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 16,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "find-an-event",
+      "title": "Find an event",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Search",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Results",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Event",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "04",
+          "id": "Dates",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Search",
+      "transitions": [
+        {
+          "from": "01-Search-Default",
+          "on": "Continue",
+          "to": "02-Results-Default"
+        },
+        {
+          "from": "02-Results-Default",
+          "on": "Continue",
+          "to": "03-Event-Default"
+        },
+        {
+          "from": "03-Event-Default",
+          "on": "Continue",
+          "to": "04-Dates-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Event",
+          "to": "buy-tickets",
+          "label": "Buy tickets"
+        },
+        {
+          "from": "03-Event",
+          "to": "event-details",
+          "label": "Details"
+        },
+        {
+          "from": "04-Dates",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 24,
+      "next": [
+        {
+          "flow": "buy-tickets",
+          "on": "Buy tickets"
+        },
+        {
+          "flow": "event-details",
+          "on": "Details"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": [
+        {
+          "kind": "sharedLoading",
+          "step": "02",
+          "state": "Loading"
+        },
+        {
+          "kind": "sharedLoading",
+          "step": "04",
+          "state": "Loading"
+        }
+      ]
+    },
+    {
+      "slug": "event-details",
+      "title": "Event details",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Overview",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Venue",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Overview",
+      "transitions": [
+        {
+          "from": "01-Overview-Default",
+          "on": "Continue",
+          "to": "02-Venue-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "02-Venue",
+          "to": "seat-map",
+          "label": "Pick seats"
+        },
+        {
+          "from": "02-Venue",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 4,
+      "next": [
+        {
+          "flow": "seat-map",
+          "on": "Pick seats"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "buy-tickets",
+      "title": "Buy tickets",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Tickets",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Seats",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Payment",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error",
+            "Custom-Declined",
+            "Custom-3DSecure",
+            "Loading",
+            "Empty",
+            "Success",
+            "Disabled",
+            "Selected",
+            "Partial",
+            "Stale"
+          ],
+          "missing": [],
+          "custom": [
+            "Custom-Declined",
+            "Custom-3DSecure"
+          ],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "04",
+          "id": "Review",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "05",
+          "id": "Done",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Tickets",
+      "transitions": [
+        {
+          "from": "01-Tickets-Default",
+          "on": "Continue",
+          "to": "02-Seats-Default"
+        },
+        {
+          "from": "02-Seats-Default",
+          "on": "Continue",
+          "to": "03-Payment-Default"
+        },
+        {
+          "from": "03-Payment-Default",
+          "on": "Pay COP 180.000",
+          "to": "04-Review-Default"
+        },
+        {
+          "from": "04-Review-Default",
+          "on": "Confirm and pay",
+          "to": "05-Done-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "05-Done",
+          "to": "my-tickets",
+          "label": "See my tickets"
+        },
+        {
+          "from": "05-Done",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 50,
+      "next": [
+        {
+          "flow": "my-tickets",
+          "on": "See my tickets"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "seat-map",
+      "title": "Seat map",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Map",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Row",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Seat",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Map",
+      "transitions": [
+        {
+          "from": "01-Map-Default",
+          "on": "Continue",
+          "to": "02-Row-Default"
+        },
+        {
+          "from": "02-Row-Default",
+          "on": "Continue",
+          "to": "03-Seat-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Seat",
+          "to": "buy-tickets",
+          "label": "Continue to payment"
+        },
+        {
+          "from": "03-Seat",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 18,
+      "next": [
+        {
+          "flow": "buy-tickets",
+          "on": "Continue to payment"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "my-tickets",
+      "title": "My tickets",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "List",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Ticket",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-List",
+      "transitions": [
+        {
+          "from": "01-List-Default",
+          "on": "Continue",
+          "to": "02-Ticket-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "02-Ticket",
+          "to": "transfer-a-ticket",
+          "label": "Transfer"
+        },
+        {
+          "from": "02-Ticket",
+          "to": "request-a-refund",
+          "label": "Refund"
+        },
+        {
+          "from": "02-Ticket",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 10,
+      "next": [
+        {
+          "flow": "transfer-a-ticket",
+          "on": "Transfer"
+        },
+        {
+          "flow": "request-a-refund",
+          "on": "Refund"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": [
+        {
+          "kind": "sharedLoading",
+          "step": "01",
+          "state": "Loading"
+        }
+      ]
+    },
+    {
+      "slug": "transfer-a-ticket",
+      "title": "Transfer a ticket",
+      "devices": [
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Recipient",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Confirm",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Sent",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Recipient",
+      "transitions": [
+        {
+          "from": "01-Recipient-Default",
+          "on": "Continue",
+          "to": "02-Confirm-Default"
+        },
+        {
+          "from": "02-Confirm-Default",
+          "on": "Confirm and pay",
+          "to": "03-Sent-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Sent",
+          "to": "my-tickets",
+          "label": "Back to my tickets"
+        },
+        {
+          "from": "03-Sent",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 10,
+      "next": [
+        {
+          "flow": "my-tickets",
+          "on": "Back to my tickets"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "request-a-refund",
+      "title": "Request a refund",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Order",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Reason",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting"
+          ],
+          "missing": [
+            "Error"
+          ],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Result",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Order",
+      "transitions": [
+        {
+          "from": "01-Order-Default",
+          "on": "Continue",
+          "to": "02-Reason-Default"
+        },
+        {
+          "from": "02-Reason-Default",
+          "on": "Continue",
+          "to": "03-Result-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Result",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [
+        {
+          "kind": "state-missing",
+          "where": "02 Error"
+        }
+      ],
+      "files": 9,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "wallet",
+      "title": "Wallet",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": true,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Balance",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "TopUp",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "History",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Balance",
+      "transitions": [
+        {
+          "from": "01-Balance-Default",
+          "on": "Continue",
+          "to": "02-TopUp-Default"
+        },
+        {
+          "from": "02-TopUp-Default",
+          "on": "Continue",
+          "to": "03-History-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-History",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 15,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": [
+        {
+          "kind": "sharedLoading",
+          "step": "01",
+          "state": "Loading"
+        },
+        {
+          "kind": "sharedLoading",
+          "step": "03",
+          "state": "Loading"
+        }
+      ]
+    },
+    {
+      "slug": "notifications",
+      "title": "Notifications",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Details",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": [
+            "Error"
+          ]
+        },
+        {
+          "n": "02",
+          "id": "Channels",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Details",
+      "transitions": [
+        {
+          "from": "01-Details-Default",
+          "on": "Continue",
+          "to": "02-Channels-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "02-Channels",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 13,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "account-settings",
+      "title": "Account settings",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Profile",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Security",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Danger",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Profile",
+      "transitions": [
+        {
+          "from": "01-Profile-Default",
+          "on": "Continue",
+          "to": "02-Security-Default"
+        },
+        {
+          "from": "02-Security-Default",
+          "on": "Continue",
+          "to": "03-Danger-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Danger",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [
+        {
+          "kind": "broken-link",
+          "where": "02 04-nope-default.html"
+        },
+        {
+          "kind": "broken-include",
+          "where": "02 Nope"
+        }
+      ],
+      "files": 24,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "create-an-event",
+      "title": "Create an event",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Basics",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Schedule",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Venue",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error",
+            "Selected"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "04",
+          "id": "Tickets",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "05",
+          "id": "Media",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "06",
+          "id": "Publish",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Basics",
+      "transitions": [
+        {
+          "from": "01-Basics-Default",
+          "on": "Continue",
+          "to": "02-Schedule-Default"
+        },
+        {
+          "from": "02-Schedule-Default",
+          "on": "Continue",
+          "to": "03-Venue-Default"
+        },
+        {
+          "from": "03-Venue-Default",
+          "on": "Continue",
+          "to": "04-Tickets-Default"
+        },
+        {
+          "from": "04-Tickets-Default",
+          "on": "Continue",
+          "to": "05-Media-Default"
+        },
+        {
+          "from": "05-Media-Default",
+          "on": "Continue",
+          "to": "06-Publish-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "06-Publish",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 24,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [
+        {
+          "step": "05",
+          "mb": 3
+        }
+      ],
+      "identical": []
+    },
+    {
+      "slug": "schedule",
+      "title": "Schedule",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Dates",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Times",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Review",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Dates",
+      "transitions": [
+        {
+          "from": "01-Dates-Default",
+          "on": "Continue",
+          "to": "02-Times-Default"
+        },
+        {
+          "from": "02-Times-Default",
+          "on": "Continue",
+          "to": "03-Review-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Review",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 12,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "ticket-types",
+      "title": "Ticket types",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "List",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "New",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Pricing",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "04",
+          "id": "Review",
+          "kind": "confirmation",
+          "states": [
+            "Default",
+            "Submitting",
+            "Error",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-List",
+      "transitions": [
+        {
+          "from": "01-List-Default",
+          "on": "Continue",
+          "to": "02-New-Default"
+        },
+        {
+          "from": "02-New-Default",
+          "on": "Continue",
+          "to": "03-Pricing-Default"
+        },
+        {
+          "from": "03-Pricing-Default",
+          "on": "Continue",
+          "to": "04-Review-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "04-Review",
+          "to": "promo-codes",
+          "label": "Add a promo code"
+        },
+        {
+          "from": "04-Review",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 16,
+      "next": [
+        {
+          "flow": "promo-codes",
+          "on": "Add a promo code"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "promo-codes",
+      "title": "Promo codes",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "List",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "New",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Done",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-List",
+      "transitions": [
+        {
+          "from": "01-List-Default",
+          "on": "Continue",
+          "to": "02-New-Default"
+        },
+        {
+          "from": "02-New-Default",
+          "on": "Continue",
+          "to": "03-Done-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Done",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 10,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "payouts",
+      "title": "Payouts",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Overview",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Bank",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Schedule",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "04",
+          "id": "History",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Overview",
+      "transitions": [
+        {
+          "from": "01-Overview-Default",
+          "on": "Continue",
+          "to": "02-Bank-Default"
+        },
+        {
+          "from": "02-Bank-Default",
+          "on": "Continue",
+          "to": "03-Schedule-Default"
+        },
+        {
+          "from": "03-Schedule-Default",
+          "on": "Continue",
+          "to": "04-History-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "04-History",
+          "to": "create-an-event",
+          "label": "Create another event"
+        },
+        {
+          "from": "04-History",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 15,
+      "next": [
+        {
+          "flow": "create-an-event",
+          "on": "Create another event"
+        },
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "reports",
+      "title": "Reports",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Sales",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Export",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Done",
+          "kind": "result",
+          "states": [
+            "Default",
+            "Success"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Sales",
+      "transitions": [
+        {
+          "from": "01-Sales-Default",
+          "on": "Continue",
+          "to": "02-Export-Default"
+        },
+        {
+          "from": "02-Export-Default",
+          "on": "Continue",
+          "to": "03-Done-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Done",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 10,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [
+        {
+          "step": "02",
+          "mb": 5
+        }
+      ],
+      "identical": [
+        {
+          "kind": "identicalDefaultSuccess",
+          "step": "03",
+          "states": [
+            "Default",
+            "Success"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "team",
+      "title": "Team",
+      "devices": [
+        "desktop"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Members",
+          "kind": "data",
+          "states": [
+            "Default",
+            "Loading",
+            "Empty",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Invite",
+          "kind": "form",
+          "states": [
+            "Default",
+            "Validation",
+            "Submitting",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "03",
+          "id": "Roles",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Members",
+      "transitions": [
+        {
+          "from": "01-Members-Default",
+          "on": "Continue",
+          "to": "02-Invite-Default"
+        },
+        {
+          "from": "02-Invite-Default",
+          "on": "Continue",
+          "to": "03-Roles-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "03-Roles",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 11,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "check-in-scan",
+      "title": "Check-in scan",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Scan",
+          "kind": "choice",
+          "states": [
+            "Default",
+            "Loading",
+            "Error"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        },
+        {
+          "n": "02",
+          "id": "Próximo Evento",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": true,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Scan",
+      "transitions": [
+        {
+          "from": "01-Scan-Default",
+          "on": "Continue",
+          "to": "02-PrximoEvento-Default"
+        }
+      ],
+      "crossFlow": [
+        {
+          "from": "02-PrximoEvento",
+          "to": "help-centre",
+          "label": "Help centre"
+        }
+      ],
+      "gaps": [],
+      "files": 8,
+      "next": [
+        {
+          "flow": "help-centre",
+          "on": "Help centre"
+        }
+      ],
+      "sizes": [],
+      "identical": []
+    },
+    {
+      "slug": "help-centre",
+      "title": "Help centre",
+      "devices": [
+        "desktop",
+        "mobile"
+      ],
+      "mobileFirst": false,
+      "steps": [
+        {
+          "n": "01",
+          "id": "Home",
+          "kind": "info",
+          "states": [
+            "Default"
+          ],
+          "missing": [],
+          "custom": [],
+          "weird": false,
+          "mobileOnlyStates": []
+        }
+      ],
+      "entry": "01-Home",
+      "transitions": [],
+      "crossFlow": [],
+      "gaps": [],
+      "files": 2,
+      "next": [],
+      "sizes": [],
+      "identical": []
+    }
+  ],
+  "components": {
+    "files": [
+      "Styles",
+      "Logo",
+      "Header",
+      "Footer",
+      "Sidebar",
+      "Buttons",
+      "Stepper",
+      "EventCard",
+      "Inputs",
+      "Legacy"
+    ],
+    "nested": {
+      "Header": [
+        "Logo"
+      ]
+    },
+    "usedBy": {
+      "Stepper": [
+        "sign-up",
+        "find-an-event",
+        "buy-tickets",
+        "seat-map",
+        "transfer-a-ticket",
+        "request-a-refund",
+        "wallet",
+        "account-settings"
+      ],
+      "EventCard": [
+        "find-an-event",
+        "event-details",
+        "buy-tickets",
+        "my-tickets"
+      ]
+    },
+    "unused": [
+      "Buttons",
+      "Inputs",
+      "Legacy"
+    ],
+    "stylesInHead": true
+  },
+  "edits": {},
+  "dedupe": {
+    "distinctScreens": 312,
+    "totalScreens": 323
+  },
+  "rounds": {
+    "A": {
+      "comments": 25,
+      "edits": 8,
+      "waivers": 3,
+      "stepTitles": 2,
+      "entryPoints": 1,
+      "agentThreads": 2,
+      "reopened": 1,
+      "editTargets": [
+        {
+          "name": "screen",
+          "flow": "sign-up",
+          "screen": "01-Email-Default",
+          "text": "Email address",
+          "newText": "Your email",
+          "filesTouched": 8
+        },
+        {
+          "name": "include",
+          "flow": "sign-up",
+          "screen": "01-Email-Default",
+          "text": "Help centre",
+          "newText": "Help center",
+          "component": "Header",
+          "filesTouched": 1
+        },
+        {
+          "name": "nested",
+          "flow": "sign-up",
+          "screen": "01-Email-Default",
+          "text": "Marquee",
+          "newText": "MARQUEE",
+          "component": "Logo",
+          "filesTouched": 1
+        },
+        {
+          "name": "shared",
+          "flow": "find-an-event",
+          "screen": "03-Event-Default",
+          "text": "Doors open one hour before",
+          "newText": "Doors open 60 minutes before",
+          "component": "EventCard",
+          "filesTouched": 1,
+          "screensUsing": ">=4"
+        },
+        {
+          "name": "supersede",
+          "flow": "sign-up",
+          "screen": "01-Email-Default",
+          "text": "Email address",
+          "newText": "Email",
+          "supersededBy": "screen"
+        },
+        {
+          "name": "twoIncludes",
+          "flow": "buy-tickets",
+          "screen": "01-Tickets-Default",
+          "text": "Help centre",
+          "newText": "Support",
+          "note": "appears in Header and in the help link; lands in the include, reported once"
+        },
+        {
+          "name": "table",
+          "flow": "ticket-types",
+          "screen": "01-List-Default",
+          "text": "General admission",
+          "newText": "General entry",
+          "filesTouched": 1
+        },
+        {
+          "name": "mobileOnly",
+          "flow": "transfer-a-ticket",
+          "screen": "02-Confirm-Default",
+          "text": "Confirm and pay",
+          "newText": "Confirm & pay",
+          "filesTouched": 2
+        }
+      ]
+    },
+    "release2": {
+      "removedStep": {
+        "flow": "seat-map",
+        "step": "02",
+        "id": "Row"
+      },
+      "addedStep": {
+        "flow": "wallet",
+        "id": "Cards",
+        "kind": "form"
+      },
+      "renamedState": {
+        "flow": "buy-tickets",
+        "step": "03",
+        "from": "Custom-3DSecure",
+        "to": "Custom-ThreeDS"
+      },
+      "includeOnly": "Footer",
+      "deletedFlow": "promo-codes",
+      "renamedFlow": {
+        "from": "team",
+        "to": "organizer-team"
+      }
+    },
+    "B": {
+      "staleEdit": {
+        "flow": "sign-up",
+        "screen": "01-Email-Default",
+        "text": "Email address",
+        "note": "text changed in release 2, must become needsManual"
+      },
+      "orphanComment": {
+        "flow": "seat-map",
+        "screen": "02-Row-Default",
+        "version": 1
+      },
+      "waiverOnPresent": {
+        "flow": "request-a-refund",
+        "step": "02",
+        "state": "Validation"
+      }
+    },
+    "release3": {
+      "subset": [
+        "sign-up",
+        "sign-in",
+        "wallet",
+        "reports",
+        "help-centre"
+      ]
+    },
+    "release4": {
+      "forced": true,
+      "noop": true
+    }
+  },
+  "stress": null
+}
