@@ -229,9 +229,13 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
     ...(s.purpose ? { purpose: s.purpose } : {}),
     ...(s.primaryAction ? { primaryAction: s.primaryAction } : {}),
     states: Object.entries(s.states)
-      .filter(([, v]) => v.status === "present" || v.status === "waived")
+      .filter(([, v]) => v.status === "present" || v.status === "waived" || v.status === "unavailable")
       .map(([state, v]) =>
-        v.status === "present" ? { state, screen: v.screen } : { state, waived: v.reason || "n/a" },
+        v.status === "present"
+          ? { state, screen: v.screen }
+          : v.status === "unavailable"
+            ? { state, unavailable: { reason: v.reason, bytes: v.bytes } }
+            : { state, waived: v.reason || "n/a" },
       ),
   }));
   const compHash = existsSync(join(compDir, "bundle", "manifest.json"))

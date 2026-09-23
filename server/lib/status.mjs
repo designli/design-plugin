@@ -140,6 +140,11 @@ export function preflight(project, { require: req = [], hashes = false } = {}) {
         .filter(([, v]) => v.status === "missing")
         .map(([k]) => `${s.n} ${k}`),
     );
+    const unavailable = r.steps.flatMap((s) =>
+      Object.entries(s.states)
+        .filter(([, v]) => v.status === "unavailable")
+        .map(([k]) => `${s.n} ${k}`),
+    );
     const entry = {
       slug,
       title: flow.title,
@@ -149,6 +154,7 @@ export function preflight(project, { require: req = [], hashes = false } = {}) {
       screens: r.usedFiles.size,
       devices: r.devices,
       missingStates: missing,
+      unavailableStates: unavailable,
       problems: r.problems.length,
       publishedVersion: flow.portal?.version ?? null,
       publishedHash: flow.portal?.contentHash ?? null,
