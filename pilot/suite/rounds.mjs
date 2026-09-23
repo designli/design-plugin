@@ -264,7 +264,9 @@ export async function runRounds(ctx) {
     obs.rounds.B = B;
     const se = R.B.staleEdit;
     const v = await latest(se.flow);
-    const r = await api.post(client, `${flowOf(se.flow)}/text-edits`, { screen: { id: se.screen, device: "desktop" }, elementPath: "b/1/95", originalText: se.text, originalHash: textHash(se.text), newText: "E-mail", flowVersion: v.number });
+    // the client made this request while looking at v1, where the text still existed
+    const r = await api.post(client, `${flowOf(se.flow)}/text-edits`, { screen: { id: se.screen, device: "desktop" }, elementPath: "b/1/95", originalText: se.text, originalHash: textHash(se.text), newText: "E-mail", flowVersion: 1 });
+    void v;
     const c = mcp();
     await tool(c, "feedback_pull", { flows: [se.flow] });
     const a = await c.call("edits_apply", { flow: se.flow });

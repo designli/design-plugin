@@ -183,7 +183,27 @@ const stableStringify = (v) =>
  */
 export function manifestHashOf(manifest) {
   const { generatedAt, generator, publish, contentHash, componentsHash, ...rest } = manifest || {};
-  return "sha256:" + createHash("sha256").update(stableStringify(rest)).digest("hex");
+  // only what the portal keeps as metadata, in a stable order: local file names (`source`,
+  // `sourceDir`) and the order of states within a step are not differences the portal can see
+  const byKey = (k) => (a, b) => String(a[k]).localeCompare(String(b[k]));
+  const flow = { ...(rest.flow || {}) };
+  delete flow.sourceDir;
+  delete flow.prototype;
+  const steps = (rest.steps || []).map((st) => ({ ...st, states: [...(st.states || [])].sort(byKey("state")) }));
+  const screens = [...(rest.screens || [])]
+    .map((s) => {
+      const devices = {};
+      for (const [dev, d] of Object.entries(s.devices || {})) {
+        if (!d) continue;
+        const { source, ...keep } = d;
+        devices[dev] = keep;
+      }
+      return { ...s, devices, includes: [...(s.includes || [])].sort() };
+    })
+    .sort(byKey("id"));
+  const transitions = [...(rest.transitions || [])].sort((a, b) => `${a.from}|${a.on}|${a.to}`.localeCompare(`${b.from}|${b.on}|${b.to}`));
+  const canonical = { ...rest, flow, steps, screens, transitions };
+  return "sha256:" + createHash("sha256").update(stableStringify(canonical)).digest("hex");
 }
 
 // ---- reads ----
@@ -698,6 +718,7 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       release: ov.project.release,
       message: `nothing changed since release ${releaseNumber(ov.project.release)}`,
       unchanged: unchangedFlows,
+      metadataOnly,
       portalOnly,
       orphaning: [],
       components,
@@ -711,6 +732,25 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
   });
   if (relResp.status === 409 && relResp.json?.error?.code === "RELEASE_UNCHANGED") {
     const previous = relResp.json?.error?.details?.previous ?? null;
+    if (pushed.length || components.state === "pushed") {
+      // another publish (a teammate, a second checkout) snapshotted these pushes a moment ago:
+      // the work is on the portal and in a release, there is nothing left to record
+      const releases = await listReleases(ctx).catch(() => null);
+      const rel = releases?.releases?.find?.((r) => r.number === previous) ?? { number: previous };
+      return {
+        release: { number: rel.number, url: rel.url ?? null, note: rel.note ?? null, flows: rel.flows ?? null, summary: rel.summary ?? null },
+        includedInExistingRelease: true,
+        message: `your pushes are already in release ${releaseNumber(previous)}, recorded by another publish at the same moment; nothing more to record`,
+        pushed,
+        unchanged: unchangedFlows,
+        metadataOnly,
+        skipped: skipped.length ? skipped : undefined,
+        portalOnly,
+        orphaning,
+        components,
+        clientUrl: clientUrl(ctx),
+      };
+    }
     throw new PortalError(
       "RELEASE_UNCHANGED",
       `nothing changed since release ${releaseNumber(previous)}: the note was not recorded; pass force to record an identical snapshot`,
@@ -1087,6 +1127,7 @@ export async function adoptFromPortal(ctx) {
   const ov = await overview(ctx);
   const written = [];
   const downloaded = [];
+  const notRebuilt = []; // unavailable states the portal has no file for
   const proto = readPrototype(ctx.project);
   const { exists, ...protoBase } = proto;
   const nextProto = {
@@ -1116,6 +1157,11 @@ export async function adoptFromPortal(ctx) {
       for (const x of st.states || []) {
         if (x.waived) {
           states[x.state] = `n/a: ${x.waived}`;
+          continue;
+        }
+        if (x.unavailable) {
+          // the portal never received this screen (too large to publish); nothing to rebuild
+          notRebuilt.push(`${f.id} ${st.n} ${x.state}: ${x.unavailable.reason}${x.unavailable.bytes ? ` (${(x.unavailable.bytes / 1048576).toFixed(1)} MB)` : ""}`);
           continue;
         }
         const sc = byId.get(x.screen);
@@ -1173,6 +1219,7 @@ export async function adoptFromPortal(ctx) {
         flowId: f.id,
         version: v.number,
         contentHash: v.contentHash,
+        manifestHash: manifestHashOf(m),
         versionUrl: v.url,
         pushedAt: v.createdAt,
         lastPullAt: cur.portal?.lastPullAt ?? null,
@@ -1197,6 +1244,7 @@ export async function adoptFromPortal(ctx) {
   return {
     written,
     downloaded,
+    notRebuilt,
     flows: ov.flows.map((f) => f.id),
     release: ov.project.release,
     note: downloaded.length

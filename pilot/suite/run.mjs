@@ -5,7 +5,7 @@
 // Sign-in: on a portal with the developer sign-in (local stack) --dev-admin mints the admin token
 // itself; otherwise the run prints a device sign-in link for a person to approve as admin.
 // Tokens live in a throwaway HOME and 0600 files under the results folder; never in observations.
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync, chmodSync, appendFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync, chmodSync, appendFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { execSync, spawn } from "node:child_process";
@@ -306,6 +306,15 @@ function flowJsonDiffs(d) {
       continue;
     }
     const after = JSON.parse(readFileSync(p, "utf8"));
+    // a state whose file is too large to publish never reaches the portal, so a rebuild cannot
+    // bring it back: not a round-trip difference
+    for (const st of before.steps || [])
+      for (const [name, v] of Object.entries(st.states || {})) {
+        const file = typeof v === "string" ? v : v?.desktop || v?.mobile;
+        if (!file || /^n\/a/i.test(file)) continue;
+        const fp = join(d, "design", "flows", f, file);
+        if (existsSync(fp) && statSync(fp).size > 4 * 1024 * 1024) delete st.states[name];
+      }
     const stable = (v) => (Array.isArray(v) ? "[" + v.map(stable).join(",") + "]" : v && typeof v === "object" ? "{" + Object.keys(v).sort().map((x) => JSON.stringify(x) + ":" + stable(v[x])).join(",") + "}" : JSON.stringify(v ?? null));
     for (const k of keys)
       if (stable(before[k] ?? null) !== stable(after[k] ?? null)) {

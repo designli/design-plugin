@@ -327,7 +327,7 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     const rB = obs.rounds?.B;
     if (rB?.staleEdit) add("roundB", "staleEditNeedsManual", rB.staleEdit.result === "needsManual" ? 1 : 0, 1, { op: "==", items: [String(rB.staleEdit.result)] });
     if (rB?.staleEdit?.outdated) {
-      const okOutdated = rB.staleEdit.outdated.status === "outdated" && rB.staleEdit.outdated.threadFound === true;
+      const okOutdated = rB.staleEdit.outdated.status === "outdated" && rB.staleEdit.outdated.threadFound === true && rB.staleEdit.outdated.suggested !== false;
       add("roundB", "outdatedEdit", okOutdated ? 1 : 0, 1, { op: "==", items: [JSON.stringify(rB.staleEdit.outdated)] });
     }
     if (rB?.waiverOnPresent) add("roundB", "waiverOnPresent", rB.waiverOnPresent.status ?? null, "rec", { op: "rec", items: [`code: ${rB.waiverOnPresent.code}`] });
