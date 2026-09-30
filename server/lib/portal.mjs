@@ -31,7 +31,7 @@ import {
   gapsOf,
   BLOCKING,
 } from "./flows.mjs";
-import { playCheck } from "./play.mjs";
+import { playCheck, nextWithFrom } from "./play.mjs";
 import { buildFlowBundle, buildComponentsBundle } from "./bundle.mjs";
 import { log, runId } from "./log.mjs";
 
@@ -1257,7 +1257,12 @@ export async function adoptFromPortal(ctx) {
       title: h.flow?.title || m.flow?.title || f.id,
       goal: h.flow?.goal ?? m.flow?.goal ?? "",
       order: Number.isInteger(h.flow?.position) ? h.flow.position : (m.flow?.order ?? null),
-      next: h.flow?.next || m.flow?.next || [],
+      // the portal keeps the journey links; the manifest keeps the screen each one sits on, so a
+      // portal that does not store `from` yet does not cost the repository its play information
+      next: nextWithFrom(
+        h.flow?.next || m.flow?.next || [],
+        (m.flow?.next || []).filter((l) => l.from),
+      ),
       entryPoints: h.structure?.entryPoints || m.entryPoints || [],
       devices,
       ...(m.flow?.prototype ? { prototype: true } : {}),
