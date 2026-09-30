@@ -9,6 +9,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 
+// git exports GIT_DIR, GIT_INDEX_FILE and friends to the hooks it runs. Inherited here, they would
+// point every git command below (and the server's own gitInfo) at the repository being committed
+// instead of the scratch repo, so the pre-commit run of this suite would fail and then hang.
+for (const k of Object.keys(process.env)) if (k.startsWith("GIT_")) delete process.env[k];
+
 const ROOT = resolve(import.meta.dirname, "..", "..");
 const SERVER = join(ROOT, "server", "index.mjs");
 const PILOT = process.env.DESIGNLI_PILOT || resolve(ROOT, "..", "design-pilot-mvp");
