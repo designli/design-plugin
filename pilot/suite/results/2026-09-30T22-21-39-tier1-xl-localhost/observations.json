@@ -1,0 +1,4754 @@
+{
+  "meta": {
+    "portal": "http://localhost:8787",
+    "project": "marquee-2609302221",
+    "repo": "/var/folders/tt/snk012t91qnggwq4mjfxy5m40000gn/T/marquee-2026-09-30T22-21-39",
+    "startedAt": "2026-09-30T22:21:39.882Z",
+    "plugin": "0.4.0",
+    "portalVersion": "0.1.0",
+    "portalPluginLatest": null,
+    "finishedAt": "2026-09-30T22:22:42.706Z"
+  },
+  "errors": [],
+  "timings": {
+    "signin": 33,
+    "project": 93,
+    "setup": 252,
+    "adopt": 1081,
+    "publish1": 1470,
+    "portal1": 216,
+    "lostRepo": 1240,
+    "stress": 817,
+    "handoffV1": 228,
+    "journey": 10,
+    "roundA": 540,
+    "release2": 2597,
+    "roundB": 313,
+    "release3": 1437,
+    "release4": 1580,
+    "mcp": 39,
+    "concurrency3": 1053,
+    "reliability": 283,
+    "ui": 48948
+  },
+  "signin": {
+    "mode": "dev",
+    "ok": true
+  },
+  "project": {
+    "created": true,
+    "error": null,
+    "visible": null
+  },
+  "tokens": {
+    "designer": "suite-designer",
+    "client": "suite-client",
+    "dev": "suite-dev"
+  },
+  "setup": {
+    "ok": true,
+    "written": [
+      "/var/folders/tt/snk012t91qnggwq4mjfxy5m40000gn/T/marquee-2026-09-30T22-21-39/design/library.json",
+      "/var/folders/tt/snk012t91qnggwq4mjfxy5m40000gn/T/marquee-2026-09-30T22-21-39/.mcp.json"
+    ],
+    "literalToken": false,
+    "envExpansion": true,
+    "nextSteps": [
+      "Adopt the prototype: /designli-design:adopt scans the HTML under design/, proposes flows, steps and states, and asks only for what it cannot infer. Building screens? Load /designli-design:prototype first: one file per screen state, includes for shared parts, links for transitions."
+    ],
+    "credentials": {
+      "ok": true,
+      "scopeProjects": [
+        "marquee-2609302221"
+      ],
+      "leaked": false
+    }
+  },
+  "adopt": {
+    "scan": {
+      "screens": 322,
+      "components": [
+        {
+          "name": "Buttons",
+          "usedBy": 0
+        },
+        {
+          "name": "EventCard",
+          "usedBy": 82
+        },
+        {
+          "name": "Footer",
+          "usedBy": 322
+        },
+        {
+          "name": "Header",
+          "usedBy": 322
+        },
+        {
+          "name": "Inputs",
+          "usedBy": 0
+        },
+        {
+          "name": "Legacy",
+          "usedBy": 0
+        },
+        {
+          "name": "Logo",
+          "usedBy": 0
+        },
+        {
+          "name": "Sidebar",
+          "usedBy": 97
+        },
+        {
+          "name": "Stepper",
+          "usedBy": 166
+        },
+        {
+          "name": "Styles",
+          "usedBy": 322
+        }
+      ]
+    },
+    "proposed": [
+      {
+        "slug": "account-settings",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Account Settings",
+        "entry": [
+          "01-Profile"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Profile",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Security",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Danger",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Profile-Default",
+            "on": "Continue",
+            "to": "02-Security-Default"
+          },
+          {
+            "from": "01-Profile-Error",
+            "on": "Continue",
+            "to": "02-Security-Default"
+          },
+          {
+            "from": "01-Profile-Validation",
+            "on": "Continue",
+            "to": "02-Security-Default"
+          },
+          {
+            "from": "02-Security-Default",
+            "on": "Continue",
+            "to": "03-Danger-Default"
+          },
+          {
+            "from": "02-Security-Error",
+            "on": "Continue",
+            "to": "03-Danger-Default"
+          },
+          {
+            "from": "02-Security-Validation",
+            "on": "Continue",
+            "to": "03-Danger-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Danger-Default"
+          }
+        ]
+      },
+      {
+        "slug": "buy-tickets",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Buy Tickets",
+        "entry": [
+          "01-Tickets"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Tickets",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Seats",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Payment",
+            "kind": "form",
+            "states": [
+              "Custom-3dsecure",
+              "Custom-Declined",
+              "Default",
+              "Disabled",
+              "Empty",
+              "Error",
+              "Loading",
+              "Partial",
+              "Selected",
+              "Stale",
+              "Submitting",
+              "Success",
+              "Validation"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "Review",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          },
+          {
+            "n": "05",
+            "id": "Done",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Tickets-Default",
+            "on": "Continue",
+            "to": "02-Seats-Default"
+          },
+          {
+            "from": "01-Tickets-Error",
+            "on": "Continue",
+            "to": "02-Seats-Default"
+          },
+          {
+            "from": "01-Tickets-Loading",
+            "on": "Continue",
+            "to": "02-Seats-Default"
+          },
+          {
+            "from": "02-Seats-Default",
+            "on": "Continue",
+            "to": "03-Payment-Default"
+          },
+          {
+            "from": "02-Seats-Error",
+            "on": "Continue",
+            "to": "03-Payment-Default"
+          },
+          {
+            "from": "02-Seats-Loading",
+            "on": "Continue",
+            "to": "03-Payment-Default"
+          },
+          {
+            "from": "03-Payment-Custom-3dsecure",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Custom-Declined",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Default",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Disabled",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Empty",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Error",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Loading",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Partial",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Selected",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Stale",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Success",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Payment-Validation",
+            "on": "Pay COP 180.000",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "04-Review-Default",
+            "on": "Confirm and pay",
+            "to": "05-Done-Default"
+          },
+          {
+            "from": "04-Review-Error",
+            "on": "Confirm and pay",
+            "to": "05-Done-Default"
+          },
+          {
+            "from": "04-Review-Success",
+            "on": "Continue",
+            "to": "05-Done-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "01-Tickets-Default"
+          },
+          {
+            "flow": "my-tickets",
+            "on": "See my tickets",
+            "from": "05-Done-Default"
+          }
+        ]
+      },
+      {
+        "slug": "check-in-scan",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Check In Scan",
+        "entry": [
+          "01-Scan"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Scan",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "ProximoEvento",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Scan-Default",
+            "on": "Continue",
+            "to": "02-ProximoEvento-Default"
+          },
+          {
+            "from": "01-Scan-Error",
+            "on": "Continue",
+            "to": "02-ProximoEvento-Default"
+          },
+          {
+            "from": "01-Scan-Loading",
+            "on": "Continue",
+            "to": "02-ProximoEvento-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "02-ProximoEvento-Default"
+          }
+        ]
+      },
+      {
+        "slug": "create-an-event",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Create An Event",
+        "entry": [
+          "01-Basics"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Basics",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Schedule",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Venue",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading",
+              "Selected"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "Tickets",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "05",
+            "id": "Media",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "06",
+            "id": "Publish",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Basics-Default",
+            "on": "Continue",
+            "to": "02-Schedule-Default"
+          },
+          {
+            "from": "01-Basics-Error",
+            "on": "Continue",
+            "to": "02-Schedule-Default"
+          },
+          {
+            "from": "01-Basics-Validation",
+            "on": "Continue",
+            "to": "02-Schedule-Default"
+          },
+          {
+            "from": "02-Schedule-Default",
+            "on": "Continue",
+            "to": "03-Venue-Default"
+          },
+          {
+            "from": "02-Schedule-Error",
+            "on": "Continue",
+            "to": "03-Venue-Default"
+          },
+          {
+            "from": "02-Schedule-Validation",
+            "on": "Continue",
+            "to": "03-Venue-Default"
+          },
+          {
+            "from": "03-Venue-Default",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "03-Venue-Error",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "03-Venue-Loading",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "03-Venue-Selected",
+            "on": "Continue",
+            "to": "04-Tickets-Default"
+          },
+          {
+            "from": "04-Tickets-Default",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          },
+          {
+            "from": "04-Tickets-Error",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          },
+          {
+            "from": "04-Tickets-Validation",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          },
+          {
+            "from": "05-Media-Default",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          },
+          {
+            "from": "05-Media-Error",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          },
+          {
+            "from": "05-Media-Validation",
+            "on": "Continue",
+            "to": "06-Publish-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "06-Publish-Default"
+          }
+        ]
+      },
+      {
+        "slug": "event-details",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Event Details",
+        "entry": [
+          "01-Overview"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Overview",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Venue",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Overview-Default",
+            "on": "Continue",
+            "to": "02-Venue-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "seat-map",
+            "on": "Pick seats",
+            "from": "02-Venue-Default"
+          },
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "02-Venue-Default"
+          }
+        ]
+      },
+      {
+        "slug": "find-an-event",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Find An Event",
+        "entry": [
+          "01-Search"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Search",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Results",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Event",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "Dates",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Search-Default",
+            "on": "Continue",
+            "to": "02-Results-Default"
+          },
+          {
+            "from": "01-Search-Error",
+            "on": "Continue",
+            "to": "02-Results-Default"
+          },
+          {
+            "from": "01-Search-Validation",
+            "on": "Continue",
+            "to": "02-Results-Default"
+          },
+          {
+            "from": "02-Results-Default",
+            "on": "Continue",
+            "to": "03-Event-Default"
+          },
+          {
+            "from": "02-Results-Empty",
+            "on": "Continue",
+            "to": "03-Event-Default"
+          },
+          {
+            "from": "02-Results-Error",
+            "on": "Continue",
+            "to": "03-Event-Default"
+          },
+          {
+            "from": "03-Event-Default",
+            "on": "Continue",
+            "to": "04-Dates-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "buy-tickets",
+            "on": "Buy tickets",
+            "from": "03-Event-Default"
+          },
+          {
+            "flow": "event-details",
+            "on": "Details",
+            "from": "03-Event-Default"
+          },
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "04-Dates-Default"
+          }
+        ]
+      },
+      {
+        "slug": "help-centre",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Home",
+        "entry": [
+          "01-Home"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Home",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          }
+        ],
+        "transitions": [],
+        "next": []
+      },
+      {
+        "slug": "my-tickets",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "My Tickets",
+        "entry": [
+          "01-List"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "List",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Ticket",
+            "kind": "info",
+            "states": [
+              "Default"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-List-Default",
+            "on": "Continue",
+            "to": "02-Ticket-Default"
+          },
+          {
+            "from": "01-List-Empty",
+            "on": "Continue",
+            "to": "02-Ticket-Default"
+          },
+          {
+            "from": "01-List-Error",
+            "on": "Continue",
+            "to": "02-Ticket-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "transfer-a-ticket",
+            "on": "Transfer",
+            "from": "02-Ticket-Default"
+          },
+          {
+            "flow": "request-a-refund",
+            "on": "Refund",
+            "from": "02-Ticket-Default"
+          },
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "02-Ticket-Default"
+          }
+        ]
+      },
+      {
+        "slug": "notifications",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Notifications",
+        "entry": [
+          "01-Details"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Details",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Channels",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Details-Default",
+            "on": "Continue",
+            "to": "02-Channels-Default"
+          },
+          {
+            "from": "01-Details-Validation",
+            "on": "Continue",
+            "to": "02-Channels-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "02-Channels-Default"
+          }
+        ]
+      },
+      {
+        "slug": "payouts",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Payouts",
+        "entry": [
+          "01-Overview"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Overview",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Bank",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Schedule",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "History",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Overview-Default",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "01-Overview-Empty",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "01-Overview-Error",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "01-Overview-Loading",
+            "on": "Continue",
+            "to": "02-Bank-Default"
+          },
+          {
+            "from": "02-Bank-Default",
+            "on": "Continue",
+            "to": "03-Schedule-Default"
+          },
+          {
+            "from": "02-Bank-Error",
+            "on": "Continue",
+            "to": "03-Schedule-Default"
+          },
+          {
+            "from": "02-Bank-Validation",
+            "on": "Continue",
+            "to": "03-Schedule-Default"
+          },
+          {
+            "from": "03-Schedule-Default",
+            "on": "Continue",
+            "to": "04-History-Default"
+          },
+          {
+            "from": "03-Schedule-Error",
+            "on": "Continue",
+            "to": "04-History-Default"
+          },
+          {
+            "from": "03-Schedule-Loading",
+            "on": "Continue",
+            "to": "04-History-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "create-an-event",
+            "on": "Create another event",
+            "from": "04-History-Default"
+          },
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "04-History-Default"
+          }
+        ]
+      },
+      {
+        "slug": "promo-codes",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Promo Codes",
+        "entry": [
+          "01-List"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "List",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "New",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Done",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-List-Default",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "01-List-Empty",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "01-List-Error",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "01-List-Loading",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "02-New-Default",
+            "on": "Continue",
+            "to": "03-Done-Default"
+          },
+          {
+            "from": "02-New-Error",
+            "on": "Continue",
+            "to": "03-Done-Default"
+          },
+          {
+            "from": "02-New-Validation",
+            "on": "Continue",
+            "to": "03-Done-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Done-Default"
+          }
+        ]
+      },
+      {
+        "slug": "reports",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Reports",
+        "entry": [
+          "01-Sales"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Sales",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Export",
+            "kind": "form",
+            "states": [
+              "Error",
+              "Submitting",
+              "Validation",
+              "Default"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Done",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Sales-Default",
+            "on": "Continue",
+            "to": "02-Export-Default"
+          },
+          {
+            "from": "01-Sales-Empty",
+            "on": "Continue",
+            "to": "02-Export-Default"
+          },
+          {
+            "from": "01-Sales-Error",
+            "on": "Continue",
+            "to": "02-Export-Default"
+          },
+          {
+            "from": "01-Sales-Loading",
+            "on": "Continue",
+            "to": "02-Export-Default"
+          },
+          {
+            "from": "02-Export-Error",
+            "on": "Continue",
+            "to": "03-Done-Default"
+          },
+          {
+            "from": "02-Export-Validation",
+            "on": "Continue",
+            "to": "03-Done-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Done-Default"
+          }
+        ]
+      },
+      {
+        "slug": "request-a-refund",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Request ARefund",
+        "entry": [
+          "01-Order"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Order",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Reason",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Result",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Order-Default",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "01-Order-Empty",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "01-Order-Error",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "01-Order-Loading",
+            "on": "Continue",
+            "to": "02-Reason-Default"
+          },
+          {
+            "from": "02-Reason-Default",
+            "on": "Continue",
+            "to": "03-Result-Default"
+          },
+          {
+            "from": "02-Reason-Validation",
+            "on": "Continue",
+            "to": "03-Result-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Result-Default"
+          }
+        ]
+      },
+      {
+        "slug": "schedule",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Schedule",
+        "entry": [
+          "01-Dates"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Dates",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Times",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Review",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Dates-Default",
+            "on": "Continue",
+            "to": "02-Times-Default"
+          },
+          {
+            "from": "01-Dates-Error",
+            "on": "Continue",
+            "to": "02-Times-Default"
+          },
+          {
+            "from": "01-Dates-Validation",
+            "on": "Continue",
+            "to": "02-Times-Default"
+          },
+          {
+            "from": "02-Times-Default",
+            "on": "Continue",
+            "to": "03-Review-Default"
+          },
+          {
+            "from": "02-Times-Error",
+            "on": "Continue",
+            "to": "03-Review-Default"
+          },
+          {
+            "from": "02-Times-Validation",
+            "on": "Continue",
+            "to": "03-Review-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Review-Default"
+          }
+        ]
+      },
+      {
+        "slug": "seat-map",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Seat Map",
+        "entry": [
+          "01-Map"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Map",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Row",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Seat",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Map-Default",
+            "on": "Continue",
+            "to": "02-Row-Default"
+          },
+          {
+            "from": "01-Map-Error",
+            "on": "Continue",
+            "to": "02-Row-Default"
+          },
+          {
+            "from": "01-Map-Loading",
+            "on": "Continue",
+            "to": "02-Row-Default"
+          },
+          {
+            "from": "02-Row-Default",
+            "on": "Continue",
+            "to": "03-Seat-Default"
+          },
+          {
+            "from": "02-Row-Error",
+            "on": "Continue",
+            "to": "03-Seat-Default"
+          },
+          {
+            "from": "02-Row-Loading",
+            "on": "Continue",
+            "to": "03-Seat-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "buy-tickets",
+            "on": "Continue to payment",
+            "from": "03-Seat-Default"
+          },
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Seat-Default"
+          }
+        ]
+      },
+      {
+        "slug": "sign-in",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Sign In",
+        "entry": [
+          "01-Email"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Email",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Code",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Email-Default",
+            "on": "Continue",
+            "to": "02-Code-Default"
+          },
+          {
+            "from": "01-Email-Error",
+            "on": "Continue",
+            "to": "02-Code-Default"
+          },
+          {
+            "from": "01-Email-Validation",
+            "on": "Continue",
+            "to": "02-Code-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "02-Code-Default"
+          }
+        ]
+      },
+      {
+        "slug": "sign-up",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Sign Up",
+        "entry": [
+          "01-Email"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Email",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Details",
+            "kind": "form",
+            "states": [
+              "Custom-Locked",
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Welcome",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Email-Default",
+            "on": "Continue",
+            "to": "02-Details-Default"
+          },
+          {
+            "from": "01-Email-Error",
+            "on": "Continue",
+            "to": "02-Details-Default"
+          },
+          {
+            "from": "01-Email-Validation",
+            "on": "Continue",
+            "to": "02-Details-Default"
+          },
+          {
+            "from": "02-Details-Custom-Locked",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          },
+          {
+            "from": "02-Details-Default",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          },
+          {
+            "from": "02-Details-Error",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          },
+          {
+            "from": "02-Details-Validation",
+            "on": "Continue",
+            "to": "03-Welcome-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Welcome-Default"
+          }
+        ]
+      },
+      {
+        "slug": "team",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Team",
+        "entry": [
+          "01-Members"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Members",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Invite",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Roles",
+            "kind": "choice",
+            "states": [
+              "Default",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Members-Default",
+            "on": "Continue",
+            "to": "02-Invite-Default"
+          },
+          {
+            "from": "01-Members-Empty",
+            "on": "Continue",
+            "to": "02-Invite-Default"
+          },
+          {
+            "from": "01-Members-Error",
+            "on": "Continue",
+            "to": "02-Invite-Default"
+          },
+          {
+            "from": "01-Members-Loading",
+            "on": "Continue",
+            "to": "02-Invite-Default"
+          },
+          {
+            "from": "02-Invite-Default",
+            "on": "Continue",
+            "to": "03-Roles-Default"
+          },
+          {
+            "from": "02-Invite-Error",
+            "on": "Continue",
+            "to": "03-Roles-Default"
+          },
+          {
+            "from": "02-Invite-Validation",
+            "on": "Continue",
+            "to": "03-Roles-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Roles-Default"
+          }
+        ]
+      },
+      {
+        "slug": "ticket-types",
+        "devices": [
+          "desktop"
+        ],
+        "title": "Ticket Types",
+        "entry": [
+          "01-List"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "List",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "New",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Pricing",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "04",
+            "id": "Review",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-List-Default",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "01-List-Empty",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "01-List-Error",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "01-List-Loading",
+            "on": "Continue",
+            "to": "02-New-Default"
+          },
+          {
+            "from": "02-New-Default",
+            "on": "Continue",
+            "to": "03-Pricing-Default"
+          },
+          {
+            "from": "02-New-Error",
+            "on": "Continue",
+            "to": "03-Pricing-Default"
+          },
+          {
+            "from": "02-New-Validation",
+            "on": "Continue",
+            "to": "03-Pricing-Default"
+          },
+          {
+            "from": "03-Pricing-Default",
+            "on": "Continue",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Pricing-Error",
+            "on": "Continue",
+            "to": "04-Review-Default"
+          },
+          {
+            "from": "03-Pricing-Validation",
+            "on": "Continue",
+            "to": "04-Review-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "promo-codes",
+            "on": "Add a promo code",
+            "from": "04-Review-Default"
+          },
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "04-Review-Default"
+          }
+        ]
+      },
+      {
+        "slug": "transfer-a-ticket",
+        "devices": [
+          "mobile"
+        ],
+        "title": "Transfer ATicket",
+        "entry": [
+          "01-Recipient"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Recipient",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Confirm",
+            "kind": "confirmation",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Success"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "Sent",
+            "kind": "result",
+            "states": [
+              "Default",
+              "Success"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Recipient-Default",
+            "on": "Continue",
+            "to": "02-Confirm-Default"
+          },
+          {
+            "from": "01-Recipient-Error",
+            "on": "Continue",
+            "to": "02-Confirm-Default"
+          },
+          {
+            "from": "01-Recipient-Validation",
+            "on": "Continue",
+            "to": "02-Confirm-Default"
+          },
+          {
+            "from": "02-Confirm-Default",
+            "on": "Confirm and pay",
+            "to": "03-Sent-Default"
+          },
+          {
+            "from": "02-Confirm-Error",
+            "on": "Confirm and pay",
+            "to": "03-Sent-Default"
+          },
+          {
+            "from": "02-Confirm-Success",
+            "on": "Continue",
+            "to": "03-Sent-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "my-tickets",
+            "on": "Back to my tickets",
+            "from": "03-Sent-Default"
+          },
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-Sent-Default"
+          }
+        ]
+      },
+      {
+        "slug": "wallet",
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "title": "Wallet",
+        "entry": [
+          "01-Balance"
+        ],
+        "steps": [
+          {
+            "n": "01",
+            "id": "Balance",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          },
+          {
+            "n": "02",
+            "id": "Topup",
+            "kind": "form",
+            "states": [
+              "Default",
+              "Error",
+              "Submitting",
+              "Validation"
+            ]
+          },
+          {
+            "n": "03",
+            "id": "History",
+            "kind": "data",
+            "states": [
+              "Default",
+              "Empty",
+              "Error",
+              "Loading"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "from": "01-Balance-Default",
+            "on": "Continue",
+            "to": "02-Topup-Default"
+          },
+          {
+            "from": "01-Balance-Empty",
+            "on": "Continue",
+            "to": "02-Topup-Default"
+          },
+          {
+            "from": "01-Balance-Error",
+            "on": "Continue",
+            "to": "02-Topup-Default"
+          },
+          {
+            "from": "02-Topup-Default",
+            "on": "Continue",
+            "to": "03-History-Default"
+          },
+          {
+            "from": "02-Topup-Error",
+            "on": "Continue",
+            "to": "03-History-Default"
+          },
+          {
+            "from": "02-Topup-Validation",
+            "on": "Continue",
+            "to": "03-History-Default"
+          }
+        ],
+        "next": [
+          {
+            "flow": "help-centre",
+            "on": "Help centre",
+            "from": "03-History-Default"
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "flow": "account-settings",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "buy-tickets",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "check-in-scan",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "create-an-event",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "create-an-event",
+        "field": "entryPoints",
+        "confidence": "guess",
+        "candidates": 2
+      },
+      {
+        "flow": "event-details",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "find-an-event",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "help-centre",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "my-tickets",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "notifications",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "payouts",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "promo-codes",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "reports",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "request-a-refund",
+        "field": "steps.02.states",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "request-a-refund",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "schedule",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "seat-map",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "sign-in",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "sign-up",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "team",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "ticket-types",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "transfer-a-ticket",
+        "field": "goal",
+        "confidence": "unknown"
+      },
+      {
+        "flow": "wallet",
+        "field": "goal",
+        "confidence": "unknown"
+      }
+    ],
+    "writes": [
+      {
+        "slug": "account-settings",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "buy-tickets",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "check-in-scan",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "create-an-event",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "event-details",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "find-an-event",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "help-centre",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "my-tickets",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "notifications",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "payouts",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "promo-codes",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "reports",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "request-a-refund",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "schedule",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "seat-map",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "sign-in",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "sign-up",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "team",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "ticket-types",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "transfer-a-ticket",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "wallet",
+        "ok": true,
+        "error": null
+      }
+    ],
+    "gaps": [
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "01-profile-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "01-profile-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-default-m.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-default-m.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-default.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-default.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-error-m.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-error-m.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-error.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-error.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-submitting-m.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "02-security-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-submitting-m.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-submitting.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "02-security-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-submitting.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-validation-m.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-validation-m.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-link",
+        "where": "02-security-validation.html → 04-nope-default.html"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "broken-include",
+        "where": "02-security-validation.html → <dc-import name=\"Nope\">"
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "03-danger-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "03-danger-default.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "03-danger-error-m.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "03-danger-error.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "03-danger-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-link",
+        "where": "03-danger-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "account-settings",
+        "kind": "dead-end",
+        "where": "03-Danger-Error"
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "03-payment-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "03-payment-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "04-review-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "04-review-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "05-done-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "05-done-default.html → href=\"#\""
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "05-done-success-m.html → href=\"#\""
+      },
+      {
+        "flow": "buy-tickets",
+        "kind": "dead-link",
+        "where": "05-done-success.html → href=\"#\""
+      },
+      {
+        "flow": "check-in-scan",
+        "kind": "dead-link",
+        "where": "02-Próximo Evento-Default-m.html → href=\"#\""
+      },
+      {
+        "flow": "check-in-scan",
+        "kind": "dead-link",
+        "where": "02-Próximo Evento-Default.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-link",
+        "where": "01-basics-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-link",
+        "where": "02-schedule-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-link",
+        "where": "04-tickets-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-link",
+        "where": "05-media-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-link",
+        "where": "06-publish-default.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-link",
+        "where": "06-publish-error.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-link",
+        "where": "06-publish-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-end",
+        "where": "06-Publish-Error"
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "dead-end",
+        "where": "06-Publish-Success"
+      },
+      {
+        "flow": "create-an-event",
+        "kind": "unreachable",
+        "where": "05-Media"
+      },
+      {
+        "flow": "event-details",
+        "kind": "dead-link",
+        "where": "02-venue-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "event-details",
+        "kind": "dead-link",
+        "where": "02-venue-default.html → href=\"#\""
+      },
+      {
+        "flow": "find-an-event",
+        "kind": "dead-link",
+        "where": "01-search-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "find-an-event",
+        "kind": "dead-link",
+        "where": "01-search-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "find-an-event",
+        "kind": "dead-link",
+        "where": "04-dates-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "find-an-event",
+        "kind": "dead-link",
+        "where": "04-dates-default.html → href=\"#\""
+      },
+      {
+        "flow": "find-an-event",
+        "kind": "dead-link",
+        "where": "04-dates-error-m.html → href=\"#\""
+      },
+      {
+        "flow": "find-an-event",
+        "kind": "dead-link",
+        "where": "04-dates-error.html → href=\"#\""
+      },
+      {
+        "flow": "find-an-event",
+        "kind": "dead-end",
+        "where": "04-Dates-Error"
+      },
+      {
+        "flow": "help-centre",
+        "kind": "dead-link",
+        "where": "01-home-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "help-centre",
+        "kind": "dead-link",
+        "where": "01-home-default.html → href=\"#\""
+      },
+      {
+        "flow": "help-centre",
+        "kind": "dead-end",
+        "where": "01-Home-Default"
+      },
+      {
+        "flow": "my-tickets",
+        "kind": "dead-link",
+        "where": "02-ticket-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "my-tickets",
+        "kind": "dead-link",
+        "where": "02-ticket-default.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "01-details-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "01-details-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "02-channels-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "02-channels-default.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "02-channels-error-m.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "02-channels-error.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "02-channels-loading-m.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-link",
+        "where": "02-channels-loading.html → href=\"#\""
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-end",
+        "where": "01-Details-Error"
+      },
+      {
+        "flow": "notifications",
+        "kind": "dead-end",
+        "where": "02-Channels-Error"
+      },
+      {
+        "flow": "payouts",
+        "kind": "dead-link",
+        "where": "02-bank-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "payouts",
+        "kind": "dead-link",
+        "where": "04-history-default.html → href=\"#\""
+      },
+      {
+        "flow": "payouts",
+        "kind": "dead-link",
+        "where": "04-history-empty.html → href=\"#\""
+      },
+      {
+        "flow": "payouts",
+        "kind": "dead-link",
+        "where": "04-history-error.html → href=\"#\""
+      },
+      {
+        "flow": "payouts",
+        "kind": "dead-link",
+        "where": "04-history-loading.html → href=\"#\""
+      },
+      {
+        "flow": "payouts",
+        "kind": "dead-end",
+        "where": "04-History-Empty"
+      },
+      {
+        "flow": "payouts",
+        "kind": "dead-end",
+        "where": "04-History-Error"
+      },
+      {
+        "flow": "promo-codes",
+        "kind": "dead-link",
+        "where": "02-new-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "promo-codes",
+        "kind": "dead-link",
+        "where": "03-done-default.html → href=\"#\""
+      },
+      {
+        "flow": "promo-codes",
+        "kind": "dead-link",
+        "where": "03-done-success.html → href=\"#\""
+      },
+      {
+        "flow": "reports",
+        "kind": "too-large",
+        "where": "design/flows/reports/02-export-default.html"
+      },
+      {
+        "flow": "reports",
+        "kind": "dead-link",
+        "where": "02-export-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "reports",
+        "kind": "dead-link",
+        "where": "03-done-default.html → href=\"#\""
+      },
+      {
+        "flow": "reports",
+        "kind": "dead-link",
+        "where": "03-done-success.html → href=\"#\""
+      },
+      {
+        "flow": "reports",
+        "kind": "unreachable",
+        "where": "02-Export"
+      },
+      {
+        "flow": "reports",
+        "kind": "unreachable",
+        "where": "03-Done"
+      },
+      {
+        "flow": "request-a-refund",
+        "kind": "state-missing",
+        "where": "02 Error"
+      },
+      {
+        "flow": "request-a-refund",
+        "kind": "dead-link",
+        "where": "02-reason-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "request-a-refund",
+        "kind": "dead-link",
+        "where": "03-result-default.html → href=\"#\""
+      },
+      {
+        "flow": "request-a-refund",
+        "kind": "dead-link",
+        "where": "03-result-success.html → href=\"#\""
+      },
+      {
+        "flow": "schedule",
+        "kind": "dead-link",
+        "where": "01-dates-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "schedule",
+        "kind": "dead-link",
+        "where": "02-times-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "schedule",
+        "kind": "dead-link",
+        "where": "03-review-default.html → href=\"#\""
+      },
+      {
+        "flow": "schedule",
+        "kind": "dead-link",
+        "where": "03-review-error.html → href=\"#\""
+      },
+      {
+        "flow": "schedule",
+        "kind": "dead-link",
+        "where": "03-review-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "schedule",
+        "kind": "dead-end",
+        "where": "03-Review-Error"
+      },
+      {
+        "flow": "schedule",
+        "kind": "dead-end",
+        "where": "03-Review-Success"
+      },
+      {
+        "flow": "seat-map",
+        "kind": "dead-link",
+        "where": "03-seat-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "seat-map",
+        "kind": "dead-link",
+        "where": "03-seat-default.html → href=\"#\""
+      },
+      {
+        "flow": "seat-map",
+        "kind": "dead-link",
+        "where": "03-seat-error-m.html → href=\"#\""
+      },
+      {
+        "flow": "seat-map",
+        "kind": "dead-link",
+        "where": "03-seat-error.html → href=\"#\""
+      },
+      {
+        "flow": "seat-map",
+        "kind": "dead-link",
+        "where": "03-seat-loading-m.html → href=\"#\""
+      },
+      {
+        "flow": "seat-map",
+        "kind": "dead-link",
+        "where": "03-seat-loading.html → href=\"#\""
+      },
+      {
+        "flow": "seat-map",
+        "kind": "dead-end",
+        "where": "03-Seat-Error"
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "01-email-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "01-email-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-default.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-error-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-error.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-validation-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-link",
+        "where": "02-code-validation.html → href=\"#\""
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-end",
+        "where": "02-Code-Validation"
+      },
+      {
+        "flow": "sign-in",
+        "kind": "dead-end",
+        "where": "02-Code-Error"
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "01-email-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "01-email-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "02-details-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "02-details-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "03-welcome-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "03-welcome-default.html → href=\"#\""
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "03-welcome-success-m.html → href=\"#\""
+      },
+      {
+        "flow": "sign-up",
+        "kind": "dead-link",
+        "where": "03-welcome-success.html → href=\"#\""
+      },
+      {
+        "flow": "team",
+        "kind": "dead-link",
+        "where": "02-invite-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "team",
+        "kind": "dead-link",
+        "where": "03-roles-default.html → href=\"#\""
+      },
+      {
+        "flow": "team",
+        "kind": "dead-link",
+        "where": "03-roles-error.html → href=\"#\""
+      },
+      {
+        "flow": "team",
+        "kind": "dead-link",
+        "where": "03-roles-loading.html → href=\"#\""
+      },
+      {
+        "flow": "team",
+        "kind": "dead-end",
+        "where": "03-Roles-Error"
+      },
+      {
+        "flow": "ticket-types",
+        "kind": "dead-link",
+        "where": "02-new-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "ticket-types",
+        "kind": "dead-link",
+        "where": "03-pricing-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "ticket-types",
+        "kind": "dead-link",
+        "where": "04-review-default.html → href=\"#\""
+      },
+      {
+        "flow": "ticket-types",
+        "kind": "dead-link",
+        "where": "04-review-error.html → href=\"#\""
+      },
+      {
+        "flow": "ticket-types",
+        "kind": "dead-link",
+        "where": "04-review-submitting.html → href=\"#\""
+      },
+      {
+        "flow": "ticket-types",
+        "kind": "dead-end",
+        "where": "04-Review-Error"
+      },
+      {
+        "flow": "ticket-types",
+        "kind": "dead-end",
+        "where": "04-Review-Success"
+      },
+      {
+        "flow": "transfer-a-ticket",
+        "kind": "dead-link",
+        "where": "01-recipient-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "transfer-a-ticket",
+        "kind": "dead-link",
+        "where": "02-confirm-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "transfer-a-ticket",
+        "kind": "dead-link",
+        "where": "03-sent-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "transfer-a-ticket",
+        "kind": "dead-link",
+        "where": "03-sent-success-m.html → href=\"#\""
+      },
+      {
+        "flow": "wallet",
+        "kind": "dead-link",
+        "where": "02-topup-submitting-m.html → href=\"#\""
+      },
+      {
+        "flow": "wallet",
+        "kind": "dead-link",
+        "where": "03-history-default-m.html → href=\"#\""
+      },
+      {
+        "flow": "wallet",
+        "kind": "dead-link",
+        "where": "03-history-default.html → href=\"#\""
+      },
+      {
+        "flow": "wallet",
+        "kind": "dead-link",
+        "where": "03-history-empty-m.html → href=\"#\""
+      },
+      {
+        "flow": "wallet",
+        "kind": "dead-link",
+        "where": "03-history-error-m.html → href=\"#\""
+      },
+      {
+        "flow": "wallet",
+        "kind": "dead-end",
+        "where": "03-History-Empty"
+      },
+      {
+        "flow": "wallet",
+        "kind": "dead-end",
+        "where": "03-History-Error"
+      }
+    ]
+  },
+  "play": {
+    "gaps": {
+      "account-settings": {
+        "deadEnds": [
+          "03-Danger-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 10
+      },
+      "buy-tickets": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 8
+      },
+      "check-in-scan": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 2
+      },
+      "create-an-event": {
+        "deadEnds": [
+          "06-Publish-Error",
+          "06-Publish-Success"
+        ],
+        "unreachable": [
+          "05"
+        ],
+        "deadLinks": 7
+      },
+      "event-details": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 2
+      },
+      "find-an-event": {
+        "deadEnds": [
+          "04-Dates-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 6
+      },
+      "help-centre": {
+        "deadEnds": [
+          "01-Home-Default"
+        ],
+        "unreachable": [],
+        "deadLinks": 2
+      },
+      "my-tickets": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 2
+      },
+      "notifications": {
+        "deadEnds": [
+          "01-Details-Error",
+          "02-Channels-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 8
+      },
+      "payouts": {
+        "deadEnds": [
+          "04-History-Empty",
+          "04-History-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 5
+      },
+      "promo-codes": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 3
+      },
+      "reports": {
+        "deadEnds": [],
+        "unreachable": [
+          "02",
+          "03"
+        ],
+        "deadLinks": 3
+      },
+      "request-a-refund": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 3
+      },
+      "schedule": {
+        "deadEnds": [
+          "03-Review-Error",
+          "03-Review-Success"
+        ],
+        "unreachable": [],
+        "deadLinks": 5
+      },
+      "seat-map": {
+        "deadEnds": [
+          "03-Seat-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 6
+      },
+      "sign-in": {
+        "deadEnds": [
+          "02-Code-Validation",
+          "02-Code-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 10
+      },
+      "sign-up": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 8
+      },
+      "team": {
+        "deadEnds": [
+          "03-Roles-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 4
+      },
+      "ticket-types": {
+        "deadEnds": [
+          "04-Review-Error",
+          "04-Review-Success"
+        ],
+        "unreachable": [],
+        "deadLinks": 5
+      },
+      "transfer-a-ticket": {
+        "deadEnds": [],
+        "unreachable": [],
+        "deadLinks": 4
+      },
+      "wallet": {
+        "deadEnds": [
+          "03-History-Empty",
+          "03-History-Error"
+        ],
+        "unreachable": [],
+        "deadLinks": 5
+      }
+    },
+    "plugin": {
+      "account-settings": {
+        "ready": false,
+        "start": "01-Profile-Default",
+        "deadEnds": [
+          "03-Danger-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "buy-tickets": {
+        "ready": true,
+        "start": "01-Tickets-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "check-in-scan": {
+        "ready": true,
+        "start": "01-Scan-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "create-an-event": {
+        "ready": false,
+        "start": "01-Basics-Default",
+        "deadEnds": [
+          "06-Publish-Error",
+          "06-Publish-Success"
+        ],
+        "unreachable": [
+          "05"
+        ],
+        "source": "local"
+      },
+      "event-details": {
+        "ready": true,
+        "start": "01-Overview-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "find-an-event": {
+        "ready": false,
+        "start": "01-Search-Default",
+        "deadEnds": [
+          "04-Dates-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "help-centre": {
+        "ready": false,
+        "start": "01-Home-Default",
+        "deadEnds": [
+          "01-Home-Default"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "my-tickets": {
+        "ready": true,
+        "start": "01-List-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "notifications": {
+        "ready": false,
+        "start": "01-Details-Default",
+        "deadEnds": [
+          "01-Details-Error",
+          "02-Channels-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "payouts": {
+        "ready": false,
+        "start": "01-Overview-Default",
+        "deadEnds": [
+          "04-History-Empty",
+          "04-History-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "promo-codes": {
+        "ready": true,
+        "start": "01-List-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "reports": {
+        "ready": false,
+        "start": "01-Sales-Default",
+        "deadEnds": [],
+        "unreachable": [
+          "02",
+          "03"
+        ],
+        "source": "local"
+      },
+      "request-a-refund": {
+        "ready": true,
+        "start": "01-Order-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "schedule": {
+        "ready": false,
+        "start": "01-Dates-Default",
+        "deadEnds": [
+          "03-Review-Error",
+          "03-Review-Success"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "seat-map": {
+        "ready": false,
+        "start": "01-Map-Default",
+        "deadEnds": [
+          "03-Seat-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "sign-in": {
+        "ready": false,
+        "start": "01-Email-Default",
+        "deadEnds": [
+          "02-Code-Validation",
+          "02-Code-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "sign-up": {
+        "ready": true,
+        "start": "01-Email-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "team": {
+        "ready": false,
+        "start": "01-Members-Default",
+        "deadEnds": [
+          "03-Roles-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "ticket-types": {
+        "ready": false,
+        "start": "01-List-Default",
+        "deadEnds": [
+          "04-Review-Error",
+          "04-Review-Success"
+        ],
+        "unreachable": [],
+        "source": "local"
+      },
+      "transfer-a-ticket": {
+        "ready": true,
+        "start": "01-Recipient-Default",
+        "deadEnds": [],
+        "unreachable": [],
+        "source": "local"
+      },
+      "wallet": {
+        "ready": false,
+        "start": "01-Balance-Default",
+        "deadEnds": [
+          "03-History-Empty",
+          "03-History-Error"
+        ],
+        "unreachable": [],
+        "source": "local"
+      }
+    },
+    "portal": {
+      "account-settings": {
+        "ready": false,
+        "start": "01-Profile-Default",
+        "deadEnds": [
+          "03-Danger-Error"
+        ],
+        "unreachable": []
+      },
+      "buy-tickets": {
+        "ready": true,
+        "start": "01-Tickets-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "check-in-scan": {
+        "ready": true,
+        "start": "01-Scan-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "create-an-event": {
+        "ready": false,
+        "start": "01-Basics-Default",
+        "deadEnds": [
+          "06-Publish-Error",
+          "06-Publish-Success"
+        ],
+        "unreachable": [
+          "05"
+        ]
+      },
+      "event-details": {
+        "ready": true,
+        "start": "01-Overview-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "find-an-event": {
+        "ready": false,
+        "start": "01-Search-Default",
+        "deadEnds": [
+          "04-Dates-Error"
+        ],
+        "unreachable": []
+      },
+      "help-centre": {
+        "ready": false,
+        "start": "01-Home-Default",
+        "deadEnds": [
+          "01-Home-Default"
+        ],
+        "unreachable": []
+      },
+      "my-tickets": {
+        "ready": true,
+        "start": "01-List-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "notifications": {
+        "ready": false,
+        "start": "01-Details-Default",
+        "deadEnds": [
+          "01-Details-Error",
+          "02-Channels-Error"
+        ],
+        "unreachable": []
+      },
+      "payouts": {
+        "ready": false,
+        "start": "01-Overview-Default",
+        "deadEnds": [
+          "04-History-Empty",
+          "04-History-Error"
+        ],
+        "unreachable": []
+      },
+      "promo-codes": {
+        "ready": true,
+        "start": "01-List-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "reports": {
+        "ready": false,
+        "start": "01-Sales-Default",
+        "deadEnds": [],
+        "unreachable": [
+          "02",
+          "03"
+        ]
+      },
+      "request-a-refund": {
+        "ready": true,
+        "start": "01-Order-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "schedule": {
+        "ready": false,
+        "start": "01-Dates-Default",
+        "deadEnds": [
+          "03-Review-Error",
+          "03-Review-Success"
+        ],
+        "unreachable": []
+      },
+      "seat-map": {
+        "ready": false,
+        "start": "01-Map-Default",
+        "deadEnds": [
+          "03-Seat-Error"
+        ],
+        "unreachable": []
+      },
+      "sign-in": {
+        "ready": false,
+        "start": "01-Email-Default",
+        "deadEnds": [
+          "02-Code-Validation",
+          "02-Code-Error"
+        ],
+        "unreachable": []
+      },
+      "sign-up": {
+        "ready": true,
+        "start": "01-Email-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "team": {
+        "ready": false,
+        "start": "01-Members-Default",
+        "deadEnds": [
+          "03-Roles-Error"
+        ],
+        "unreachable": []
+      },
+      "ticket-types": {
+        "ready": false,
+        "start": "01-List-Default",
+        "deadEnds": [
+          "04-Review-Error",
+          "04-Review-Success"
+        ],
+        "unreachable": []
+      },
+      "transfer-a-ticket": {
+        "ready": true,
+        "start": "01-Recipient-Default",
+        "deadEnds": [],
+        "unreachable": []
+      },
+      "wallet": {
+        "ready": false,
+        "start": "01-Balance-Default",
+        "deadEnds": [
+          "03-History-Empty",
+          "03-History-Error"
+        ],
+        "unreachable": []
+      }
+    }
+  },
+  "publish1": {
+    "firstAttempt": {
+      "ok": true,
+      "code": null,
+      "message": "",
+      "pushed": 20
+    },
+    "skippedFirst": [
+      "account-settings"
+    ],
+    "ok": true,
+    "ms": 396,
+    "pushed": [
+      "buy-tickets",
+      "check-in-scan",
+      "create-an-event",
+      "event-details",
+      "find-an-event",
+      "help-centre",
+      "my-tickets",
+      "notifications",
+      "payouts",
+      "promo-codes",
+      "reports",
+      "request-a-refund",
+      "schedule",
+      "seat-map",
+      "sign-in",
+      "sign-up",
+      "team",
+      "ticket-types",
+      "transfer-a-ticket",
+      "wallet",
+      "account-settings"
+    ],
+    "unchanged": [
+      "buy-tickets",
+      "check-in-scan",
+      "create-an-event",
+      "event-details",
+      "find-an-event",
+      "help-centre",
+      "my-tickets",
+      "notifications",
+      "payouts",
+      "promo-codes",
+      "reports",
+      "request-a-refund",
+      "schedule",
+      "seat-map",
+      "sign-in",
+      "sign-up",
+      "team",
+      "ticket-types",
+      "transfer-a-ticket",
+      "wallet"
+    ],
+    "components": {
+      "state": "unchanged",
+      "version": 1,
+      "screens": 10
+    },
+    "release": 2,
+    "error": null,
+    "http429": 0,
+    "retries": 0,
+    "httpCalls": 118
+  },
+  "xl": {
+    "flows": 21,
+    "screens": 323,
+    "publishMs": 396,
+    "secondsPerFlow": 0,
+    "http429": 0
+  },
+  "portal1": {
+    "flows": [
+      {
+        "slug": "account-settings",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 12,
+        "mobileScreens": 12,
+        "desktopScreens": 12,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 6,
+        "entry": [
+          "01-Profile"
+        ],
+        "nextFrom": 1,
+        "exits": [
+          "03-Danger-Success"
+        ]
+      },
+      {
+        "slug": "buy-tickets",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 26,
+        "mobileScreens": 25,
+        "desktopScreens": 26,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 21,
+        "entry": [
+          "01-Tickets"
+        ],
+        "nextFrom": 2,
+        "exits": []
+      },
+      {
+        "slug": "check-in-scan",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 5,
+        "mobileScreens": 4,
+        "desktopScreens": 5,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 3,
+        "entry": [
+          "01-Scan"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "create-an-event",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 25,
+        "mobileScreens": 0,
+        "desktopScreens": 25,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 16,
+        "entry": [
+          "01-Basics"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "event-details",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 2,
+        "mobileScreens": 2,
+        "desktopScreens": 2,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 1,
+        "entry": [
+          "01-Overview"
+        ],
+        "nextFrom": 2,
+        "exits": []
+      },
+      {
+        "slug": "find-an-event",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 12,
+        "mobileScreens": 12,
+        "desktopScreens": 12,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 7,
+        "entry": [
+          "01-Search"
+        ],
+        "nextFrom": 3,
+        "exits": []
+      },
+      {
+        "slug": "help-centre",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 1,
+        "mobileScreens": 1,
+        "desktopScreens": 1,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 0,
+        "entry": [
+          "01-Home"
+        ],
+        "nextFrom": 0,
+        "exits": []
+      },
+      {
+        "slug": "my-tickets",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 5,
+        "mobileScreens": 5,
+        "desktopScreens": 5,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 3,
+        "entry": [
+          "01-List"
+        ],
+        "nextFrom": 3,
+        "exits": []
+      },
+      {
+        "slug": "notifications",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 7,
+        "mobileScreens": 7,
+        "desktopScreens": 6,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 2,
+        "entry": [
+          "01-Details"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "payouts",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 15,
+        "mobileScreens": 0,
+        "desktopScreens": 15,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 10,
+        "entry": [
+          "01-Overview"
+        ],
+        "nextFrom": 2,
+        "exits": []
+      },
+      {
+        "slug": "promo-codes",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 10,
+        "mobileScreens": 0,
+        "desktopScreens": 10,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 7,
+        "entry": [
+          "01-List"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "reports",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 9,
+        "mobileScreens": 0,
+        "desktopScreens": 9,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 6,
+        "entry": [
+          "01-Sales"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "request-a-refund",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 9,
+        "mobileScreens": 0,
+        "desktopScreens": 9,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 6,
+        "entry": [
+          "01-Order"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "schedule",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 12,
+        "mobileScreens": 0,
+        "desktopScreens": 12,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 6,
+        "entry": [
+          "01-Dates"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "seat-map",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 9,
+        "mobileScreens": 9,
+        "desktopScreens": 9,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 6,
+        "entry": [
+          "01-Map"
+        ],
+        "nextFrom": 2,
+        "exits": []
+      },
+      {
+        "slug": "sign-in",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 8,
+        "mobileScreens": 8,
+        "desktopScreens": 8,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 3,
+        "entry": [
+          "01-Email"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "sign-up",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 11,
+        "mobileScreens": 11,
+        "desktopScreens": 11,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 7,
+        "entry": [
+          "01-Email"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "team",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 11,
+        "mobileScreens": 0,
+        "desktopScreens": 11,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 7,
+        "entry": [
+          "01-Members"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      },
+      {
+        "slug": "ticket-types",
+        "version": 1,
+        "devices": [
+          "desktop"
+        ],
+        "screens": 16,
+        "mobileScreens": 0,
+        "desktopScreens": 16,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 10,
+        "entry": [
+          "01-List"
+        ],
+        "nextFrom": 2,
+        "exits": []
+      },
+      {
+        "slug": "transfer-a-ticket",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 10,
+        "mobileScreens": 10,
+        "desktopScreens": 0,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 6,
+        "entry": [
+          "01-Recipient"
+        ],
+        "nextFrom": 2,
+        "exits": []
+      },
+      {
+        "slug": "wallet",
+        "version": 1,
+        "devices": [
+          "mobile",
+          "desktop"
+        ],
+        "screens": 12,
+        "mobileScreens": 12,
+        "desktopScreens": 3,
+        "overlaps": 0,
+        "layout": "grid",
+        "transitions": 6,
+        "entry": [
+          "01-Balance"
+        ],
+        "nextFrom": 1,
+        "exits": []
+      }
+    ],
+    "components": {
+      "version": "sha256:fdb01acb",
+      "sheets": [
+        {
+          "id": "CmpButtons",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpEventCard",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpFooter",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpHeader",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpInputs",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpLegacy",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpLogo",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpSidebar",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpStepper",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        },
+        {
+          "id": "CmpStyles",
+          "w": 1440,
+          "h": 720,
+          "styled": true,
+          "fonts": true
+        }
+      ]
+    },
+    "nested": {
+      "unresolvedImports": 0,
+      "logo": true
+    },
+    "caching": {
+      "etag": true,
+      "notModified": true,
+      "bridge": true
+    }
+  },
+  "lostRepo": {
+    "adopt": {
+      "ok": true,
+      "flows": 21,
+      "notRebuilt": [
+        "reports 02 Default: too-large (5.0 MB)"
+      ]
+    },
+    "dry": [
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "metadata",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged",
+      "unchanged"
+    ],
+    "dryByFlow": [
+      {
+        "flow": "account-settings",
+        "status": "unchanged"
+      },
+      {
+        "flow": "buy-tickets",
+        "status": "unchanged"
+      },
+      {
+        "flow": "check-in-scan",
+        "status": "unchanged"
+      },
+      {
+        "flow": "create-an-event",
+        "status": "unchanged"
+      },
+      {
+        "flow": "event-details",
+        "status": "unchanged"
+      },
+      {
+        "flow": "find-an-event",
+        "status": "unchanged"
+      },
+      {
+        "flow": "help-centre",
+        "status": "unchanged"
+      },
+      {
+        "flow": "my-tickets",
+        "status": "unchanged"
+      },
+      {
+        "flow": "notifications",
+        "status": "unchanged"
+      },
+      {
+        "flow": "payouts",
+        "status": "unchanged"
+      },
+      {
+        "flow": "promo-codes",
+        "status": "unchanged"
+      },
+      {
+        "flow": "reports",
+        "status": "metadata"
+      },
+      {
+        "flow": "request-a-refund",
+        "status": "unchanged"
+      },
+      {
+        "flow": "schedule",
+        "status": "unchanged"
+      },
+      {
+        "flow": "seat-map",
+        "status": "unchanged"
+      },
+      {
+        "flow": "sign-in",
+        "status": "unchanged"
+      },
+      {
+        "flow": "sign-up",
+        "status": "unchanged"
+      },
+      {
+        "flow": "team",
+        "status": "unchanged"
+      },
+      {
+        "flow": "ticket-types",
+        "status": "unchanged"
+      },
+      {
+        "flow": "transfer-a-ticket",
+        "status": "unchanged"
+      },
+      {
+        "flow": "wallet",
+        "status": "unchanged"
+      }
+    ],
+    "unchanged": 20,
+    "of": 21,
+    "differing": []
+  },
+  "stress": {
+    "stress-files": {
+      "ok": false,
+      "code": "BUNDLE",
+      "message": "cannot bundle stress-files: 450 files; the portal accepts 400 per flow: split the flow or drop states that do not apply",
+      "ms": 221,
+      "hasFix": true
+    },
+    "stress-bytes": {
+      "ok": false,
+      "code": "BUNDLE",
+      "message": "cannot bundle stress-bytes: no screens: no state maps to an existing file 21.0 MB; screens above 4 MB are not scanned or bundled: trim the inline asset or link it by URL",
+      "ms": 101,
+      "hasFix": true
+    },
+    "leakedFlows": []
+  },
+  "handoff": {
+    "flows": [
+      {
+        "slug": "buy-tickets",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "sign-up",
+        "ok": true,
+        "error": null
+      },
+      {
+        "slug": "payouts",
+        "ok": false,
+        "error": "VALIDATION: payouts has 2 gap(s) that block the handoff"
+      }
+    ],
+    "tooLargeRefused": {
+      "code": "VALIDATION",
+      "hasTooLargeGap": true
+    }
+  },
+  "rounds": {
+    "A": {
+      "comments": {
+        "posted": 30,
+        "statuses": {
+          "201": 29,
+          "422": 1
+        },
+        "xssStoredVerbatim": true,
+        "long": {
+          "at4000": 201,
+          "at4001": 422,
+          "spanish": 201
+        }
+      },
+      "edits": {
+        "posted": 10,
+        "ids": {
+          "supersede": "ted_4SRMIAwRpu07SLZ1",
+          "screen": "ted_4SRMIAwRpu07SLZ1",
+          "include": "ted_Vjt87yHtQ0lo6LoD",
+          "nested": "ted_ah_cHQCnocBAhCPh",
+          "shared": "ted_uyKdCrpw9s5ahZge",
+          "twoIncludes": "ted_N1oDweawohU77qjm",
+          "table": "ted_Oko3fBcv3XRxjIbo",
+          "mobileOnly": "ted_cImGoZjGrimfS7zO",
+          "dismiss1": "ted_pSO3SAUd1M-b8HAP",
+          "dismiss2": "ted_DmUrKF90C3xAzY6V"
+        },
+        "supersedeReplaced": true
+      },
+      "waivers": {
+        "posted": 1,
+        "list": [
+          {
+            "flow": "request-a-refund",
+            "step": "02",
+            "state": "Error"
+          }
+        ],
+        "refusedForClient": true
+      },
+      "structure": {
+        "stepTitles": 2,
+        "entryPoints": 1,
+        "status": [
+          200,
+          200
+        ],
+        "clientRefused": true
+      },
+      "agentThreads": [
+        {
+          "flow": "sign-up",
+          "id": "thr_A2JFz-tDssTLT9nG"
+        },
+        {
+          "flow": "sign-in",
+          "id": "thr_wLymqaLKg53EcNi9"
+        }
+      ],
+      "reopened": {
+        "resolveStatus": 200,
+        "reopenStatus": 200,
+        "statusAfter": "open"
+      },
+      "tooLarge": {
+        "flow": "reports",
+        "step": "02",
+        "gridStatus": "unavailable",
+        "waiverStatus": 422
+      },
+      "reorder": true
+    },
+    "release2": {
+      "editsLanded": {
+        "screen": 8,
+        "include": 1,
+        "nested": 1,
+        "shared": 1,
+        "table": 1,
+        "mobileOnly": 2,
+        "dismiss1": 0
+      },
+      "applied": 7,
+      "needsManual": 0,
+      "dismissed": 2,
+      "replies": 2,
+      "orphaningDry": [
+        {
+          "flow": "seat-map",
+          "screen": "02-Row-Default",
+          "openThreads": 1,
+          "threads": [
+            "thr_RANpWQ3CQx6xsygR"
+          ]
+        }
+      ],
+      "publish": {
+        "ok": true,
+        "pushed": [
+          "account-settings",
+          "buy-tickets",
+          "check-in-scan",
+          "create-an-event",
+          "event-details",
+          "find-an-event",
+          "help-centre",
+          "my-tickets",
+          "notifications",
+          "organizer-team",
+          "payouts",
+          "reports",
+          "request-a-refund",
+          "schedule",
+          "seat-map",
+          "sign-in",
+          "sign-up",
+          "ticket-types",
+          "transfer-a-ticket",
+          "wallet"
+        ],
+        "unchanged": 0,
+        "skipped": [],
+        "release": 3,
+        "error": null
+      },
+      "portalOnly": [
+        "team",
+        "promo-codes"
+      ],
+      "orphaning": [
+        {
+          "flow": "seat-map",
+          "screen": "02-Row-Default",
+          "openThreads": 1,
+          "threads": [
+            "thr_RANpWQ3CQx6xsygR"
+          ]
+        }
+      ],
+      "archived": {
+        "asked": [
+          "team",
+          "promo-codes"
+        ],
+        "ok": 2
+      },
+      "diff": {
+        "added": 7,
+        "removed": 8,
+        "changedSource": 13,
+        "changedInclude": 280,
+        "byFlow": {
+          "seatMapRemoved": 6,
+          "walletAdded": 5,
+          "buyTicketsRenamed": {
+            "removed": 2,
+            "added": 2
+          }
+        },
+        "flowsChanged": [
+          "account-settings",
+          "buy-tickets",
+          "check-in-scan",
+          "create-an-event",
+          "event-details",
+          "find-an-event",
+          "help-centre",
+          "my-tickets",
+          "notifications",
+          "payouts",
+          "reports",
+          "request-a-refund",
+          "schedule",
+          "seat-map",
+          "sign-in",
+          "sign-up",
+          "ticket-types",
+          "transfer-a-ticket",
+          "wallet"
+        ]
+      },
+      "orphan": {
+        "threadsOnRemovedScreen": 1,
+        "readableViaVersionsApi": true,
+        "screen": "02-Row-Default"
+      },
+      "deletedFlow": {
+        "stillOnPortal": false,
+        "latestVersionUnchanged": null
+      },
+      "renamedFlow": {
+        "newOnPortal": true,
+        "oldStillOnPortal": false
+      },
+      "waiversSurvive": true,
+      "stepTitleKept": "portal",
+      "stepTitleInManifest": null
+    },
+    "B": {
+      "staleEdit": {
+        "posted": 201,
+        "result": "needsManual",
+        "detail": "not-found",
+        "outdated": {
+          "suggested": true,
+          "status": "outdated",
+          "threadFound": true
+        }
+      },
+      "orphanComment": {
+        "status": 201,
+        "code": null
+      },
+      "waiverOnPresent": {
+        "status": 422,
+        "code": "VALIDATION",
+        "stateAfter": "present"
+      }
+    },
+    "release3": {
+      "subset": {
+        "pushed": [
+          "help-centre",
+          "reports",
+          "sign-in",
+          "sign-up",
+          "wallet"
+        ],
+        "othersUntouched": true,
+        "release": 4
+      },
+      "full": {
+        "pushed": [
+          "payouts"
+        ],
+        "release": 5
+      },
+      "handoffs": {
+        "v1StillV1": true,
+        "v3Created": true,
+        "v1ScreensUrlsHaveV1": true,
+        "firstVersion": 1,
+        "latestVersion": 2
+      }
+    },
+    "release4": {
+      "forced": {
+        "refusedFirst": true,
+        "ok": true,
+        "release": 6
+      },
+      "eventNamesForce": true,
+      "noop": {
+        "ok": true,
+        "noop": true,
+        "release": {
+          "number": 6,
+          "note": "Release 4, forced on purpose",
+          "createdAt": "2026-09-30 22:21:51.743736+00"
+        },
+        "releasesBefore": 6,
+        "releasesAfter": 6,
+        "calls": 23
+      }
+    }
+  },
+  "journey": {
+    "connectors": 30,
+    "expected": 30,
+    "loop": true,
+    "flowsOnPortal": 21
+  },
+  "dedupe": {
+    "distinctScreens": 311,
+    "totalScreens": 322,
+    "portalBytes": null
+  },
+  "mcp": {
+    "devAgent": {
+      "listHandoffs": "ok",
+      "getHandoff": "ok",
+      "getStatesGrid": "ok",
+      "getRelease": "ok"
+    },
+    "clientRefused": {
+      "pushFlowVersion": "FORBIDDEN",
+      "waiveState": "FORBIDDEN"
+    },
+    "tokenLeaked": false,
+    "sample": "{\n  \"id\": \"ho_ZHbx6F0EpJuse6R9\",\n  \"projectId\": \"marquee-2609302221\",\n  \"flowId\": \"buy-tickets\",\n  \"releaseNumber\": 5,\n  \"version\": 2,\n  \"story\": \"Buy tickets, third cut\",\n  \"components\": [\n    \"CmpEv"
+  },
+  "concurrency": {
+    "threeFlows": {
+      "ok": 3,
+      "conflicts": 0,
+      "codes": [
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "newVersions": 3
+    }
+  },
+  "reliability": {
+    "status": {
+      "ok": true,
+      "pluginNotice": null,
+      "latest": null,
+      "blockers": [],
+      "nextSteps": 3
+    },
+    "diagnose": {
+      "failedWithRun": true,
+      "code": "NOT_FOUND",
+      "linesForRun": 2
+    },
+    "expiredHandle": {
+      "code": "NOT_FOUND"
+    },
+    "api": {
+      "calls": 194,
+      "byStatus": {
+        "200": 141,
+        "201": 47,
+        "304": 1,
+        "403": 2,
+        "422": 3
+      },
+      "ms": 1043
+    },
+    "errorsWithRunId": 0,
+    "errorsTotal": 0
+  },
+  "clientAccount": {
+    "created": 201,
+    "accepted": 200,
+    "signedIn": true
+  },
+  "ui": {
+    "skipped": null,
+    "pages": {
+      "project": {
+        "path": "/projects/marquee-2609302221",
+        "status": 200,
+        "ms": 2129,
+        "consoleErrors": [],
+        "iframes": 6,
+        "screenStatuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/project.png"
+      },
+      "flow-buy-tickets": {
+        "path": "/projects/marquee-2609302221/flows/buy-tickets",
+        "status": 200,
+        "ms": 3102,
+        "consoleErrors": [],
+        "iframes": 1,
+        "screenStatuses": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/flow-buy-tickets.png"
+      },
+      "flow-transfer-a-ticket": {
+        "path": "/projects/marquee-2609302221/flows/transfer-a-ticket",
+        "status": 200,
+        "ms": 3077,
+        "consoleErrors": [],
+        "iframes": 1,
+        "screenStatuses": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/flow-transfer-a-ticket.png"
+      },
+      "flow-create-an-event": {
+        "path": "/projects/marquee-2609302221/flows/create-an-event",
+        "status": 200,
+        "ms": 3073,
+        "consoleErrors": [],
+        "iframes": 1,
+        "screenStatuses": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/flow-create-an-event.png"
+      },
+      "flow-account-settings": {
+        "path": "/projects/marquee-2609302221/flows/account-settings",
+        "status": 200,
+        "ms": 3081,
+        "consoleErrors": [],
+        "iframes": 1,
+        "screenStatuses": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/flow-account-settings.png"
+      },
+      "play": {
+        "path": "/projects/marquee-2609302221/flows/buy-tickets/play",
+        "status": 200,
+        "ms": 3069,
+        "consoleErrors": [],
+        "iframes": 1,
+        "screenStatuses": [
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/play.png"
+      },
+      "orphan-seat-map": {
+        "path": "/projects/marquee-2609302221/flows/seat-map?v=1&tab=comments",
+        "status": 200,
+        "ms": 3121,
+        "consoleErrors": [],
+        "iframes": 1,
+        "screenStatuses": [
+          200,
+          200
+        ],
+        "screenshot": "screenshots/orphan-seat-map.png"
+      },
+      "components": {
+        "path": "/projects/marquee-2609302221?tab=components",
+        "status": 200,
+        "ms": 3101,
+        "consoleErrors": [],
+        "iframes": 10,
+        "screenStatuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/components.png"
+      },
+      "releases": {
+        "path": "/projects/marquee-2609302221?tab=releases",
+        "status": 200,
+        "ms": 2077,
+        "consoleErrors": [],
+        "iframes": 0,
+        "screenStatuses": [],
+        "screenshot": "screenshots/releases.png"
+      },
+      "release2": {
+        "path": "/projects/marquee-2609302221?tab=releases&r=3",
+        "status": 200,
+        "ms": 2579,
+        "consoleErrors": [],
+        "iframes": 0,
+        "screenStatuses": [],
+        "screenshot": "screenshots/release2.png"
+      },
+      "device-bad-code": {
+        "path": "/device?code=ZZZZ-2222",
+        "status": 200,
+        "ms": 2049,
+        "consoleErrors": [
+          "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        ],
+        "iframes": 0,
+        "screenStatuses": []
+      },
+      "docs": {
+        "path": "/docs/",
+        "status": 200,
+        "ms": 2048,
+        "consoleErrors": [],
+        "iframes": 0,
+        "screenStatuses": []
+      },
+      "client-project": {
+        "path": "/projects/marquee-2609302221",
+        "status": 200,
+        "ms": 2103,
+        "consoleErrors": [],
+        "iframes": 6,
+        "screenStatuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "screenshot": "screenshots/client-project.png"
+      },
+      "client-flow": {
+        "path": "/projects/marquee-2609302221/flows/sign-up",
+        "status": 200,
+        "ms": 3067,
+        "consoleErrors": [],
+        "iframes": 1,
+        "screenStatuses": [
+          200,
+          200
+        ],
+        "screenshot": "screenshots/client-flow.png"
+      }
+    },
+    "consoleErrors": 1,
+    "checks": {
+      "flowsListed": 20,
+      "journey": {
+        "connectors": 28,
+        "loops": 1,
+        "expected": 28
+      },
+      "flow.buy-tickets": {
+        "boards": 1,
+        "mobileDisabled": false,
+        "unescapedScript": false,
+        "reload304": 0,
+        "reload200": 2
+      },
+      "flow.transfer-a-ticket": {
+        "boards": 1,
+        "mobileDisabled": false,
+        "unescapedScript": false,
+        "reload304": 0,
+        "reload200": 2
+      },
+      "flow.create-an-event": {
+        "boards": 1,
+        "mobileDisabled": true,
+        "unescapedScript": false,
+        "reload304": 0,
+        "reload200": 2
+      },
+      "flow.account-settings": {
+        "boards": 1,
+        "mobileDisabled": false,
+        "unescapedScript": false,
+        "reload304": 0,
+        "reload200": 2
+      },
+      "play": {
+        "status": 200,
+        "iframes": 1,
+        "hotspotClicked": true,
+        "movedOn": true,
+        "consoleErrors": 0
+      },
+      "orphanVersion": {
+        "visible": true,
+        "screenListed": false,
+        "threadListed": true
+      },
+      "componentSheets": 10,
+      "sheets": 10,
+      "releasesText": "Design Portal\nProjects\nMarquee\nAdmin\nDA\nDesignli Admin\nMarquee\n\nTickets for live events: fans find a show, pick seats and pay in a minute; organizers publish events and get paid out weekly.\n\nUser flows\n20\nComponents\nv2\nReleases\n7\nRelease 7current\nrace 2\n20 flows · just now\n3 flows changed\nRelease 6\nRelease 4, forced on purpose\n20 flows · just now\n1 flow changed\nRelease 5\nRelease 3b: everything els",
+      "release2": {
+        "rows": 76,
+        "viaIncludeShown": true
+      },
+      "deviceBadCode": true,
+      "docs": 200,
+      "client": {
+        "adminLink": false,
+        "accountLink": false,
+        "sees": "Design Portal\nMarquee\nSC\nSuite Client\nMarquee\n\nTickets for live events: fans find a show, pick seats and pay in a minute; organizers publish events and get paid out weekly.\n\nUser flows\n20\nComponents\nv",
+        "sendToAgent": false,
+        "commentsPanel": true
+      },
+      "xss": {
+        "imgOnerrorRendered": false,
+        "dialogFired": false
+      }
+    }
+  }
+}
