@@ -308,6 +308,8 @@ await timed("adopt", async () => {
         ...s,
         kind: k.steps.find((ks) => ks.n === s.n)?.kind ?? s.kind,
       }));
+      // the designer declares where a flow ends on a step that is not a result
+      if (k.play?.exits) flow.exits = k.play.exits;
     }
     const w = await c.call("flows_write", { flows: [flow] });
     obs.adopt.writes.push({ slug: f.slug, ok: w.ok, error: w.error ?? null });
@@ -320,6 +322,25 @@ await timed("adopt", async () => {
     where: x.where,
     message: x.message,
   }));
+  // what the plugin says about playing each flow: the gaps it reports, and its own verdict
+  obs.play = { gaps: {}, plugin: {}, portal: {} };
+  for (const x of g.out?.gaps ?? []) {
+    if (!x.flow) continue;
+    const e = (obs.play.gaps[x.flow] ??= { deadEnds: [], unreachable: [], deadLinks: 0 });
+    if (x.kind === "dead-end") e.deadEnds.push(x.where);
+    else if (x.kind === "unreachable") e.unreachable.push(x.step ?? x.where.slice(0, 2));
+    else if (x.kind === "dead-link") e.deadLinks++;
+  }
+  const st = await c.call("project_status", { portal: false });
+  for (const f of st.out?.info?.flows ?? [])
+    if (f.play)
+      obs.play.plugin[f.slug] = {
+        ready: f.play.ready,
+        start: f.play.start ?? null,
+        deadEnds: (f.play.deadEnds ?? []).map((d) => d.screen ?? d),
+        unreachable: (f.play.unreachable ?? []).map((u) => u.step ?? u),
+        source: f.play.source ?? null,
+      };
   await c.close();
   sh(
     "git add -A && git -c user.email=suite@designli.co -c user.name=Suite commit -qm adopt && git push -q",
@@ -420,6 +441,15 @@ await timed("portal1", async () => {
   obs.portal1 = { flows: [], components: null };
   for (const f of flows) {
     const v = await api.get(designer, `/projects/${PROJECT}/flows/${f.id}/versions/latest`);
+    const h = await api.get(designer, `/projects/${PROJECT}/flows/${f.id}/head`);
+    // head.play is the portal's own reading of the same rule; absent on a portal without play mode
+    if (h.json?.play)
+      (obs.play ??= { gaps: {}, plugin: {}, portal: {} }).portal[f.id] = {
+        ready: h.json.play.ready,
+        start: h.json.play.start ?? null,
+        deadEnds: (h.json.play.deadEnds ?? []).map((d) => d.screen ?? d),
+        unreachable: (h.json.play.unreachable ?? []).map((u) => u.step ?? u),
+      };
     const m = v.json?.manifest;
     if (!m) {
       obs.portal1.flows.push({ slug: f.id, error: v.error });
@@ -436,6 +466,8 @@ await timed("portal1", async () => {
       layout: m.layout ?? null,
       transitions: m.transitions?.length ?? 0,
       entry: m.entryPoints?.map((e) => e.to) ?? [],
+      nextFrom: (m.flow?.next ?? []).filter((n) => n.from).length,
+      exits: Object.keys(m.flow?.play?.exits ?? {}),
     });
   }
   const cm = await api.get(designer, `/p/${PROJECT}/components/latest/manifest.json`, {
@@ -1159,6 +1191,7 @@ if (!SKIP.has("ui"))
       clientSession,
       results: RESULTS,
       flows: ["buy-tickets", "transfer-a-ticket", "create-an-event", "account-settings"],
+      playFlow: "buy-tickets",
       ...(roundsUi ?? {}),
     });
     if (obs.ui.skipped) say(`  ui skipped: ${obs.ui.skipped}`);

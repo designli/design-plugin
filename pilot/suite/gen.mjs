@@ -115,7 +115,7 @@ export const FLOWS = [
       { id: "Schedule", kind: "form" },
       { id: "Venue", kind: "choice", extra: ["Selected"] },
       { id: "Tickets", kind: "form" },
-      { id: "Media", kind: "form", big: true },
+      { id: "Media", kind: "form", big: true, unlinked: true }, // planted: nothing leads here
       { id: "Publish", kind: "confirmation" },
     ],
   },
@@ -157,7 +157,7 @@ export const FLOWS = [
     goal: "A user chooses what Marquee tells them about and where.",
     devices: ["desktop"],
     steps: [
-      { id: "Details", kind: "form" },
+      { id: "Details", kind: "form", noRecovery: true }, // planted: an Error with no way back
       { id: "Channels", kind: "choice" },
     ],
   },
@@ -252,8 +252,11 @@ function body(flow, st, state, n, i, device) {
       html: '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>',
     };
   const ev = EVENTS[i % EVENTS.length];
-  const next = flow.steps[i + 1];
-  const nextHref = next ? fileOf(nn(i + 1), next, "Default", device, flow.oddNames) : null;
+  // a step marked `unlinked` is the planted unreachable one: the step before it links past it
+  let ni = i + 1;
+  while (flow.steps[ni]?.unlinked) ni++;
+  const next = flow.steps[ni];
+  const nextHref = next ? fileOf(nn(ni), next, "Default", device, flow.oddNames) : null;
   const title = flow.longTitles
     ? `${st.id}: ${ev[0]} — a very long screen title to see how the portal wraps names on boards and in the journey map (${state})`
     : `${st.id} · ${state}${st.emojiTitle ? " 🎟️" : ""}`;
@@ -275,7 +278,7 @@ function body(flow, st, state, n, i, device) {
       content = `<form>
   <div class="field"><label for="f1">${st.id === "Payment" ? "Card number" : st.id === "Email" ? "Email address" : "Name"}</label><input id="f1" type="text" value="${st.id === "Payment" ? "4242 4242 4242 4242" : st.id === "Email" ? "ana@ejemplo.co" : "Ana Restrepo"}">${invalid ? '<span class="error">Enter a valid value to continue</span>' : ""}</div>
   <div class="field"><label for="f2">${st.id === "Payment" ? "Expiry" : "Phone"}</label><input id="f2" type="text" value="${st.id === "Payment" ? "12/28" : "+57 300 123 4567"}"></div>
-  ${state === "Submitting" ? '<a class="btn" aria-disabled="true" href="#">Saving…</a>' : primary(st.id === "Payment" ? "Pay COP 180.000" : "Continue")}
+  ${state === "Submitting" ? '<a class="btn" aria-disabled="true" href="#">Saving…</a>' : st.noRecovery && state === "Error" ? "" : primary(st.id === "Payment" ? "Pay COP 180.000" : "Continue")}
 </form>
 ${state === "Error" ? '<p class="alert" role="alert">We could not save this. Check your connection and try again.</p>' : ""}
 ${state === "Custom-Locked" ? '<p class="alert" role="alert">Too many attempts. Try again in 15 minutes or reset your password.</p>' : ""}
@@ -386,6 +389,93 @@ const MAIN = (
 <body><main><h1>${flow.title}: the map</h1><ol>${flow.steps.map((s, i) => `<li>${nn(i)} ${s.id}</li>`).join("")}</ol><p>Comment with the screen name first, e.g. <code>02-Seats-Default: …</code></p></main></body></html>
 `;
 
+// ---- the play answer key ----
+// What the key says about playability is read back from the files this generator wrote, never from
+// the plugin's rule: per screen, which screens of its flow it links to, which other flow it leads to,
+// and how many of its clicks go nowhere.
+const plainText = (h) =>
+  h
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+const LINK_RE = /(?:href|data-goto)="([^"]*)"/g;
+const CROSS_RE = /<a\b[^>]*href="\.\.\/([a-z0-9-]+)\/([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+/** Folds one device file into its screen's entry (device variants are one screen). */
+function notePlay(acc, { id, step, state, kind, html }) {
+  const e = acc.get(id) ?? { id, step, state, kind, targets: new Set(), cross: [], dead: 0 };
+  for (const m of html.matchAll(LINK_RE)) {
+    const h = m[1].trim();
+    if (h === "" || h === "#" || /^javascript:/i.test(h)) e.dead++;
+    else if (!h.startsWith("../") && /\.html$/.test(h)) e.targets.add(h);
+  }
+  for (const m of html.matchAll(CROSS_RE)) e.cross.push({ flow: m[1], on: plainText(m[3]) });
+  acc.set(id, e);
+}
+/**
+ * The flow's play picture: the screens with no way onward, the steps no path from step 01 reaches,
+ * and the clicks that go nowhere. `declared(file)` says whether the file is a screen state of the
+ * flow at all, `present(file)` whether the portal also receives it (a file over the size cap is
+ * declared but never sent, so a link into it leads somewhere that is missing, not nowhere);
+ * `idOfFile` names the screen, `exits` are the endings the designer declares.
+ */
+function playKeyOf(acc, { declared, present, idOfFile, exits = {} }) {
+  const screens = [...acc.values()];
+  // one journey connector per (flow, label), carried by the lowest screen id that holds it
+  const leadsOut = new Set();
+  for (const s of screens)
+    for (const c of s.cross)
+      leadsOut.add(
+        screens
+          .filter((x) => x.cross.some((y) => y.flow === c.flow && y.on === c.on))
+          .map((x) => x.id)
+          .sort()[0],
+      );
+  const edges = new Map();
+  const onward = new Set();
+  for (const s of screens)
+    for (const t of s.targets) {
+      if (!declared(t) || idOfFile(t) === s.id) continue;
+      onward.add(s.id);
+      const tn = t.slice(0, 2);
+      if (present(t) && tn !== s.step) edges.set(s.step, (edges.get(s.step) ?? new Set()).add(tn));
+    }
+  const reached = new Set();
+  const queue = ["01"];
+  while (queue.length) {
+    const n = queue.shift();
+    if (reached.has(n)) continue;
+    reached.add(n);
+    for (const t of edges.get(n) ?? []) queue.push(t);
+  }
+  const deadEnds = screens
+    .filter(
+      (s) =>
+        !["Loading", "Submitting"].includes(s.state) &&
+        s.kind !== "result" &&
+        !(s.id in exits) &&
+        !leadsOut.has(s.id) &&
+        !onward.has(s.id),
+    )
+    .map((s) => s.id)
+    .sort();
+  const unreachable = [...new Set(screens.map((s) => s.step))]
+    .filter((n) => !reached.has(n))
+    .sort();
+  return {
+    deadEnds,
+    unreachable,
+    deadLinks: screens.reduce((n, s) => n + s.dead, 0),
+    ...(Object.keys(exits).length ? { exits } : {}),
+  };
+}
+/** The endings the designer declares (run.mjs writes them into flow.json through flows_write). */
+const EXITS = {
+  "account-settings": {
+    "03-Danger-Success":
+      "the account is deleted here and the user is signed out; no screen follows it",
+  },
+};
+
 // ---- generate ----
 export function generate(out, { stress = false } = {}) {
   const dir = resolve(out);
@@ -424,7 +514,15 @@ export function generate(out, { stress = false } = {}) {
       crossFlow: [],
       gaps: [],
       files: 0,
+      play: null,
     };
+    const acc = new Map(); // screen id -> its links, for the play key
+    const idOf = new Map(); // file name -> screen id
+    const absent = new Set(); // files too large to become a screen
+    // step id and state as the plugin derives them from the desktop file name ("Próximo Evento"
+    // becomes ProximoEvento, "custom-locked" becomes Custom-Locked), so the key names what it will
+    const derive = (n2, st2, state2) =>
+      guessStem(fileOf(n2, st2, state2, "desktop", flow.oddNames).replace(/\.html$/, ""));
     flow.steps.forEach((st, i) => {
       const n = nn(i);
       const states = statesOf(st);
@@ -441,13 +539,22 @@ export function generate(out, { stress = false } = {}) {
       for (const state of states)
         for (const device of flow.devices) {
           const f = fileOf(n, st, state, device, flow.oddNames);
-          writeFileSync(join(fdir, f), page(flow, st, state, n, i, device));
+          const html = page(flow, st, state, n, i, device);
+          writeFileSync(join(fdir, f), html);
           k.files++;
+          const d = derive(n, st, state);
+          const id = `${n}-${d.stepId}-${d.state}`;
+          idOf.set(f, id);
+          if (st.huge) absent.add(f);
+          else notePlay(acc, { id, step: n, state: d.state, kind: st.kind, html });
         }
-      const next = flow.steps[i + 1];
+      // the link onward skips a step nothing may lead to (the planted unreachable one)
+      let ni = i + 1;
+      while (flow.steps[ni]?.unlinked) ni++;
+      const next = flow.steps[ni];
       if (next) {
         const from = `${n}-${stepId(st.id)}-Default`;
-        const to = `${nn(i + 1)}-${stepId(next.id)}-Default`;
+        const to = `${nn(ni)}-${stepId(next.id)}-Default`;
         const label =
           st.kind === "form"
             ? st.id === "Payment"
@@ -473,6 +580,12 @@ export function generate(out, { stress = false } = {}) {
     });
     k.entry = `01-${stepId(flow.steps[0].id)}`;
     if (flow.main) writeFileSync(join(fdir, "Main.html"), MAIN(flow));
+    k.play = playKeyOf(acc, {
+      declared: (f) => idOf.has(f),
+      present: (f) => idOf.has(f) && !absent.has(f),
+      idOfFile: (f) => idOf.get(f),
+      exits: EXITS[flow.slug] ?? {},
+    });
     key.flows.push(k);
   }
   key.components = {
@@ -743,7 +856,8 @@ export const FLOWS_XL = [
     devices: ["desktop", "mobile"],
     xl: true,
     steps: [
-      { id: "Details", kind: "form", mobileOnlyStates: ["Error"] },
+      // planted: an Error with no way back (mobile only, as this flow's Error always is)
+      { id: "Details", kind: "form", mobileOnlyStates: ["Error"], noRecovery: true },
       { id: "Channels", kind: "choice" },
     ],
   },
@@ -774,7 +888,7 @@ export const FLOWS_XL = [
       { id: "Schedule", kind: "form" },
       { id: "Venue", kind: "choice", extra: ["Selected"] },
       { id: "Tickets", kind: "form" },
-      { id: "Media", kind: "form", sizeMB: 3 },
+      { id: "Media", kind: "form", sizeMB: 3, unlinked: true }, // planted: nothing leads here
       { id: "Publish", kind: "confirmation" },
     ],
   },
@@ -1088,11 +1202,15 @@ export function generateXl(out) {
       next: [],
       sizes: [],
       identical: [],
+      play: null,
     };
+    const acc = new Map(); // screen id -> its links, for the play key
+    const idOf = new Map(); // file name -> screen id
+    const absent = new Set(); // files too large to become a screen
     // step id and state names as the plugin will derive them from the desktop file name
     const derive = (n, st, state) =>
       guessStem(fileOf(n, st, state, "desktop", flow.oddNames).replace(/\.html$/, ""));
-    const idOf = (i) => derive(nn(i), flow.steps[i], "Default").stepId;
+    const idOf2 = (i) => derive(nn(i), flow.steps[i], "Default").stepId;
     flow.steps.forEach((st, i) => {
       const n = nn(i);
       const states = statesOf(st);
@@ -1100,7 +1218,7 @@ export function generateXl(out) {
       const nameOf = (state) => derive(n, st, state).state;
       const ks = {
         n,
-        id: idOf(i),
+        id: idOf2(i),
         kind: st.kind,
         states: states.map(nameOf),
         missing: st.missing || [],
@@ -1117,7 +1235,18 @@ export function generateXl(out) {
           const html = page(flow, st, state, n, i, device);
           writeFileSync(join(fdir, f), html);
           k.files++;
-          if (tooLarge && state === "Default") continue; // written, never a screen on the portal
+          idOf.set(f, `${n}-${idOf2(i)}-${nameOf(state)}`);
+          if (tooLarge && state === "Default") {
+            absent.add(f);
+            continue; // written, never a screen on the portal
+          }
+          notePlay(acc, {
+            id: `${n}-${idOf2(i)}-${nameOf(state)}`,
+            step: n,
+            state: nameOf(state),
+            kind: st.kind,
+            html,
+          });
           (ks.filesByState[nameOf(state)] ??= []).push(device);
           totalScreens++;
           hashes.set(createHash("sha256").update(html).digest("hex"), true);
@@ -1137,11 +1266,13 @@ export function generateXl(out) {
           kind: "too-large",
           where: `design/flows/${flow.slug}/${fileOf(n, st, "Default", "desktop", flow.oddNames)}`,
         });
-      const next = flow.steps[i + 1];
+      let ni = i + 1;
+      while (flow.steps[ni]?.unlinked) ni++;
+      const next = flow.steps[ni];
       // a transition into or out of a too-large screen cannot be scanned, so the key does not expect it
       if (next && !tooLarge && !(next.sizeMB > 4)) {
-        const from = `${n}-${idOf(i)}-Default`;
-        const to = `${nn(i + 1)}-${idOf(i + 1)}-Default`;
+        const from = `${n}-${idOf2(i)}-Default`;
+        const to = `${nn(ni)}-${idOf2(ni)}-Default`;
         const label =
           st.kind === "form"
             ? st.id === "Payment"
@@ -1155,7 +1286,7 @@ export function generateXl(out) {
         k.transitions.push({ from, on: label, to });
       }
       for (const l of st.links || []) {
-        k.crossFlow.push({ from: `${n}-${idOf(i)}`, to: l.flow, label: l.label });
+        k.crossFlow.push({ from: `${n}-${idOf2(i)}`, to: l.flow, label: l.label });
         pushDedup(k.next, l.flow, l.label);
       }
       for (const m of st.missing || []) k.gaps.push({ kind: "state-missing", where: `${n} ${m}` });
@@ -1167,14 +1298,20 @@ export function generateXl(out) {
     if (flow.slug !== "help-centre") {
       const lastN = nn(flow.steps.length - 1);
       k.crossFlow.push({
-        from: `${lastN}-${idOf(flow.steps.length - 1)}`,
+        from: `${lastN}-${idOf2(flow.steps.length - 1)}`,
         to: "help-centre",
         label: "Help centre",
       });
       pushDedup(k.next, "help-centre", "Help centre");
     }
-    k.entry = `01-${idOf(0)}`;
+    k.entry = `01-${idOf2(0)}`;
     if (flow.main) writeFileSync(join(fdir, "Main.html"), MAIN(flow));
+    k.play = playKeyOf(acc, {
+      declared: (f) => idOf.has(f),
+      present: (f) => idOf.has(f) && !absent.has(f),
+      idOfFile: (f) => idOf.get(f),
+      exits: EXITS[flow.slug] ?? {},
+    });
     key.flows.push(k);
   }
   key.dedupe = { distinctScreens: hashes.size, totalScreens };
