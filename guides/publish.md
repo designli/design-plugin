@@ -4,11 +4,11 @@ Tools: `project_status`, `publish`, `flows_archive` (CLI: `scripts/portal.mjs pu
 
 ## Step 1: status
 
-`project_status` requiring `setup` and `flows`. Blockers stop here with the fix. Note the flows with `unpublishedChanges` or `neverPublished`, the gap count, and the portal side (`openThreads`, `pendingEdits` per flow).
+`project_status` requiring `setup` and `flows`. Blockers stop here with the fix. Note the flows with `unpublishedChanges` or `neverPublished`, the gap count, whether each flow can be played end to end (`play.ready`, with the screens and steps behind it), and the portal side (`openThreads`, `pendingEdits` per flow).
 
 ## Step 2: dry run when unsure
 
-`publish` with `dryRun: true` when the designer asked what would happen, when the portal reports open feedback, or when more than one flow changed. Report per flow: `new`, `changed`, `unchanged`, `behind` (the portal has a newer version than this repository knows), `error` (a broken file or include; fix before publishing). `wouldRefuse` lists flows with unpulled feedback. `portalOnly`: flows on the portal that are not in the repository (deleted or renamed locally). `orphaning`: screens this release removes that still have open threads. `wouldNoop`: no flow changed (components are checked at publish time).
+`publish` with `dryRun: true` when the designer asked what would happen, when the portal reports open feedback, or when more than one flow changed. Report per flow: `new`, `changed`, `unchanged`, `behind` (the portal has a newer version than this repository knows), `error` (a broken file or include; fix before publishing). `wouldRefuse` lists flows with unpulled feedback. `portalOnly`: flows on the portal that are not in the repository (deleted or renamed locally). `orphaning`: screens this release removes that still have open threads. `wouldNoop`: no flow changed (components are checked at publish time). `play` per flow says whether the flow can be played from its entry to its end: `ready`, the screens with no way onward (`deadEnds`) and the steps nothing leads to (`unreachable`).
 
 ## Step 3: the note
 
@@ -18,7 +18,9 @@ Propose a release note from the dry run (which flows changed, how many screens) 
 
 `publish` with the note (and `flows` when the designer limited the release). It bundles every flow, refuses before pushing anything on `STALE_LOCAL`, pushes the changed flows as versions and the components, records the release, marks the copy edits that were applied locally as applied on the portal, and pulls each pushed flow so the repository mirrors the portal.
 
-Report: the release number and URL, the flows pushed with their version, the unchanged ones, the components state, the remaining gaps, and the client URL to share.
+Before calling it, look at the play verdict: Step 1 reports `play` per flow, and so does the dry run. When a flow's `play.ready` is false, say which screens and steps in plain words, naming the step and the state: "Details · Error has no way back; step 04 Review cannot be reached." Then ask once: "publish anyway for an internal review?" On a yes, publish and say that a client who clicks there sees a quiet card instead of the next screen. On a no, stop and fix the screens first. Never publish past it without saying so, and never refuse on your own: a draft the client can read is worth more than a perfect one nobody sees.
+
+Report: the release number and URL, the flows pushed with their version, the unchanged ones, the components state, the remaining gaps, the flows that cannot be played end to end, and the client URL to share.
 
 If the result is `noop: true`, say "nothing changed since release N" and stop; do not publish again with a note to force a release. For each `portalOnly` flow ask once: "`promo-codes` is on the portal but not in the repository: archive it?" and call `flows_archive` only on a yes; never archive on your own. For each `orphaning` entry say which screen goes and how many open threads it carries, and offer to resolve them with a note (`portal_reply` then `portal_resolve`); never resolve them yourself. Mention the release `summary` when present (e.g. "19 flows changed only because Footer changed").
 

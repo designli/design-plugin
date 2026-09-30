@@ -21,10 +21,10 @@ Custom states are allowed only as `Custom-<Name>` (for example `Custom-TrialExte
 
 - **Default**: the screen with realistic data (no lorem ipsum, no empty spans), primary action visible.
 - **Loading**: skeletons or spinners in the exact places content will appear; controls disabled; no layout shift compared to Default.
-- **Empty**: what a user with no data sees, including the one action that gets them out of the empty state.
-- **Validation**: inline field errors with the real copy from the codebase's schema (yup, zod), error summary if the app uses one, focus on the first error.
+- **Empty**: what a user with no data sees, including the one action that gets them out of the empty state. That action is a link to the screen it leads to, so the client can click it.
+- **Validation**: inline field errors with the real copy from the codebase's schema (yup, zod), error summary if the app uses one, focus on the first error. The way back to the filled form is a link to that screen.
 - **Submitting**: the primary control in its loading form; other controls disabled; no second submit possible.
-- **Error**: a failed request or action. Say where the message lives (inline, banner, toast) and what the recovery action is.
+- **Error**: a failed request or action. Say where the message lives (inline, banner, toast) and what the recovery action is. The recovery is a link to a screen (try again, back to the form), not a dead button: a screen with no way onward ends the client's run there.
 - **Success**: the confirmation the user sees before or instead of navigating away.
 
 ## Waiver rules

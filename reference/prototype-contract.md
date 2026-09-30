@@ -1,6 +1,6 @@
 # The prototype contract
 
-What the plugin asks of a prototype, and nothing more. Any tool, any agent, any framework of the designer's choice can produce it, as long as the output is static HTML that meets these five points.
+What the plugin asks of a prototype, and nothing more. Any tool, any agent, any framework of the designer's choice can produce it, as long as the output is static HTML that meets these six points.
 
 ## 1. One HTML file per screen state
 
@@ -38,6 +38,28 @@ No live APIs, no scripts that fetch. Realistic sample data written into the mark
 ## 5. The states vocabulary
 
 `Default` · `Loading` · `Empty` · `Validation` · `Submitting` · `Error` · `Success` · `Disabled` · `Selected` · `Partial` · `Stale`, plus `Custom-<Name>` when nothing fits. Which states a step needs depends on its kind (form, data, choice, confirmation, result, info); see the states rules. A required state that has no file is a gap the client and the developer can see; it is not a blocker for publishing. Waiving one needs a reason that is a fact ("prices always exist: static catalog"), never a preference ("not needed").
+
+## 6. No dead ends
+
+The prototype is played, not only read: on the portal a flow has a Play button, and the client clicks the links and buttons inside the screens to move through it. So every screen carries a way onward.
+
+- Every screen whose state is not `Loading` or `Submitting` links somewhere. Those two advance on their own after about a second, so they are the only screens allowed to have no action.
+- `Error`, `Validation` and `Empty` link to their recovery: try again, back to the form, the one action out of the empty state.
+- The flow's last step is a `result` step, or its screens link into the next flow (`../<slug>/<file>.html`); such a link is also what draws the journey arrow.
+- A nav item either links to a real screen or is a `<button>`. `href="#"`, an empty href and `javascript:` are dead clicks; the plugin reports them and the portal treats them as a miss.
+- A button that navigates carries `data-goto="<file>.html"` (with `data-on` when its text is not the trigger).
+- No fetches, and no script that can throw: the portal serves the file as it is and never runs a build.
+- A screen that really is where the flow ends, on a step that is not a `result`, is declared in `flow.json`:
+
+```json
+"exits": { "05-Done-Success": "the user closes the app here, nothing follows it" }
+```
+
+The reason follows the waiver rule: a fact, not a preference. An empty reason, or an id that is not a designed screen of the flow, is a gap.
+
+What the plugin reports (all but the last block a handoff): `dead-end` (a screen with no way onward), `unreachable` (a step no path from the entry reaches), `exit-unreasoned`, `exit-unknown`, `broken-link` (a link or transition naming a screen the flow does not have) and, for information only, `dead-link` (`href="#"` and its kin).
+
+What the client sees where the rule is broken: a quiet card, "This path isn't designed yet", with a way back. Never an error, and never a screen that traps them.
 
 ## Where things live
 

@@ -4,7 +4,7 @@ Tools: `gaps`, `handoff` (CLI: `scripts/gaps.mjs --flow <slug> --strict`, `scrip
 
 ## Step 1: gate
 
-`gaps` with `strict: true` for the flow. Blocking: a required state neither designed nor waived, a waiver without a reason, a broken file or include, a bad name, a state whose file is too large to bundle (`too-large`). List each with what to do and stop; the client-facing gap list on the portal says the same.
+`gaps` with `strict: true` for the flow. Blocking: a required state neither designed nor waived (`state-missing`), a waiver without a reason (`state-unwaived`), a broken file or include (`broken-file`, `broken-include`), a bad name (`bad-name`), a duplicate step or state, a state whose file is too large to bundle (`too-large`), and everything that stops the flow from being played: `dead-end` (a screen with no way onward), `unreachable` (a step no path reaches), `exit-unreasoned` and `exit-unknown` (a declared exit without a fact, or naming a screen the flow does not have) and `broken-link` (a link or transition into a screen this flow does not have; a client can now click into it). List each with what to do and stop; the client-facing gap list on the portal says the same. `dead-link` (`href="#"` and its kin) is reported but does not block.
 
 If the flow has changes the portal has not seen (`project_status` reports `unpublishedChanges` or `neverPublished`), run the `publish` guide first: the handoff is taken at the current release.
 
