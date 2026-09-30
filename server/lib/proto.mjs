@@ -98,7 +98,19 @@ const isLocalHref = (h) =>
   !!h &&
   !/^(https?:|mailto:|tel:|javascript:|data:|#|\/)/i.test(h) &&
   /\.html(?:[?#].*)?$/i.test(h);
-/** What a screen file says about itself: title, includes, local links (transitions), tags. */
+/**
+ * A click that goes nowhere: `href="#"`, an empty href, `javascript:`. The portal's play mode treats
+ * it as a miss, so a nav item is either a link to a screen or a `<button>`. A real href whose file is
+ * missing is not this (that is a broken link, reported with the file it names).
+ */
+export const isDeadHref = (h) => {
+  if (h === undefined || h === null) return false;
+  const v = String(h).trim();
+  return v === "" || v === "#" || /^javascript:/i.test(v);
+};
+/**
+ * What a screen file says about itself: title, includes, local links (transitions), dead links, tags.
+ */
 export function parseScreen(src) {
   const includes = [];
   for (const m of src.matchAll(/<dc-import\b([^>]*)>/g)) {
@@ -106,16 +118,26 @@ export function parseScreen(src) {
     if (name && !includes.includes(name)) includes.push(name);
   }
   const links = [];
+  const deadLinks = [];
   for (const m of src.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
     const href = attr(m[1], "href");
-    if (!isLocalHref(href)) continue;
     const label = attr(m[1], "data-on") || textOf(m[2]).slice(0, 80);
+    if (isDeadHref(href)) {
+      deadLinks.push({ href: String(href).trim(), label, kind: "a" });
+      continue;
+    }
+    if (!isLocalHref(href)) continue;
     links.push({ href: href.replace(/[?#].*$/, ""), label, kind: "a" });
   }
   for (const m of src.matchAll(/<([a-z0-9]+)\b([^>]*\bdata-goto\s*=[^>]*)>/gi)) {
     const href = attr(m[2], "data-goto");
-    if (!isLocalHref(href)) continue;
     const label = attr(m[2], "data-on") || attr(m[2], "aria-label") || "";
+    // data-goto is an instruction to open a screen file; anything else never resolves at runtime.
+    // A `.html` target that does not exist is left to the broken-link check, which names the file.
+    if (!isLocalHref(href)) {
+      deadLinks.push({ href: String(href ?? "").trim(), label, kind: m[1].toLowerCase() });
+      continue;
+    }
     links.push({ href: href.replace(/[?#].*$/, ""), label, kind: m[1].toLowerCase() });
   }
   const dataComponents = [
@@ -137,6 +159,7 @@ export function parseScreen(src) {
     title: decode(title),
     includes,
     links,
+    deadLinks,
     dataComponents,
     device,
     hasForm,

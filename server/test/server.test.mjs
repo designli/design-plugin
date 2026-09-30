@@ -363,6 +363,9 @@ test("adopt over the server: scan, propose, write, gaps, bundle on a plain HTML 
   assert.equal(r2[1].result.isError, undefined, JSON.stringify(r2[1].result.structuredContent));
   const gaps = r2[2].result.structuredContent.gaps.map((g) => g.kind + ":" + g.where).sort();
   assert.deepEqual(gaps, [
+    // the empty cart offers no way out, and the last step is a form, not a result
+    "dead-end:01-Cart-Empty",
+    "dead-end:02-Pay-Default",
     "state-missing:01 Error",
     "state-missing:01 Loading",
     "state-missing:02 Error",

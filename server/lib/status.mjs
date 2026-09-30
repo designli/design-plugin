@@ -7,6 +7,7 @@ import { readLibrary, CRED_FILE } from "./setup.mjs";
 import { readPrototype, readProduct, sourcesIn } from "./proto.mjs";
 import { listFlows, resolveStates, gapsOf } from "./flows.mjs";
 import { buildFlowBundle } from "./bundle.mjs";
+import { playCheck } from "./play.mjs";
 
 const git = (cmd, cwd) => {
   try {
@@ -168,6 +169,16 @@ export function preflight(project, { require: req = [], hashes = false } = {}) {
         entry.unpublishedChanges =
           !!flow.portal?.contentHash && flow.portal.contentHash !== b.contentHash;
         entry.neverPublished = !flow.portal?.version;
+        // whether a client can play the flow end to end, computed here from the version this repo
+        // would push; the server replaces it with the portal's own verdict when the head carries one
+        const pc = playCheck(b.manifest);
+        entry.play = {
+          ready: pc.ready,
+          start: pc.start,
+          deadEnds: pc.deadEnds,
+          unreachable: pc.unreachable,
+          source: "local",
+        };
       } catch (e) {
         entry.bundleError = e.message;
       }
@@ -235,6 +246,25 @@ export function nextSteps({ status, portal, harness, plugin = null }) {
     if (unpublished.length)
       steps.push(
         `${unpublished.map((f) => f.slug).join(", ")} ${unpublished.length === 1 ? "has" : "have"} changes the portal has not seen: ${prompt("publish", '"<what changed>"')} records the next release.`,
+      );
+    const notReady = local.filter((f) => f.play && f.play.ready === false);
+    if (notReady.length)
+      steps.push(
+        `${notReady
+          .map(
+            (f) =>
+              `${f.slug} (${[
+                f.play.deadEnds?.length ? `${f.play.deadEnds.length} dead end(s)` : null,
+                f.play.unreachable?.length
+                  ? `${f.play.unreachable.length} step(s) nothing leads to`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(", ")})`,
+          )
+          .join(
+            "; ",
+          )} cannot be played end to end: a client clicking through the prototype stops there. ${prompt("status")} lists the screens; the fix is a link on the screen, or an exit declared with a fact.`,
       );
     if (gaps)
       steps.push(

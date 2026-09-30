@@ -21,7 +21,9 @@ import {
   readPrototype,
   readProduct,
   MAX_SOURCE_BYTES,
+  SCREEN_ID_RE,
 } from "./proto.mjs";
+import { playCheck, mergeTransitions, nextWithFrom } from "./play.mjs";
 
 export const flowsDir = (project) => join(project, "design", "flows");
 export const flowDirOf = (project, slug) => join(flowsDir(project), slug);
@@ -216,6 +218,72 @@ export function resolveStates(flow, dir) {
   return { steps, problems, usedFiles, devices, oversized };
 }
 
+// ---- playability ----
+/** The exits a flow declares: `{ "<screenId>": "<reason>" }`, ignoring anything that is not that. */
+export function exitsOf(flow) {
+  const v = flow?.exits;
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const out = {};
+  for (const [id, reason] of Object.entries(v)) out[id] = String(reason ?? "");
+  return out;
+}
+// A reason is a fact or it is nothing: the same bar as a waived state. These are the answers that
+// only restate the choice ("not needed", "later"); anything that says something is accepted.
+const NOT_A_REASON =
+  /^(n\/a|na|none|no|nope|not needed|not required|not applicable|unnecessary|later|soon|tbd|to ?do|skip(ped)?|preference|maybe|nice to have|obvious|by design|design choice|do ?n.?t need( it)?|wo ?n.?t (do|design)|\?+|-+|\.+)$/i;
+export const isFactReason = (v) => {
+  const r = String(v ?? "")
+    .replace(/^n\/a:?\s*/i, "")
+    .replace(/[.!]+$/, "")
+    .trim();
+  return !!r && !NOT_A_REASON.test(r);
+};
+/**
+ * As much of the manifest as the play check reads, built from the sources: the present screens, the
+ * declared plus inferred transitions, the entry points, the journey links with the screen each sits
+ * on, and the declared exits. `gaps` runs the check over this, so the designer sees the readiness
+ * the portal will compute on the version `publish` sends it.
+ */
+export function playViewOf(project, { slug, dir, flow }, r = resolveStates(flow, dir)) {
+  const screens = [];
+  const fileToId = new Map();
+  for (const st of r.steps)
+    for (const [state, v] of Object.entries(st.states)) {
+      if (v.status !== "present") continue;
+      screens.push({ id: v.screen, kind: "state", step: st.n, stepId: st.id, state });
+      for (const f of Object.values(v.files)) fileToId.set(f, v.screen);
+    }
+  const known = new Set(screens.map((s) => s.id));
+  const root = flowsDir(project);
+  const inferred = [];
+  const crossLinks = [];
+  for (const [file, id] of fileToId) {
+    if (isDc(file)) continue; // an artboard's links are not read into transitions
+    for (const l of scanFile(file).links) {
+      const target = resolve(dirname(file), l.href);
+      const to = fileToId.get(target);
+      if (to) {
+        if (to !== id) inferred.push({ from: id, on: l.label || "", to });
+        continue;
+      }
+      const rel = relative(root, target);
+      const other = !rel.startsWith("..") && rel.includes("/") ? rel.split("/")[0] : null;
+      if (other && other !== slug) crossLinks.push({ from: id, flow: other, on: l.label || "?" });
+    }
+  }
+  const declaredNext = Array.isArray(flow.next)
+    ? flow.next.filter((l) => l && typeof l.flow === "string")
+    : [];
+  return {
+    steps: r.steps.map((s) => ({ n: s.n, id: s.id, kind: s.kind })),
+    screens,
+    transitions: mergeTransitions(flow.transitions || [], inferred, known),
+    entryPoints: flow.entryPoints || [],
+    flow: { next: nextWithFrom(declaredNext, crossLinks), play: { exits: exitsOf(flow) } },
+    crossLinks,
+  };
+}
+
 // ---- gaps ----
 export const BLOCKING = new Set([
   "broken-file",
@@ -230,6 +298,12 @@ export const STRICT = new Set([
   "state-unwaived",
   "no-product",
   "too-large",
+  // the flow has to be playable: a client clicks the screens themselves
+  "dead-end",
+  "unreachable",
+  "exit-unreasoned",
+  "exit-unknown",
+  "broken-link",
 ]);
 /** Everything that stands between the prototype and a clean publish or handoff. */
 export function gapsOf(project, { flow: only, strict = false } = {}) {
@@ -372,6 +446,16 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
             file: f,
             proposal: "link to an existing screen file",
           });
+      // a click that goes nowhere: reported, never blocking (a decorative nav is a choice)
+      for (const l of s.deadLinks)
+        push({
+          flow: slug,
+          kind: "dead-link",
+          where: `${f} → ${l.kind === "a" ? "href" : "data-goto"}="${l.href}"`,
+          file: f,
+          text: l.label,
+          proposal: `${l.label ? `"${l.label}": ` : ""}point it at a screen file, or make it a <button> if it only toggles something local`,
+        });
       for (const name of s.includes)
         if (!componentFile(name, [...compDirs, dir]))
           push({
@@ -400,6 +484,50 @@ export function gapsOf(project, { flow: only, strict = false } = {}) {
             where: `transition ${t.from} → ${t.to}`,
             proposal: `${end} is not a designed screen of this flow`,
           });
+    // can the flow be played from its entry to its end? The same check the portal runs on the
+    // version it receives, over the same transitions the bundle will send it
+    const view = playViewOf(project, { slug, dir, flow }, r);
+    const present = new Set(view.screens.map((s) => s.id));
+    for (const [id, reason] of Object.entries(view.flow.play.exits)) {
+      if (!present.has(id))
+        push({
+          flow: slug,
+          kind: "exit-unknown",
+          where: `exits → ${id}`,
+          screen: id,
+          proposal: `${id} is not a designed screen of this flow: name one of its screens, or drop the exit`,
+        });
+      else if (!isFactReason(reason))
+        push({
+          flow: slug,
+          kind: "exit-unreasoned",
+          where: id,
+          screen: id,
+          step: id.slice(0, 2),
+          proposal: `an exit needs a fact ("the user closes the app here"), not a preference`,
+        });
+    }
+    const pc = playCheck(view);
+    for (const d of pc.deadEnds)
+      push({
+        flow: slug,
+        kind: "dead-end",
+        where: d.screen,
+        screen: d.screen,
+        step: d.step,
+        state: d.state,
+        proposal:
+          "link the primary action to the next screen; Error, Validation and Empty link to their recovery; or declare the exit in flow.json exits with a fact",
+      });
+    for (const u of pc.unreachable)
+      push({
+        flow: slug,
+        kind: "unreachable",
+        where: `${u.step}-${u.id}`,
+        step: u.step,
+        proposal:
+          "no link leads here from the entry; add the link on the screen that precedes it, or declare an entry point",
+      });
   }
   const filtered = strict ? out.filter((g) => STRICT.has(g.kind)) : out;
   return {
@@ -741,16 +869,26 @@ export function proposeFlows(project, scan = scanPrototype(project)) {
       const ex = existing.find((f) => relative(project, f.dir) === d);
       return ex?.slug ?? (byDir.has(d) ? kebab(basename(d)) : null);
     };
-    const next = [];
+    const crossLinks = [];
     for (const f of files)
       for (const l of f.links) {
         const targetDir = dirname(l.file);
         if (targetDir === dir || !l.exists) continue;
         const target = slugOfDir(targetDir);
         if (!target || target === slug) continue;
-        const on = l.label || "?";
-        if (!next.some((n) => n.flow === target && n.on === on)) next.push({ flow: target, on });
+        const from = fileToId.get(join(project, f.file));
+        crossLinks.push({ ...(from ? { from } : {}), flow: target, on: l.label || "?" });
       }
+    // one connector per (flow, label) so the journey map draws one arrow, carrying the screen the
+    // link sits on: that is what tells the play check this screen leads out of the flow
+    const connectors = [];
+    for (const c of crossLinks)
+      if (!connectors.some((n) => n.flow === c.flow && n.on === c.on))
+        connectors.push({ flow: c.flow, on: c.on });
+    const next = nextWithFrom(
+      connectors,
+      crossLinks.filter((c) => c.from),
+    );
     order++;
     const devices = ["desktop", "mobile"].filter((d) => files.some((f) => f.device === d));
     // title: every titled screen of the folder sharing one leading segment ("Checkout · Cart" /
@@ -881,6 +1019,18 @@ export function writeFlows(project, { flows = [], prototype = null } = {}) {
         });
       return st;
     });
+    // exits: the screens where the flow ends on purpose, each with the fact that makes it an ending
+    const exits = {};
+    for (const [id, reason] of Object.entries(
+      f.exits !== undefined ? exitsOf({ exits: f.exits }) : exitsOf(cur),
+    )) {
+      if (!SCREEN_ID_RE.test(id))
+        throw Object.assign(
+          new Error(`${f.slug}: exit "${id}" is not a screen id (NN-StepId-State)`),
+          { code: "VALIDATION" },
+        );
+      exits[id] = reason;
+    }
     const next = {
       ...cur,
       schema: 2,
@@ -892,6 +1042,7 @@ export function writeFlows(project, { flows = [], prototype = null } = {}) {
       entryPoints: f.entryPoints ?? cur.entryPoints ?? [],
       steps: steps.length ? steps : cur.steps || [],
       transitions: f.transitions ?? cur.transitions ?? [],
+      exits,
       ...(f.devices ? { devices: f.devices } : {}),
     };
     delete next.device;

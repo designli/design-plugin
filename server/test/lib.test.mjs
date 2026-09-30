@@ -23,7 +23,8 @@ import {
   resolveStates,
 } from "../lib/flows.mjs";
 import { buildFlowBundle, buildComponentsBundle } from "../lib/bundle.mjs";
-import { editsApply, digest, mergeStructure } from "../lib/portal.mjs";
+import { editsApply, digest, mergeStructure, manifestHashOf } from "../lib/portal.mjs";
+import { playCheck } from "../lib/play.mjs";
 import { flatten, readProduct } from "../lib/proto.mjs";
 import { compareVersions, updateAdvice, PLUGIN_VERSION, PLUGIN_ROOT } from "../lib/setup.mjs";
 import { generateAll } from "../../pilot/suite/gen.mjs";
@@ -179,11 +180,13 @@ test("scan → propose → write → gaps on a plain HTML prototype", () => {
   assert.equal(fj.order, 1);
   assert.equal(fj.steps[0].states.Submitting, "n/a: instant, no network call");
   const gaps = gapsOf(dir).gaps;
+  // the Validation screen shows the error and stops there: nothing links onward from it
   assert.deepEqual(gaps.map((g) => g.kind + ":" + g.where).sort(), [
+    "dead-end:01-Email-Validation",
     "state-missing:01 Error",
     "state-missing:02 Default",
   ]);
-  assert.equal(gapsOf(dir, { strict: true }).gaps.length, 2);
+  assert.equal(gapsOf(dir, { strict: true }).gaps.length, 3);
   assert.equal(scanPrototype(dir).unassigned.length, 0, "declared files are not proposed again");
   assert.equal(proposeFlows(dir).flows.length, 0);
 });
@@ -633,7 +636,9 @@ test("a link into another flow's folder becomes a journey connector (next)", () 
   );
   const flows = proposeFlows(dir).flows;
   const billing = flows.find((f) => f.slug === "billing");
-  assert.deepEqual(billing.next, [{ flow: "signup", on: "Create an account first" }]);
+  assert.deepEqual(billing.next, [
+    { flow: "signup", on: "Create an account first", from: "01-Plan-Default" },
+  ]);
   assert.deepEqual(flows.find((f) => f.slug === "signup").next, []);
 });
 
@@ -737,4 +742,177 @@ test("a screen over the size cap is declared truthfully and becomes an unavailab
   );
   // a second propose finds nothing left to declare for the oversized file
   assert.equal(proposeFlows(dir).flows.length, 0);
+});
+
+/** A hand-declared flow: 01 Client (choice) → 02 Details (form) → 03 Sent (result), plus an
+ *  Archive step nothing links to, a dead nav link and a link into a sibling flow. */
+function playScratch() {
+  const dir = mkdtempSync(join(tmpdir(), "play-"));
+  const fdir = join(dir, "design", "flows", "invoice");
+  mkdirSync(join(dir, "design", "components"), { recursive: true });
+  mkdirSync(join(dir, "design", "flows", "pay"), { recursive: true });
+  mkdirSync(fdir, { recursive: true });
+  writeFileSync(
+    join(dir, "design", "prototype.json"),
+    JSON.stringify({
+      schema: 1,
+      source: "static",
+      dir: "design",
+      components: "design/components",
+      product: { name: "Kite", summary: "Invoices for freelancers" },
+    }) + "\n",
+  );
+  const w = (n, b) =>
+    writeFileSync(
+      join(fdir, n),
+      `<!doctype html><html><head><title>${n}</title></head><body>${b}</body></html>\n`,
+    );
+  w("01-client-default.html", `<a href="02-details-default.html">Continue</a>`);
+  w(
+    "02-details-default.html",
+    `<a href="03-sent-success.html">Send</a><a href="#">Help</a><button data-goto="nowhere" data-on="Preview">Preview</button>`,
+  );
+  w("02-details-error.html", `<p role="alert">We could not send this invoice.</p>`);
+  w("02-details-submitting.html", `<p>Sending…</p>`);
+  w("03-sent-success.html", `<p>Sent.</p><a href="../pay/01-card-default.html">Get paid</a>`);
+  w("04-archive-default.html", `<a href="03-sent-success.html">Back to the invoice</a>`);
+  writeFileSync(join(dir, "design", "flows", "pay", "01-card-default.html"), "<p>Card</p>\n");
+  return dir;
+}
+const payFlow = {
+  slug: "pay",
+  title: "Get paid",
+  goal: "The client pays the invoice",
+  order: 2,
+  entryPoints: [{ from: "Invoice", to: "01-Card" }],
+  steps: [{ n: "01", id: "Card", kind: "info", states: { Default: "01-card-default.html" } }],
+};
+const invoiceFlow = (exits) => ({
+  slug: "invoice",
+  title: "Create and send an invoice",
+  goal: "A freelancer sends an invoice",
+  order: 1,
+  entryPoints: [{ from: "Dashboard", to: "01-Client" }],
+  next: [{ flow: "pay", on: "Get paid" }],
+  ...(exits ? { exits } : {}),
+  steps: [
+    {
+      n: "01",
+      id: "Client",
+      kind: "choice",
+      states: {
+        Default: "01-client-default.html",
+        Loading: "n/a: the client list is in the page already",
+        Error: "n/a: the client list cannot fail, it ships with the page",
+      },
+    },
+    {
+      n: "02",
+      id: "Details",
+      kind: "form",
+      states: {
+        Default: "02-details-default.html",
+        Error: "02-details-error.html",
+        Submitting: "02-details-submitting.html",
+        Validation: "n/a: the form has one optional field",
+      },
+    },
+    {
+      n: "03",
+      id: "Sent",
+      kind: "result",
+      states: {
+        Default: "n/a: the step only exists after a send, so Success is the only view",
+        Success: "03-sent-success.html",
+      },
+    },
+    { n: "04", id: "Archive", kind: "info", states: { Default: "04-archive-default.html" } },
+  ],
+});
+
+test("gaps see the flow the way play will: dead ends, unreachable steps, dead links, exits", () => {
+  const dir = playScratch();
+  writeFlows(dir, { flows: [invoiceFlow(), payFlow] });
+  // writeFlows answers with the gaps of every flow; this test is about the invoice one
+  const kinds = (g) =>
+    g.gaps
+      .filter((x) => x.flow === "invoice")
+      .map((x) => x.kind + ":" + x.where)
+      .sort();
+  const g1 = gapsOf(dir, { flow: "invoice" });
+  assert.deepEqual(kinds(g1), [
+    // Error shows the failure and stops; Submitting advances on its own, so it is never a dead end
+    "dead-end:02-Details-Error",
+    'dead-link:02-details-default.html → data-goto="nowhere"',
+    'dead-link:02-details-default.html → href="#"',
+    "unreachable:04-Archive",
+  ]);
+  assert.equal(
+    g1.gaps.find((x) => x.kind === "dead-link" && /href/.test(x.where)).text,
+    "Help",
+    "the element's text says which link it is",
+  );
+  // a dead end, an unreachable step and a broken link block a handoff; a dead click does not
+  assert.deepEqual(
+    kinds(gapsOf(dir, { flow: "invoice", strict: true })),
+    ["dead-end:02-Details-Error", "unreachable:04-Archive"],
+    "dead-link is reported, never blocking",
+  );
+  // the Error screen is where this flow ends on purpose: declared, it is no longer a dead end, but
+  // the reason follows the waiver rule
+  const empty = writeFlows(dir, { flows: [invoiceFlow({ "02-Details-Error": "" })] });
+  assert.ok(kinds(empty).includes("exit-unreasoned:02-Details-Error"));
+  assert.ok(!kinds(empty).some((k) => k.startsWith("dead-end:")));
+  assert.ok(
+    kinds(
+      writeFlows(dir, { flows: [invoiceFlow({ "02-Details-Error": "n/a: not needed" })] }),
+    ).includes("exit-unreasoned:02-Details-Error"),
+    "a preference is not a fact",
+  );
+  const named = writeFlows(dir, {
+    flows: [
+      invoiceFlow({
+        "02-Details-Error": "the invoice is retried from the dashboard, outside this flow",
+        "09-Ghost-Default": "a screen that does not exist",
+      }),
+    ],
+  });
+  assert.deepEqual(
+    kinds(named).filter((k) => /^(dead-end|exit-)/.test(k)),
+    ["exit-unknown:exits → 09-Ghost-Default"],
+  );
+  assert.deepEqual(
+    readFlow(join(dir, "design", "flows", "invoice")).exits["02-Details-Error"].slice(0, 11),
+    "the invoice",
+  );
+});
+
+test("the manifest carries the declared exits and the screen each journey link sits on", () => {
+  const dir = playScratch();
+  writeFlows(dir, {
+    flows: [invoiceFlow({ "02-Details-Error": "retried from the dashboard" }), payFlow],
+  });
+  const b = buildFlowBundle(dir, "invoice", { dry: true });
+  assert.equal(b.ok, true, b.errors.join("; "));
+  assert.deepEqual(b.manifest.flow.play, {
+    exits: { "02-Details-Error": "retried from the dashboard" },
+  });
+  // the link into ../pay sits on 03-Sent-Success: that screen leads out of the flow
+  assert.deepEqual(b.manifest.flow.next, [
+    { flow: "pay", on: "Get paid", from: "03-Sent-Success" },
+  ]);
+  const pc = playCheck(b.manifest);
+  assert.equal(pc.ready, false);
+  assert.equal(pc.start, "01-Client-Default");
+  assert.deepEqual(pc.deadEnds, []);
+  assert.deepEqual(pc.unreachable, [{ step: "04", id: "Archive" }]);
+  assert.deepEqual(pc.exits, [
+    { screen: "02-Details-Error", reason: "retried from the dashboard" },
+  ]);
+  // a declared exit is structure: it changes what the portal calls a dead end, so it must push
+  const plain = buildFlowBundle(dir, "invoice", { dry: true });
+  writeFlows(dir, { flows: [invoiceFlow({})] });
+  const without = buildFlowBundle(dir, "invoice", { dry: true });
+  assert.notEqual(manifestHashOf(plain.manifest), manifestHashOf(without.manifest));
+  assert.equal(plain.contentHash, without.contentHash, "the screens did not change");
 });

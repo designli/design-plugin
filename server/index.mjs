@@ -91,7 +91,7 @@ const TOOLS = [
   {
     name: "project_status",
     description:
-      "Where this repository stands: git remote, portal connection and token source, the prototype (design/prototype.json), every flow with its steps, screens, missing states, published version and unpublished changes, gaps by kind, the portal side (versions, open threads, pending edits, last release) and the next command. Call this first. CLI: scripts/preflight.mjs --json",
+      "Where this repository stands: git remote, portal connection and token source, the prototype (design/prototype.json), every flow with its steps, screens, missing states, published version and unpublished changes, `play` per flow (whether a client can click through it: ready, start, deadEnds, unreachable; `source` says whether it is the portal's verdict or computed here), gaps by kind, the portal side (versions, open threads, pending edits, last release) and the next command. Call this first. CLI: scripts/preflight.mjs --json",
     inputSchema: {
       type: "object",
       properties: {
@@ -105,6 +105,13 @@ const TOOLS = [
         hashes: true,
       });
       const portal = a.portal === false ? null : await portalSide();
+      // the portal computes the same readiness on the version it holds; when its head says so, that
+      // verdict wins (it knows what it actually stored), otherwise the local one stands
+      if (portal?.connected)
+        for (const f of s.info.flows ?? []) {
+          const pf = (portal.flows ?? []).find((x) => x.id === f.slug);
+          if (pf?.play) f.play = { ...pf.play, source: "portal" };
+        }
       const harness = readLibrary(PROJECT)?.harness ?? null;
       const plugin = updateAdvice(P.getPortalMeta());
       if (plugin.updateRequired) {
@@ -420,7 +427,7 @@ const TOOLS = [
   {
     name: "flows_write",
     description:
-      "Writes design/flows/<slug>/flow.json for each flow given (merging over an existing one: titles, order, entry points, steps with states mapped to files or 'n/a: <reason>', transitions) and design/prototype.json (devices, components dir, product). Validates the states vocabulary and step ids. Returns the gaps left. CLI: scripts/adopt.mjs write --file <json>",
+      "Writes design/flows/<slug>/flow.json for each flow given (merging over an existing one: titles, order, entry points, steps with states mapped to files or 'n/a: <reason>', transitions, exits) and design/prototype.json (devices, components dir, product). Validates the states vocabulary and step ids. Returns the gaps left. CLI: scripts/adopt.mjs write --file <json>",
     inputSchema: {
       type: "object",
       properties: {
@@ -428,7 +435,7 @@ const TOOLS = [
           type: "array",
           items: { type: "object" },
           description:
-            "[{ slug, title, goal, order, next, entryPoints, steps: [{ n, id, kind, title?, purpose?, primaryAction?, surface?, states: { Default: 'file.html' | { desktop, mobile } | 'n/a: reason' } }], transitions, devices? }]",
+            "[{ slug, title, goal, order, next: [{ flow, on, from? }], entryPoints, steps: [{ n, id, kind, title?, purpose?, primaryAction?, surface?, states: { Default: 'file.html' | { desktop, mobile } | 'n/a: reason' } }], transitions, exits?: { '05-Done-Success': 'the fact that makes this screen the end of the flow' }, devices? }]",
         },
         prototype: {
           type: "object",
@@ -442,7 +449,7 @@ const TOOLS = [
   {
     name: "gaps",
     description:
-      "Everything between the prototype and a clean publish or handoff: state-missing, state-unwaived, no-order, no-entry, unassigned-screen, broken-link, broken-include, broken-file, duplicate-state, bad-name, no-product, too-large (a state whose file is above the size cap; carries step, state, bytes). strict keeps only what blocks a handoff. CLI: scripts/gaps.mjs [--flow <slug>] [--strict] --json",
+      'Everything between the prototype and a clean publish or handoff: state-missing, state-unwaived, no-order, no-entry, unassigned-screen, broken-link, broken-include, broken-file, duplicate-state, bad-name, no-product, too-large (a state whose file is above the size cap; carries step, state, bytes), and what stops a client from clicking through the flow: dead-end (a screen with no way onward, at NN-Step-State), unreachable (a step no path from the entry reaches, at NN-Step), exit-unreasoned and exit-unknown (a flow.json exit without a fact, or naming a screen the flow does not have), dead-link (href="#", an empty href, javascript:, a data-goto that resolves to nothing; carries the element text, reported but never blocking). strict keeps only what blocks a handoff: the list above minus dead-link, no-order, no-entry and unassigned-screen. CLI: scripts/gaps.mjs [--flow <slug>] [--strict] --json',
     inputSchema: {
       type: "object",
       properties: {
@@ -484,7 +491,7 @@ const TOOLS = [
   {
     name: "publish",
     description:
-      "Records a release: bundles every flow (or the listed ones), refuses before pushing anything when a flow has unpulled feedback or the portal is ahead (STALE_LOCAL with the fix), pushes the changed flows as versions and the components, then POSTs one release with the note; marks applied copy edits; caches design/releases.json. Returns `noop: true` (no release) when nothing changed and no note was given; `portalOnly` lists flows on the portal that are not in the repository; `orphaning` lists screens this release removes that still carry open threads. dryRun reports per flow: new, changed, unchanged, behind, error, with gap counts and what would be refused. CLI: scripts/portal.mjs publish --note ... [--flows a,b] [--dry-run] [--force]",
+      "Records a release: bundles every flow (or the listed ones), refuses before pushing anything when a flow has unpulled feedback or the portal is ahead (STALE_LOCAL with the fix), pushes the changed flows as versions and the components, then POSTs one release with the note; marks applied copy edits; caches design/releases.json. Returns `noop: true` (no release) when nothing changed and no note was given; `portalOnly` lists flows on the portal that are not in the repository; `orphaning` lists screens this release removes that still carry open threads; `play` carries, per flow, whether a client can click through it (`ready`) with the screens that have no way onward (`deadEnds`) and the steps nothing leads to (`unreachable`). dryRun reports per flow: new, changed, unchanged, behind, error, with gap counts, the same `play`, and what would be refused. CLI: scripts/portal.mjs publish --note ... [--flows a,b] [--dry-run] [--force]",
     inputSchema: {
       type: "object",
       properties: {
@@ -581,7 +588,7 @@ const TOOLS = [
   {
     name: "handoff",
     description:
-      "Asks the portal to hand the flow off at the current release: the portal generates and stores the spec (steps, states grid, copy, transitions, components, feedback-derived edge cases, screen URLs); dev agents read it with the portal MCP get_handoff. Refuses on strict gaps or when the portal lacks the current screens (publish first). CLI: scripts/portal.mjs handoff --flow <slug> --story ...",
+      "Asks the portal to hand the flow off at the current release: the portal generates and stores the spec (steps, states grid, copy, transitions, components, feedback-derived edge cases, screen URLs); dev agents read it with the portal MCP get_handoff. Refuses on strict gaps (a dead end, an unreachable step, a broken link and an unreasoned exit among them) or when the portal lacks the current screens (publish first). Returns `play` for the handed-off version. CLI: scripts/portal.mjs handoff --flow <slug> --story ...",
     inputSchema: {
       type: "object",
       properties: {
