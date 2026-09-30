@@ -17,7 +17,6 @@ import {
   STATE_VOCAB,
   flatten,
   sourcesIn,
-  isDc,
   componentId,
   readPrototype,
   readProduct,
@@ -209,7 +208,8 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
       layout: { x: a.x ?? 0, y: a.y ?? 0 },
     };
     screens.set(t.id, e);
-    if (!t.main && !isDc(t.src))
+    // an artboard's own links count too: its buttons are rewritten in the flattened output
+    if (!t.main)
       for (const l of scanFile(t.src).links) {
         const target = resolve(dir, l.href);
         const to = linkMap.get(target);

@@ -10,7 +10,6 @@ import {
   isStepId,
   screenIdOf,
   isSource,
-  isDc,
   splitDevice,
   mobileSibling,
   sourcesIn,
@@ -258,7 +257,6 @@ export function playViewOf(project, { slug, dir, flow }, r = resolveStates(flow,
   const inferred = [];
   const crossLinks = [];
   for (const [file, id] of fileToId) {
-    if (isDc(file)) continue; // an artboard's links are not read into transitions
     for (const l of scanFile(file).links) {
       const target = resolve(dirname(file), l.href);
       const to = fileToId.get(target);

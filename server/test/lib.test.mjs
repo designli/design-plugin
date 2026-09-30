@@ -916,3 +916,95 @@ test("the manifest carries the declared exits and the screen each journey link s
   assert.notEqual(manifestHashOf(plain.manifest), manifestHashOf(without.manifest));
   assert.equal(plain.contentHash, without.contentHash, "the screens did not change");
 });
+
+test("an artboard's links are transitions too, and are rewritten in the flattened screen", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dclinks-"));
+  const fdir = join(dir, "design", "flows", "kite");
+  mkdirSync(join(dir, "design", "components"), { recursive: true });
+  mkdirSync(fdir, { recursive: true });
+  writeFileSync(
+    join(dir, "design", "prototype.json"),
+    JSON.stringify({
+      schema: 1,
+      source: "static",
+      dir: "design",
+      components: "design/components",
+      product: { name: "Kite", summary: "Invoices for freelancers" },
+    }) + "\n",
+  );
+  const board = (body) =>
+    `<html><head></head><body><x-dc><helmet><style>body{margin:0}</style></helmet>${body}</x-dc></body></html>`;
+  writeFileSync(
+    join(fdir, "01-Client-Default.dc.html"),
+    board(
+      `<h1>Client</h1><button data-goto="02-Details-Default.dc.html" data-on="Continue">Continue</button><a href="02-Details-Default.dc.html">Details</a>`,
+    ),
+  );
+  // the mobile artboard links to the mobile variant: the same node, so one transition, not two
+  writeFileSync(
+    join(fdir, "01-Client-Default-Mobile.dc.html"),
+    board(
+      `<h1>Client</h1><button data-goto="02-Details-Default-Mobile.dc.html" data-on="Continue">Continue</button>`,
+    ),
+  );
+  writeFileSync(join(fdir, "02-Details-Default.dc.html"), board(`<h1>Details</h1>`));
+  writeFileSync(join(fdir, "02-Details-Default-Mobile.dc.html"), board(`<h1>Details</h1>`));
+  writeFlows(dir, {
+    flows: [
+      {
+        slug: "kite",
+        title: "Kite",
+        goal: "A freelancer invoices a client",
+        order: 1,
+        devices: ["desktop", "mobile"],
+        entryPoints: [{ from: "Dashboard", to: "01-Client" }],
+        exits: {
+          "02-Details-Default": "the invoice is sent from the dashboard, outside this flow",
+        },
+        steps: [
+          {
+            n: "01",
+            id: "Client",
+            kind: "info",
+            states: { Default: "01-Client-Default.dc.html" },
+          },
+          {
+            n: "02",
+            id: "Details",
+            kind: "info",
+            states: { Default: "02-Details-Default.dc.html" },
+          },
+        ],
+      },
+    ],
+  });
+  const b = buildFlowBundle(dir, "kite", { dry: true });
+  assert.equal(b.ok, true, b.errors.join("; "));
+  // the anchor is read before the button, and the mobile artboard's link is the same node twice
+  assert.deepEqual(b.manifest.transitions, [
+    { from: "01-Client-Default", on: "Details", to: "02-Details-Default" },
+    { from: "01-Client-Default", on: "Continue", to: "02-Details-Default" },
+  ]);
+  const screen = b.files.find((f) => f.path === "screens/01-Client-Default.html").content;
+  assert.ok(
+    screen.includes('data-goto="02-Details-Default.html"'),
+    "the button opens the screen file the portal serves",
+  );
+  assert.ok(screen.includes('href="02-Details-Default.html"'));
+  const mobile = b.files.find((f) => f.path === "screens/01-Client-Default-Mobile.html").content;
+  assert.ok(mobile.includes('data-goto="02-Details-Default-Mobile.html"'));
+  // an artboard with no local link comes out exactly as the flattener always wrote it
+  const alone = flatten(join(fdir, "02-Details-Default.dc.html"), { project: dir });
+  assert.equal(
+    flatten(join(fdir, "02-Details-Default.dc.html"), {
+      project: dir,
+      linkMap: new Map([[join(fdir, "01-Client-Default.dc.html"), "01-Client-Default.html"]]),
+    }).html,
+    alone.html,
+  );
+  // and the flow plays: the entry leads on, the declared exit ends it
+  assert.deepEqual(
+    gapsOf(dir, { flow: "kite" }).gaps.map((g) => g.kind),
+    [],
+  );
+});

@@ -18,7 +18,7 @@ Chrome and repeated blocks (navbar, footer, sidebar, a card that appears on six 
 
 A component file is a fragment (just the markup) or a full document (its `<body>` is inlined and its `<style>`, `<link>` and external `<script src>` tags are hoisted into the screen's head). The bundle flattens includes, so the portal shows complete screens; the source keeps one copy of each shared part, so a copy edit on a nav label lands once. On the portal each component is a sheet rendered with the `<head>` and `<body>` attributes of a screen that imports it, so it carries the same fonts and styles as in context; a component no screen imports is rendered with the `Styles` include when `design/components/Styles.html` exists, and reported otherwise. `Styles.html` is the conventional home of shared CSS, imported from every screen's `<head>`; any other file under `design/components/` is a sheet too (a `Buttons.html` showing variants, for instance).
 
-`.dc.html` artboards (the design-canvas format) are accepted too: `<x-dc>` root, `<helmet>` for styles, the same `<dc-import>`.
+`.dc.html` artboards (the design-canvas format) are accepted too: `<x-dc>` root, `<helmet>` for styles, the same `<dc-import>`, and the same links: an `<a href>` or a `[data-goto]` pointing at a sibling artboard is a transition, and the bundle rewrites it so the screen is clickable on the portal.
 
 ## 3. Links are transitions
 

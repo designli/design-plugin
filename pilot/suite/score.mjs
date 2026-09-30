@@ -792,9 +792,29 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
   // ---- handoff ----
   if (obs.handoff) {
     const hs = obs.handoff.flows ?? [];
-    add("handoff", "created", ratio(hs.filter((h) => h.ok).length, hs.length), 1, {
-      items: hs.filter((h) => !h.ok).map((h) => `${h.slug}: ${h.error}`),
-    });
+    // the strict gate refuses a flow a client could not click through, so a flow the key says has a
+    // dead end or an unreachable step must be refused, and every other flow must hand off
+    const unplayable = new Set(
+      flows
+        .filter((f) => f.play?.deadEnds?.length || f.play?.unreachable?.length)
+        .map((f) => f.slug),
+    );
+    const gated = hs.filter((h) => unplayable.has(h.slug));
+    const expected = hs.filter((h) => !unplayable.has(h.slug));
+    add(
+      "handoff",
+      "created",
+      ratio(expected.filter((h) => h.ok).length + gated.filter((h) => !h.ok).length, hs.length),
+      1,
+      {
+        items: [
+          ...expected.filter((h) => !h.ok).map((h) => `${h.slug}: ${h.error}`),
+          ...gated
+            .filter((h) => h.ok)
+            .map((h) => `${h.slug}: handed off although it cannot be played end to end`),
+        ],
+      },
+    );
     const done = hs.filter((h) => h.spec);
     if (done.length) {
       add(

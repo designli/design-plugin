@@ -316,8 +316,9 @@ ${tableRows(st)
       content += `\n<p>${primary("Continue")}</p>${deep}`;
       break;
     case "confirmation":
+      // Success carries the way on as well: a confirmation that succeeds leads to the result step
       content = `<p class="card">Order 3 × ${ev[0]} · Total <strong>COP 540.000</strong></p>
-${state === "Submitting" ? '<a class="btn" aria-disabled="true" href="#">Placing order…</a>' : state === "Success" ? '<p class="ok">Done. Your tickets are in My tickets.</p>' : primary("Confirm and pay")}
+${state === "Submitting" ? '<a class="btn" aria-disabled="true" href="#">Placing order…</a>' : state === "Success" ? `<p class="ok">Done. Your tickets are in My tickets.</p>${nextHref ? `<p>${primary("Continue")}</p>` : ""}` : primary("Confirm and pay")}
 ${state === "Error" ? '<p class="alert" role="alert">Payment failed. Nothing was charged; try again.</p>' : ""}`;
       break;
     case "result":
