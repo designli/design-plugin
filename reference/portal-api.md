@@ -43,15 +43,43 @@ The essentials the skills rely on, so they work offline:
 
 ## Bundle envelope
 
-Produced by `scripts/bundle.mjs` (`server/lib/bundle.mjs`): `manifest.json` (schema 1: flow, devices, steps with waived states, screens with per-device `{file, w, h, sha256, source, layout}` and `includes` (the shared parts flattened in, as `Cmp<Name>` ids), transitions (declared plus inferred from links), `product`, `contentHash` = sha256 over the sorted `screens/<file>=<sha>` lines, `componentsHash`) and `files[]` (`{path, encoding utf8|base64, content}`; paths `screens/<id>[-Mobile].html`, optional `png/*.png`). Screens are named by their id whatever the source file was called. The server recomputes every hash.
+Produced by `scripts/bundle.mjs` (`server/lib/bundle.mjs`): `manifest.json` (schema 1: flow, devices, steps with waived states, screens with per-device `{file, w, h, sha256, source, layout}` and `includes` (the shared parts flattened in, as `Cmp<Name>` ids), transitions (declared plus inferred from links), `flow.play` (`{ exits: { "<screenId>": "<reason>" } }`, from `flow.json.exits`), `product`, `contentHash` = sha256 over the sorted `screens/<file>=<sha>` lines, `componentsHash`) and `files[]` (`{path, encoding utf8|base64, content}`; paths `screens/<id>[-Mobile].html`, optional `png/*.png`). Screens are named by their id whatever the source file was called. The server recomputes every hash.
 
 ### Journey map
 
-The portal draws the project's flows as a left-to-right map. `manifest.flow.order` (integer, from `flow.json.order`) places the flow; `manifest.flow.next` (`[{flow: <sibling slug>, on: <trigger label>}]`, from `flow.json.next`) draws the arrows. Both are stored on the flow at every push, including a push whose content hash is reused, so changing them never creates a version. Staff can reorder in the portal; `portal.mjs pull` writes the portal's position back into `flow.json.order` and reports `orderChanged`. Connections are only edited in the repository.
+The portal draws the project's flows as a left-to-right map. `manifest.flow.order` (integer, from `flow.json.order`) places the flow; `manifest.flow.next` (`[{flow: <sibling slug>, on: <trigger label>, from: <screen id>}]`, from `flow.json.next`) draws the arrows. `from` is the screen the cross-flow link sits on, filled in by the bundler from the screens' own links when the declaration does not carry it; the play check reads it as the screen's way out of the flow (one entry per connector, so the map draws one arrow). Both are stored on the flow at every push, including a push whose content hash is reused, so changing them never creates a version. Staff can reorder in the portal; `portal.mjs pull` writes the portal's position back into `flow.json.order` and reports `orderChanged`. Connections are only edited in the repository.
 
 ## Text edits (customer copy suggestions)
 
 A served screen includes a bridge script. The web app tells it to enable editing; the customer changes a text and presses Enter; the bridge posts `{elementPath (b/i/j/…), originalText, originalHash (djb2 of the normalized text), newText, componentRef}`; the app stores a pending edit. Every view of that screen applies pending edits on load, so the canvas and the prototype agree by construction. The plugin pulls edits, applies them to the source (`portal.mjs edits apply`: the screen file, or the include that holds the text, plus the other device variant when the text is unique there), and the next publish marks them `applied` in that version.
+
+## Play
+
+A flow is not only read on the portal, it is played: `GET <portal>/projects/:p/flows/:f/play?screen=<id>&device=<desktop|mobile>&v=<version>` opens the flow full screen and the viewer clicks the links and buttons inside the screens. The screen iframes are same origin and carry the bridge script (`apps/api/src/render/bridge.ts`), which posts and receives:
+
+| message   | direction       | payload                                                                                                 |
+| --------- | --------------- | ------------------------------------------------------------------------------------------------------- |
+| `dp:go`   | screen → parent | `{to, on, href}`: a link or `[data-goto]` resolved to a screen id (without `.html` and `-Mobile`)       |
+| `dp:miss` | screen → parent | a click that leads nowhere (plain content, `href="#"`, a dead `[data-goto]`); play flashes the hotspots |
+| `dp:key`  | screen → parent | `{key}` for Escape, ArrowLeft, ArrowRight, Backspace, `r`, `s`, `?` when the target is not editable     |
+| `dp:play` | parent → screen | `{on}`: play mode on or off (hotspot outlines)                                                          |
+
+The older vocabulary is unchanged: `dp:ready`, `dp:edited`, `dp:stale` up, `dp:overrides`, `dp:edit` down.
+
+`GET /projects/:p/flows/:f/head` carries the portal's own verdict as `play`:
+
+```json
+{
+  "ready": false,
+  "start": "01-Client-Default",
+  "deadEnds": [{ "screen": "02-Details-Error", "step": "02", "state": "Error" }],
+  "unreachable": [{ "step": "04", "id": "Review" }],
+  "dangling": [{ "from": "03-Sent-Success", "on": "Receipt", "to": "05-Receipt-Default" }],
+  "exits": [{ "screen": "05-Done-Success", "reason": "the user closes the app here" }]
+}
+```
+
+The plugin computes the same shape from the bundle it is about to push (`server/lib/play.mjs`, the twin of the portal's `packages/shared/src/play.ts`): `publish` reports it per flow, `gaps` turns it into `dead-end`, `unreachable`, `exit-unreasoned` and `exit-unknown`, and `project_status` shows the portal's verdict when the head carries one. Loading and Submitting screens advance on their own; a path nobody designed shows a quiet card, never an error.
 
 ## MCP tools
 

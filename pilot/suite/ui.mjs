@@ -18,6 +18,7 @@ export async function uiChecks({
   orphan,
   release2,
   sheets,
+  playFlow,
 }) {
   const out = { skipped: null, pages: {}, consoleErrors: 0, checks: {} };
   let pw;
@@ -126,6 +127,49 @@ export async function uiChecks({
       out.checks[`flow.${slug}`].reload304 = statuses.filter((s) => s === 304).length;
       out.checks[`flow.${slug}`].reload200 = statuses.filter((s) => s === 200).length;
       await page.close();
+    }
+    // play mode: the flow opens full screen and a click inside the screen moves to the next one.
+    // Skipped on a portal that has no play route yet (it answers 404 or renders nothing).
+    if (playFlow) {
+      try {
+        const pp = await visit(d, `/projects/${project}/flows/${playFlow}/play`, "play", {
+          shot: true,
+          wait: 2500,
+        });
+        const errors = out.pages.play.consoleErrors;
+        const frame = pp.frameLocator("iframe").first();
+        const hotspot = frame.locator('a[href$=".html"], [data-goto]').first();
+        const before = await pp
+          .locator("iframe")
+          .first()
+          .getAttribute("src")
+          .catch(() => null);
+        let after = before;
+        let clicked = false;
+        if (out.pages.play.status === 200 && (await hotspot.count().catch(() => 0))) {
+          await hotspot.click({ timeout: 5000 }).catch(() => null);
+          await pp.waitForTimeout(1500);
+          clicked = true;
+          after = await pp
+            .locator("iframe")
+            .first()
+            .getAttribute("src")
+            .catch(() => null);
+        }
+        out.checks.play =
+          out.pages.play.status === 404 || out.pages.play.status === 0
+            ? { skipped: `play route answered ${out.pages.play.status}` }
+            : {
+                status: out.pages.play.status,
+                iframes: out.pages.play.iframes,
+                hotspotClicked: clicked,
+                movedOn: !!before && !!after && before !== after,
+                consoleErrors: errors.length,
+              };
+        await pp.close();
+      } catch (e) {
+        out.checks.play = { error: e.message };
+      }
     }
     // a screen orphaned by a removed step: its old version must still be reachable, threads and all
     if (orphan) {

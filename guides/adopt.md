@@ -28,7 +28,16 @@ Do not ask about a title, a kind or an entry point the proposal marked `sure`. D
 
 ## Step 4: write and check
 
-`flows_write` with the answered flows and the prototype block (devices, components dir, product). It merges over existing `flow.json` files and validates names (two-digit `n`, PascalCase step id, the states vocabulary, a known kind). Then `gaps`: list what remains in plain words (a missing state per step, an unassigned file, a broken link or include), each with what to do. Gaps do not block `publish`; they show on the portal as such.
+`flows_write` with the answered flows and the prototype block (devices, components dir, product). It merges over existing `flow.json` files and validates names (two-digit `n`, PascalCase step id, the states vocabulary, a known kind). Then `gaps`.
+
+List the dead ends first, in plain words, one line per screen with its fix:
+
+- `dead-end`: "Details · Error has no way back. Link its Try again to the form."
+- `unreachable`: "Step 04 Review cannot be reached. Add the link on the screen before it."
+- `exit-unreasoned` or `exit-unknown`: "The exit on 05 Done needs a fact, or names a screen this flow does not have."
+- `dead-link`: "The Help link on 01 Client goes nowhere. Point it at a screen, or make it a button."
+
+Then the rest: a missing state per step, an unassigned file, a broken link or include, each with what to do. The fix is on the screen, not in a question: still do not ask about transitions. Gaps do not block `publish`; they show on the portal as such, and a flow that cannot be played end to end is reported again at publish time.
 
 Finish with: "Published nothing yet. Next: `publish` with a note for the client" (or the harness's spelling of it).
 

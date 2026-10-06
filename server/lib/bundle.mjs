@@ -17,7 +17,6 @@ import {
   STATE_VOCAB,
   flatten,
   sourcesIn,
-  isDc,
   componentId,
   readPrototype,
   readProduct,
@@ -25,7 +24,16 @@ import {
   componentParts,
   componentFile,
 } from "./proto.mjs";
-import { readFlow, writeFlow, resolveStates, resolveFlowDir, scanPrototype } from "./flows.mjs";
+import {
+  readFlow,
+  writeFlow,
+  resolveStates,
+  resolveFlowDir,
+  scanPrototype,
+  flowsDir,
+  exitsOf,
+} from "./flows.mjs";
+import { mergeTransitions, nextWithFrom } from "./play.mjs";
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 export function contentHashOf(entries) {
@@ -153,6 +161,7 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
   const screens = new Map();
   const dims = readCanvas(dir);
   const inferred = [];
+  const crossLinks = [];
   for (const t of targets) {
     let flat;
     try {
@@ -199,11 +208,21 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
       layout: { x: a.x ?? 0, y: a.y ?? 0 },
     };
     screens.set(t.id, e);
-    if (!t.main && !isDc(t.src))
+    // an artboard's own links count too: its buttons are rewritten in the flattened output
+    if (!t.main)
       for (const l of scanFile(t.src).links) {
-        const to = linkMap.get(resolve(dir, l.href));
+        const target = resolve(dir, l.href);
+        const to = linkMap.get(target);
         const toId = to && to.replace(/(-Mobile)?\.html$/, "");
-        if (toId && toId !== t.id) inferred.push({ from: t.id, on: l.label || "", to: toId });
+        if (toId) {
+          if (toId !== t.id) inferred.push({ from: t.id, on: l.label || "", to: toId });
+          continue;
+        }
+        // a link into another flow's folder is this screen's way out of the flow
+        const rel = relative(flowsDir(project), target);
+        const other = !rel.startsWith("..") && rel.includes("/") ? rel.split("/")[0] : null;
+        if (other && other !== flow.slug)
+          crossLinks.push({ from: t.id, flow: other, on: l.label || "?" });
       }
   }
   const hasCanvas = Object.keys(dims).length > 0;
@@ -213,14 +232,7 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
       ? "0"
       : `${s.step}-${String(Math.max(STATE_VOCAB.indexOf(s.state), 0)).padStart(2, "0")}`;
   const known = new Set(screens.keys());
-  const transitions = [...(flow.transitions || [])];
-  for (const t of inferred)
-    if (
-      known.has(t.from) &&
-      known.has(t.to) &&
-      !transitions.some((x) => x.from === t.from && x.to === t.to && (x.on === t.on || !t.on))
-    )
-      transitions.push(t);
+  const transitions = mergeTransitions(flow.transitions || [], inferred, known);
   const steps = r.steps.map((s) => ({
     n: s.n,
     id: s.id,
@@ -263,11 +275,14 @@ export function buildFlowBundle(project, flowRef, { out, dry = false } = {}) {
       prototype: !!flow.prototype,
       sourceDir: relative(project, dir),
       order: Number.isInteger(flow.order) ? flow.order : null,
-      next: Array.isArray(flow.next)
-        ? flow.next
-            .filter((l) => l && typeof l.flow === "string")
-            .map((l) => ({ flow: l.flow, on: String(l.on ?? "") }))
-        : [],
+      // `from` is the screen the cross-flow link sits on: the journey arrow for the map, and the
+      // screen's way out of the flow for the play check
+      next: nextWithFrom(
+        Array.isArray(flow.next) ? flow.next.filter((l) => l && typeof l.flow === "string") : [],
+        crossLinks,
+      ),
+      // the screens where the flow ends on purpose, with the fact that makes each one an ending
+      play: { exits: exitsOf(flow) },
     },
     devices,
     defaultDevice: "desktop",

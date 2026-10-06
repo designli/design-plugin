@@ -24,7 +24,18 @@ else {
     `  node ${i.node}; git ${i.git.repo ? (i.git.remote ? "with remote" : "no remote") : "none"}; portal ${i.publish?.portal ? `${i.publish.portal.url} / ${i.publish.portal.projectId}` : "not connected"}; token ${i.tokenSource ?? "none"}`,
   );
   console.log(
-    `  prototype ${i.prototype?.exists ? "adopted" : "not adopted"}; flows: ${i.flows.map((f) => `${f.slug} (${f.screens} screens, ${f.missingStates.length} missing, v${f.publishedVersion ?? 0})`).join(", ") || "none"}; gaps ${i.gaps.total}`,
+    `  prototype ${i.prototype?.exists ? "adopted" : "not adopted"}; flows: ${
+      i.flows
+        .map(
+          (f) =>
+            `${f.slug} (${f.screens} screens, ${f.missingStates.length} missing, v${f.publishedVersion ?? 0}${
+              f.play && !f.play.ready
+                ? `, ${f.play.deadEnds.length} dead end(s)${f.play.unreachable.length ? ` and ${f.play.unreachable.length} step(s) nothing leads to` : ""}`
+                : ""
+            })`,
+        )
+        .join(", ") || "none"
+    }; gaps ${i.gaps.total}`,
   );
 }
 process.exitCode = out.ok ? 0 : 1;

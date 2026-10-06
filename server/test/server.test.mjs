@@ -9,6 +9,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 
+// git exports GIT_DIR, GIT_INDEX_FILE and friends to the hooks it runs. Inherited here, they would
+// point every git command below (and the server's own gitInfo) at the repository being committed
+// instead of the scratch repo, so the pre-commit run of this suite would fail and then hang.
+for (const k of Object.keys(process.env)) if (k.startsWith("GIT_")) delete process.env[k];
+
 const ROOT = resolve(import.meta.dirname, "..", "..");
 const SERVER = join(ROOT, "server", "index.mjs");
 const PILOT = process.env.DESIGNLI_PILOT || resolve(ROOT, "..", "design-pilot-mvp");
@@ -205,9 +210,22 @@ test(
     assert.ok(
       s.info.flows.some((f) => f.slug === "create-and-send-an-invoice" && f.screens === 22),
     );
-    assert.equal(s.info.gaps.total, 0);
     assert.equal(s.info.product.name, "Kite");
-    assert.deepEqual(r[2].result.structuredContent.gaps, []);
+    // the pilot is a .dc.html prototype whose transitions are declared by hand: until its buttons
+    // carry data-goto, its screens have no way onward, which is a playability gap and nothing else
+    const PLAY_KINDS = new Set([
+      "dead-end",
+      "unreachable",
+      "dead-link",
+      "exit-unreasoned",
+      "exit-unknown",
+    ]);
+    for (const k of Object.keys(s.info.gaps.byKind))
+      assert.ok(PLAY_KINDS.has(k), `unexpected gap kind on the pilot: ${k}`);
+    assert.deepEqual(
+      r[2].result.structuredContent.gaps.filter((g) => !PLAY_KINDS.has(g.kind)),
+      [],
+    );
     assert.deepEqual(
       r[3].result.structuredContent.flows,
       [],
@@ -358,6 +376,9 @@ test("adopt over the server: scan, propose, write, gaps, bundle on a plain HTML 
   assert.equal(r2[1].result.isError, undefined, JSON.stringify(r2[1].result.structuredContent));
   const gaps = r2[2].result.structuredContent.gaps.map((g) => g.kind + ":" + g.where).sort();
   assert.deepEqual(gaps, [
+    // the empty cart offers no way out, and the last step is a form, not a result
+    "dead-end:01-Cart-Empty",
+    "dead-end:02-Pay-Default",
     "state-missing:01 Error",
     "state-missing:01 Loading",
     "state-missing:02 Error",

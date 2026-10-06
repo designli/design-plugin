@@ -151,9 +151,18 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
   // ---- gaps ----
   {
     const planted = flows.flatMap((f) => f.gaps.map((g) => ({ ...g, flow: f.slug })));
+    // the playability kinds are scored below, against the key's own `play` block
+    const PLAY_KINDS = new Set([
+      "dead-end",
+      "unreachable",
+      "dead-link",
+      "exit-unreasoned",
+      "exit-unknown",
+    ]);
     // the plugin reports per file; the key plants per step, so found gaps collapse to (flow, kind, step)
     const seen = new Set();
     const found = (obs.adopt?.gaps ?? []).filter((x) => {
+      if (PLAY_KINDS.has(x.kind)) return false;
       const k = `${x.flow}|${x.kind}|${String(x.where ?? "").slice(0, 2)}`;
       if (seen.has(k)) return false;
       seen.add(k);
@@ -181,6 +190,47 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     add("gaps", "precision", ratio(found.length - extra.length, found.length), 0.9, {
       items: extra.map((x) => `${x.flow} ${x.kind} ${x.where ?? ""}: ${x.message ?? ""}`),
     });
+  }
+  // ---- play: a flow the client can click through ----
+  // The key states, per flow, every screen it wrote with no way onward and every step nothing leads
+  // to (three of them planted on purpose: an Error with no recovery, an unlinked step, and one
+  // declared exit that must stop being a dead end). The plugin has to find all of them.
+  if (obs.play) {
+    const wanted = [];
+    const missed = [];
+    for (const f of flows) {
+      if (!f.play) continue;
+      const got = obs.play.gaps?.[f.slug] ?? { deadEnds: [], unreachable: [], deadLinks: 0 };
+      for (const id of f.play.deadEnds ?? []) {
+        wanted.push(`${f.slug} dead-end ${id}`);
+        if (!got.deadEnds.includes(id)) missed.push(`${f.slug}: no dead-end reported at ${id}`);
+      }
+      for (const n of f.play.unreachable ?? []) {
+        wanted.push(`${f.slug} unreachable ${n}`);
+        if (!got.unreachable.includes(n))
+          missed.push(`${f.slug}: step ${n} not reported unreachable`);
+      }
+      const dl = got.deadLinks ?? 0;
+      if (f.play.deadLinks !== undefined && dl !== f.play.deadLinks)
+        missed.push(`${f.slug}: ${dl} dead links reported, the corpus wrote ${f.play.deadLinks}`);
+    }
+    if (wanted.length)
+      add("play", "playGaps", ratio(wanted.length - missed.length, wanted.length), 1, {
+        items: missed,
+      });
+    // the plugin and the portal run the same rule: they must reach the same verdict, flow by flow
+    const portal = obs.play.portal ?? {};
+    const slugs = Object.keys(portal);
+    if (slugs.length) {
+      const apart = slugs.filter(
+        (x) => obs.play.plugin?.[x] && obs.play.plugin[x].ready !== portal[x].ready,
+      );
+      add("play", "playAgree", ratio(slugs.length - apart.length, slugs.length), 1, {
+        items: apart.map(
+          (x) => `${x}: plugin ready ${obs.play.plugin[x].ready}, portal ${portal[x].ready}`,
+        ),
+      });
+    }
   }
   // ---- publish ----
   if (obs.publish1) {
@@ -742,9 +792,29 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
   // ---- handoff ----
   if (obs.handoff) {
     const hs = obs.handoff.flows ?? [];
-    add("handoff", "created", ratio(hs.filter((h) => h.ok).length, hs.length), 1, {
-      items: hs.filter((h) => !h.ok).map((h) => `${h.slug}: ${h.error}`),
-    });
+    // the strict gate refuses a flow a client could not click through, so a flow the key says has a
+    // dead end or an unreachable step must be refused, and every other flow must hand off
+    const unplayable = new Set(
+      flows
+        .filter((f) => f.play?.deadEnds?.length || f.play?.unreachable?.length)
+        .map((f) => f.slug),
+    );
+    const gated = hs.filter((h) => unplayable.has(h.slug));
+    const expected = hs.filter((h) => !unplayable.has(h.slug));
+    add(
+      "handoff",
+      "created",
+      ratio(expected.filter((h) => h.ok).length + gated.filter((h) => !h.ok).length, hs.length),
+      1,
+      {
+        items: [
+          ...expected.filter((h) => !h.ok).map((h) => `${h.slug}: ${h.error}`),
+          ...gated
+            .filter((h) => h.ok)
+            .map((h) => `${h.slug}: handed off although it cannot be played end to end`),
+        ],
+      },
+    );
     const done = hs.filter((h) => h.spec);
     if (done.length) {
       add(
@@ -967,6 +1037,16 @@ export function score(key, obs, { tier = "tier1", results = null } = {}) {
     });
     // xl / rounds, only when ui.mjs was given journeyExpected/orphan/release2/sheets to check
     const journeyExpected = c.journey?.expected ?? obs.journey?.expected;
+    if (c.play && !c.play.skipped)
+      add(
+        "ui",
+        "playClickable",
+        [c.play.status === 200, c.play.iframes > 0, c.play.movedOn, !c.play.consoleErrors].filter(
+          Boolean,
+        ).length,
+        4,
+        { items: [JSON.stringify(c.play)] },
+      );
     if (c.journey && journeyExpected != null)
       add("ui", "journeyConnectors", c.journey.connectors, journeyExpected, {
         op: "==",

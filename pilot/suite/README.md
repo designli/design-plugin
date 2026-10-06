@@ -24,12 +24,12 @@ Tickets for live events. Ten flows with deliberate edge cases, each a scored ite
 | transfer-a-ticket | mobile only | no desktop files                                                     |
 | request-a-refund  | desktop     | a required state missing (the waiver path)                           |
 | check-in-scan     | both        | file names with spaces and uppercase; a step called "Próximo Evento" |
-| create-an-event   | desktop     | 30 screens; a 1.4 MB screen                                          |
+| create-an-event   | desktop     | 30 screens; a 1.4 MB screen; a step nothing links to                 |
 | payouts           | desktop     | table step; link back to create-an-event                             |
-| account-settings  | both        | a broken link and a broken include                                   |
-| notifications     | desktop     | a step id shared with sign-up                                        |
+| account-settings  | both        | a broken link and a broken include; a declared exit on the last step |
+| notifications     | desktop     | a step id shared with sign-up; an Error with no way back             |
 
-`--stress` adds two flows the portal must refuse: 450 files and a 21 MB screen. `gen.mjs` is deterministic; a test in `server/test/lib.test.mjs` checks that two generations are identical and that the key matches the files.
+The corpus is a real prototype, dead ends and all: the answer key's `play` block per flow names every screen it wrote with no way onward, every step no path reaches and how many clicks go nowhere, so a change to the rule shows up as a diff. Three of those are planted on purpose: an `Error` state with no recovery (notifications), a step nothing links to (create-an-event), and one declared exit that must stop being a dead end (account-settings). `--stress` adds two flows the portal must refuse: 450 files and a 21 MB screen. `gen.mjs` is deterministic; a test in `server/test/lib.test.mjs` checks that two generations are identical and that the key matches the files.
 
 ## Running
 
@@ -61,6 +61,7 @@ Every metric is a number with a target; `scorecard.md` lists the failing items w
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | adopt          | step-kind accuracy, state coverage, device detection, entry-point and transition recall, questions per flow, avoidable questions (a title, a kind or an entry point the proposal already had right), odd names handled |
 | gaps           | planted defects found (recall), false alarms (precision)                                                                                                                                                               |
+| play           | every screen with no way onward and every step nothing leads to reported (`playGaps`), the plugin's verdict equal to the portal's flow by flow (`playAgree`, skipped on a portal without play mode)                    |
 | publish        | flows pushed, a broken flow isolated from the others, seconds per flow, 429s, mobile flags, screens match, board overlaps, component sheets present and styled, ETag/304/bridge, limits refused and explained          |
 | feedback       | edits landed in the right files (every state of the step, both devices, an include once, HTML-escaped), digest agent-first, dismiss/reply/resolve, supersede reported                                                  |
 | safety         | client scope enforced (waiver, push, agent flag), long comments capped, stale publish refused, force works, tokens never in output, `.mcp.json` safe                                                                   |
@@ -68,7 +69,7 @@ Every metric is a number with a target; `scorecard.md` lists the failing items w
 | reliability    | concurrent publishes clean, update notice correct, diagnose by run id, expired sign-in handle, failures carry a run id, no unexpected errors                                                                           |
 | handoff        | created for every flow, steps, transitions, copy and the waiver in the spec, readable with a dev-agent token                                                                                                           |
 | roundTrip      | a lost repository rebuilt from the portal: dry run unchanged, structure identical                                                                                                                                      |
-| ui (tier 1)    | console errors, boards rendered, mobile toggle state, no unescaped script, 304 on reload, client sees no staff controls                                                                                                |
+| ui (tier 1)    | console errors, boards rendered, mobile toggle state, no unescaped script, 304 on reload, client sees no staff controls, play mode opens and a click inside a screen moves on                                          |
 | agent (tier 2) | questions listed per flow, turns and cost per step, forced publish, token in transcript, stale attempt refused                                                                                                         |
 
 ## Reading a run

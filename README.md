@@ -6,7 +6,7 @@ The core is harness-neutral: a **local MCP server** (tools, resources, prompts) 
 
 ## The contract
 
-One HTML file per screen state, shared parts as `<dc-import name="Navbar">` includes under `design/components/`, links between files as transitions, mock data inline, the states vocabulary (`Default`, `Loading`, `Empty`, `Validation`, `Submitting`, `Error`, `Success`, `Disabled`, `Selected`, `Partial`, `Stale`). Full text: `reference/prototype-contract.md` (served as `designli://rules/prototype`); required states per step kind: `reference/states-checklist.md` (`designli://rules/states`). `.dc.html` artboards are accepted too.
+One HTML file per screen state, shared parts as `<dc-import name="Navbar">` includes under `design/components/`, links between files as transitions, mock data inline, the states vocabulary (`Default`, `Loading`, `Empty`, `Validation`, `Submitting`, `Error`, `Success`, `Disabled`, `Selected`, `Partial`, `Stale`), and no dead ends: the client plays the prototype by clicking inside the screens, so every screen that is not Loading or Submitting links onward, or its step is a `result`, or the ending is declared in `flow.json` `exits` with a fact. Full text: `reference/prototype-contract.md` (served as `designli://rules/prototype`); required states per step kind: `reference/states-checklist.md` (`designli://rules/states`). `.dc.html` artboards are accepted too.
 
 ```
 design/
@@ -14,7 +14,7 @@ design/
   components/*.html       includes
   flows/<slug>/
     *.html                one file per screen state (any names)
-    flow.json             steps, states → files or "n/a: <reason>", transitions, entry points, order, sync state
+    flow.json             steps, states → files or "n/a: <reason>", transitions, entry points, exits, order, sync state
     comments.json         pulled feedback (committed)
     text-edits.json       pulled copy edits (committed)
     bundle/               build output (ignored)
@@ -107,7 +107,7 @@ To release: bump `version` in `.claude-plugin/plugin.json` and `.claude-plugin/m
 ```
 .claude-plugin/   plugin.json, marketplace.json (Claude Code packaging)
 .mcp.json         registers server/index.mjs for Claude Code
-server/           index.mjs (the MCP server), lib/{proto,flows,bundle,portal,status,setup}.mjs, test/
+server/           index.mjs (the MCP server), lib/{proto,flows,play,bundle,portal,status,setup}.mjs, test/
 guides/           setup, prototype, adopt, publish, feedback, handoff, status, review (the workflows, harness-neutral)
 skills/           thin Claude Code wrappers over the guides
 scripts/          preflight, setup, adopt, gaps, bundle, portal, install-impeccable, gen-pin

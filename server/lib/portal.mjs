@@ -31,6 +31,7 @@ import {
   gapsOf,
   BLOCKING,
 } from "./flows.mjs";
+import { playCheck, nextWithFrom } from "./play.mjs";
 import { buildFlowBundle, buildComponentsBundle } from "./bundle.mjs";
 import { log, runId } from "./log.mjs";
 
@@ -186,6 +187,8 @@ const stableStringify = (v) =>
  * change (generatedAt, generator, publish, contentHash, componentsHash). contentHash covers
  * screens only; title/goal/order/next/entryPoints/waivers changes are invisible to it, and the
  * portal applies journey order/next on a reused push, so a metadata-only change must still push.
+ * `flow.play` (the declared exits) and `next[].from` are part of it: a declared exit changes what
+ * the portal calls a dead end, which is structure, so it pushes.
  */
 export function manifestHashOf(manifest) {
   const { generatedAt, generator, publish, contentHash, componentsHash, ...rest } = manifest || {};
@@ -240,6 +243,7 @@ export async function overview(ctx) {
       openThreads: f.openThreads,
       pendingEdits: f.pendingEdits,
       missingStates: f.missingStates ?? null,
+      play: f.play ?? null,
       position: f.position ?? null,
       archivedAt: f.archivedAt ?? null,
     })),
@@ -629,6 +633,12 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       gaps: g,
       errors: b.errors,
     };
+    // can a client play this flow end to end? The same check the portal runs, on the manifest this
+    // publish would send it; the guide asks once before recording a release that is not ready
+    if (b.manifest) {
+      const pc = playCheck(b.manifest);
+      entry.play = { ready: pc.ready, deadEnds: pc.deadEnds, unreachable: pc.unreachable };
+    }
     if (!b.ok) entry.status = "error";
     else if (!h.exists) entry.status = "new";
     else if (h.version !== localVersion && !force) entry.status = "behind";
@@ -745,6 +755,7 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       message: `nothing changed since release ${releaseNumber(ov.project.release)}`,
       unchanged: unchangedFlows,
       metadataOnly,
+      play: plan.filter((e) => e.play).map((e) => ({ flow: e.flow, ...e.play })),
       portalOnly,
       orphaning: [],
       components,
@@ -776,6 +787,7 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
         pushed,
         unchanged: unchangedFlows,
         metadataOnly,
+        play: plan.filter((e) => e.play).map((e) => ({ flow: e.flow, ...e.play })),
         skipped: skipped.length ? skipped : undefined,
         portalOnly,
         orphaning,
@@ -809,6 +821,7 @@ export async function publish(ctx, { note, flows, dryRun = false, force = false 
       : {}),
     components,
     gaps: plan.reduce((n, e) => n + e.gaps, 0),
+    play: plan.filter((e) => e.play).map((e) => ({ flow: e.flow, ...e.play })),
     portalOnly,
     orphaning,
     metadataOnly,
@@ -1244,12 +1257,18 @@ export async function adoptFromPortal(ctx) {
       title: h.flow?.title || m.flow?.title || f.id,
       goal: h.flow?.goal ?? m.flow?.goal ?? "",
       order: Number.isInteger(h.flow?.position) ? h.flow.position : (m.flow?.order ?? null),
-      next: h.flow?.next || m.flow?.next || [],
+      // the portal keeps the journey links; the manifest keeps the screen each one sits on, so a
+      // portal that does not store `from` yet does not cost the repository its play information
+      next: nextWithFrom(
+        h.flow?.next || m.flow?.next || [],
+        (m.flow?.next || []).filter((l) => l.from),
+      ),
       entryPoints: h.structure?.entryPoints || m.entryPoints || [],
       devices,
       ...(m.flow?.prototype ? { prototype: true } : {}),
       steps,
       transitions: m.transitions || [],
+      exits: m.flow?.play?.exits ?? cur.exits ?? {},
       portal: {
         ...(cur.portal || {}),
         url: ctx.url,
@@ -1329,6 +1348,7 @@ export async function handoff(ctx, flowRef, { story, components } = {}) {
   flow.status = "handed-off";
   flow.story = String(story).trim();
   writeFlow(dir, flow);
+  const pc = playCheck(b.manifest);
   return {
     id: j.id,
     url: j.url,
@@ -1336,5 +1356,6 @@ export async function handoff(ctx, flowRef, { story, components } = {}) {
     version: j.version,
     releaseNumber: j.releaseNumber ?? null,
     components: comps,
+    play: { ready: pc.ready, deadEnds: pc.deadEnds, unreachable: pc.unreachable },
   };
 }
