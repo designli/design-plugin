@@ -2,6 +2,8 @@
 
 The designer builds the prototype with whatever tools they like. This plugin **adopts** it (one static HTML file per screen state), **publishes** releases to the Designli portal, **tracks** versions by content hash, **feeds** the client's feedback back into the repository, and **hands** flows off to dev agents through the portal. The portal is the record: flows, steps, states with waivers, transitions, journey, releases, feedback and handoffs live there and are reachable through its MCP server. The repository is the designer's working copy; a lost repository is rebuilt from the portal.
 
+Working on the plugin, human or agent: read [`AGENTS.md`](AGENTS.md) first. It carries the rules for this repository and points at the project's own record, the internal docs on the portal (`/docs/internal/`, Designli admins only).
+
 The core is harness-neutral: a **local MCP server** (tools, resources, prompts) plus dependency-free Node scripts. Claude Code gets the same workflow as slash commands through a thin plugin; any other MCP client gets it through the server. It ships a pinned [impeccable](https://github.com/pbakaus/impeccable) 3.5.0 (Apache-2.0) for the optional critique.
 
 ## The contract
